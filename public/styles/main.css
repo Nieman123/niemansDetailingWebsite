@@ -425,3 +425,23 @@ h5 {
     margin-right: 0;
   }
 }
+
+/* larger services images and text on desktop */
+@media (min-width: 1024px) {
+  .circle-pic {
+    max-width: none;
+    max-height: none;
+    width: 180px;
+    height: 180px;
+  }
+  .section__text h5 {
+    font-size: 1.5rem;
+  }
+  .section__text {
+    font-size: 1.1rem;
+  }
+  /* override text padding to add spacer between image and text */
+  .mdl-site section .section__text {
+    padding-left: 5rem;
+  }
+}
