@@ -130,13 +130,38 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   </script>
   <style>
     .hero-cta { margin: 1rem 0; text-align: center; }
-    .hero-cta .mdl-button { font-size: 1.1rem; }
+    .hero-cta .mdl-button {
+      font-size: 1.3rem;
+      padding: 0.8rem 2rem;
+    }
     .testimonial-list { display: flex; flex-direction: column; gap: 1rem; }
     .testimonial-list blockquote { font-style: italic; border-left: 4px solid #673ab7; padding-left: 1rem; }
     .testimonial-list footer { display: block; margin-top: 0.5rem; text-align: right; font-weight: bold; }
     .instagram-profile-embed { display: flex; align-items: center; margin-top: 1rem; }
     .instagram-profile-embed img { width: 60px; height: 60px; border-radius: 50%; margin-right: 0.5rem; }
     .instagram-profile-embed span { font-size: 1.1rem; font-weight: bold; }
+
+    /* slideshow arrows */
+    .slideshow-container { position: relative; }
+    .slide-prev, .slide-next {
+      position: absolute;
+      top: 50%; transform: translateY(-50%);
+      font-size: 2rem; background: none; border: none; color: white;
+      opacity: 0; transition: opacity 0.3s; cursor: pointer;
+    }
+    .slideshow-container:hover .slide-prev,
+    .slideshow-container:hover .slide-next { opacity: 0.7; }
+    .slide-prev { left: 10px; }
+    .slide-next { right: 10px; }
+
+    /* button hover state */
+    .mdl-button--colored:hover { background-color: #5a2e91; }
+
+    /* tightened testimonials */
+    .testimonial-list blockquote { line-height: 1.4; border-left-color: #673ab7; }
+
+    /* services CTA placeholder */
+    .services-cta { text-align: center; margin: 1rem 0; }
   </style>
 </head>
 <body class="mdl-site mdl-color--grey-800 mdl-color-text--grey-700 mdl-base">
@@ -175,7 +200,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <div class="mdl-chip-float-contact">
       <span class="mdl-chip mdl-chip--contact mdl-chip-bg">
     <span class="mdl-chip__contact mdl-color--primary mdl-color-text--white"><i
-      class="phone-icon material-icons md-light">phone</i></span>
+      class="phone-icon material-icons md-light" aria-label="Questions? Call">phone</i></span>
         <span class="mdl-chip__text">Questions? Call <strong><a class="phone-link" href="tel:+1-828-273-3894">(828)273-3894</a></strong></span>
     </span>
     </div>
@@ -188,78 +213,79 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
         <div class="mdl-card mdl-cell mdl-cell--12-col">
 
             <div class="mdl-card__supporting-text">
-              <h1 class="main-title">Mobile Detailing That Comes To You</h1>
+              <h1 class="main-title">Mobile Detailing in Asheville, NC</h1>
+              <h3 class="sub-title">We bring the shine right to your driveway</h3>
               <div class="hero-cta">
                 <a href="https://niemansdetailing.com/schedule" class="mdl-button mdl-button--raised mdl-button--colored">Book Now</a>
               </div>
               <!--Slideshow here-->
               <div class="bss-slides">
                 <figure>
-                  <img src="images/carpics/srv_pics/series-grey.jpeg" alt="freshly-detailed-subaru-wrx" title="Detailed WRX" width="100%"/>
+                  <img loading="lazy" src="images/carpics/srv_pics/series-grey.jpeg" alt="freshly-detailed-subaru-wrx" title="Detailed WRX" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/srv_pics/red-wrx.png" alt="modified-wrx-impreza"
+                  <img loading="lazy" src="images/carpics/srv_pics/red-wrx.png" alt="modified-wrx-impreza"
                        title="Red Subaru WRX" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/chevy.jpg" alt="chevy-colorado-detail-fifty-fifty-shot"
+                  <img loading="lazy" src="images/carpics/chevy.jpg" alt="chevy-colorado-detail-fifty-fifty-shot"
                        title="Colorado Fifty-Fifty" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/srv_pics/tesla.jpg" alt="freshly-detailed-tesla-model-x-blue" title="Freshly Detailed MKZ"
+                  <img loading="lazy" src="images/carpics/srv_pics/tesla.jpg" alt="freshly-detailed-tesla-model-x-blue" title="Freshly Detailed MKZ"
                        width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/merc.jpg" alt="white-mercedes-280sl-detailed"
+                  <img loading="lazy" src="images/carpics/merc.jpg" alt="white-mercedes-280sl-detailed"
                        title="Gently Cleaned and Protected" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/srv_pics/correction.jpg" alt="paint-correction-fifty-fifty-shot"
+                  <img loading="lazy" src="images/carpics/srv_pics/correction.jpg" alt="paint-correction-fifty-fifty-shot"
                        title="Paint Correction Fifty-Fifty" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/srv_pics/headlight.jpg" alt="headlight-restoration-fifty-fifty-shot"
+                  <img loading="lazy" src="images/carpics/srv_pics/headlight.jpg" alt="headlight-restoration-fifty-fifty-shot"
                        title="Headlight Fifty-Fifty" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/srv_pics/hwspots.jpg" alt="hw-spot-removal-fifty-fifty-shot"
+                  <img loading="lazy" src="images/carpics/srv_pics/hwspots.jpg" alt="hw-spot-removal-fifty-fifty-shot"
                        title="Hard Water Spot Removal Fifty-Fifty" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/wrx-wheel.png" alt="wheel-cleaning"
+                  <img loading="lazy" src="images/carpics/wrx-wheel.png" alt="wheel-cleaning"
                        title="Wheel Cleaning Fifty-Fifty" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/engine.jpeg" alt="cleaned-and-protected-engine-bay-bmw"
+                  <img loading="lazy" src="images/carpics/engine.jpeg" alt="cleaned-and-protected-engine-bay-bmw"
                        title="Cleaned and UV Protected" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/foam.jpg" alt="honeydew-snowfoam-foam-cannon-car-forester"
+                  <img loading="lazy" src="images/carpics/foam.jpg" alt="honeydew-snowfoam-foam-cannon-car-forester"
                        title="Foamed up Subaru" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/wrx.jpg" alt="detailed-wrx-subaru-white-square-photo-sun"
+                  <img loading="lazy" src="images/carpics/wrx.jpg" alt="detailed-wrx-subaru-white-square-photo-sun"
                        title="Freshly Detailed Subaru WRX" width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/rv.jpg" alt="white-ford-rv-born-free-detailed" title="Detailed and Waxed"
+                  <img loading="lazy" src="images/carpics/rv.jpg" alt="white-ford-rv-born-free-detailed" title="Detailed and Waxed"
                        width="100%"/>
                 </figure>
 
                 <figure>
-                  <img src="images/carpics/pillar.jpg" alt="fifty-fifty-cleaned-smoke-car-pillar"
+                  <img loading="lazy" src="images/carpics/pillar.jpg" alt="fifty-fifty-cleaned-smoke-car-pillar"
                        title="Smoke Damage Removal" width="100%"/>
                 </figure>
               </div>
@@ -287,7 +313,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="mdl-card__supporting-text mdl-grid mdl-grid--no-spacing">
             <h4 class="mdl-cell mdl-cell--12-col">Services</h4>
 
-            <img src="images/carpics/bmw.jpg" alt="car-bmw-cleaned-detailed-grey"
+            <img loading="lazy" src="images/carpics/bmw.jpg" alt="car-bmw-cleaned-detailed-grey"
                  title="BMW 3-Series after The Works" class="circle-pic">
             <!--<div class="section__circle-container mdl-cell mdl-cell&#45;&#45;2-col mdl-cell&#45;&#45;1-col-phone">-->
             <!--<div class="section__circle-container__circle mdl-color&#45;&#45;primary"></div>-->
@@ -299,7 +325,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               tire, and engine bay detailing, steam cleaning, a premium wax and more.
             </div>
 
-            <img src="images/carpics/srv_pics/headlight.jpg" alt="fifty-fifty-headlight-restoration-subaru-outback"
+            <img loading="lazy" src="images/carpics/srv_pics/headlight.jpg" alt="fifty-fifty-headlight-restoration-subaru-outback"
                  title="Headlight before and after restoration" class="circle-pic">
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
@@ -308,7 +334,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               Return your lights permanently to their original condition and see clearly at night.
             </div>
 
-            <img src="images/carpics/srv_pics/correction.jpg" alt="blue-auto-paint-corrected-polishing-polished"
+            <img loading="lazy" src="images/carpics/srv_pics/correction.jpg" alt="blue-auto-paint-corrected-polishing-polished"
                  title="Car paint after correction" class="circle-pic">
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
@@ -317,7 +343,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               vehicle resulting in an extremely glossy, mirror-like finish. The ultimate restoration of your paint.
             </div>
 
-            <img src="images/carpics/srv_pics/trim.jpeg" alt="fifty-fifty-trim-restoration-white-black"
+            <img loading="lazy" src="images/carpics/srv_pics/trim.jpeg" alt="fifty-fifty-trim-restoration-white-black"
                  title="Trim before and after restoration" class="circle-pic">
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
@@ -339,7 +365,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
         <div class="mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text srv-area-img">
             <h4 class="mdl-cell mdl-cell--12-col">Service Area</h4>
-            <img class="services-img" src="images/service-area2.png"/>
+            <img loading="lazy" class="services-img" src="images/service-area2.png"/>
           </div>
           <div class="mdl-card__supporting-text srv-area-txt">
             <h5><strong>Serving Asheville and its Surrounding Areas</strong></h5>
@@ -376,7 +402,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
               <div class="section__circle-container__circle mdl-color--primary"><i
-                class="material-icons md-light">phone</i></div>
+                class="material-icons md-light" aria-label="Phone">phone</i></div>
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -386,7 +412,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
               <div class="section__circle-container__circle mdl-color--primary"><i
-                class="material-icons md-light">email</i></div>
+                class="material-icons md-light" aria-label="Email">email</i></div>
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -396,7 +422,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
               <div class="section__circle-container__circle mdl-color--primary"><i
-                class="material-icons md-light">link</i></div>
+                class="material-icons md-light" aria-label="Social Media">link</i></div>
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -692,7 +718,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
               <div class="section__circle-container__circle mdl-color--primary"><i
-                class="material-icons md-light">phone</i></div>
+                class="material-icons md-light" aria-label="Phone">phone</i></div>
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -702,7 +728,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
               <div class="section__circle-container__circle mdl-color--primary"><i
-                class="material-icons md-light">email</i></div>
+                class="material-icons md-light" aria-label="Email">email</i></div>
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -712,7 +738,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
               <div class="section__circle-container__circle mdl-color--primary"><i
-                class="material-icons md-light">link</i></div>
+                class="material-icons md-light" aria-label="Social Media">link</i></div>
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
