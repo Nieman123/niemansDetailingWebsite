@@ -6,7 +6,11 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
+   "rewrites": [
+      {
+        "source": "/schedule",
+        "destination": "/schedule.html"
+      },
       {
         "source": "**",
         "destination": "/index.html"
