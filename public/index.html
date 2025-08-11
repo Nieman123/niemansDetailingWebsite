@@ -375,7 +375,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
         <div class="mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text srv-area-img">
             <h4 class="mdl-cell mdl-cell--12-col">Service Area</h4>
-            <iframe width="600" height="450" style="border:0" loading="lazy" allowfullscreen src="https://www.google.com/maps/embed/v1/view?zoom=11&center=35.5975%2C-82.5461&key=AIzaSyCeB-CBTkpxYcQXyzL5_DcFNPqJACTVebI"></iframe>
+            <div id="map" style="width:100%; height:450px;"></div>
           </div>
           <div class="mdl-card__supporting-text srv-area-txt">
             <h5><strong>Serving Asheville and its Surrounding Areas</strong></h5>
@@ -827,15 +827,33 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 <script src="scripts/main.js"></script>
 <script src="scripts/better-simple-slideshow.min.js"></script>
 <script>
-  var opts = {
-    auto : {
-      speed : 3500,
-      pauseOnHover : true
-    },
-    fullScreen : false,
-    swipe : true
-  };
-  makeBSS('.bss-slides', opts);
+  function initMap() {
+    const map = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: 35.6, lng: -82.55 },
+      zoom: 10
+    });
+    highlightServiceArea(map);
+  }
+
+  function highlightServiceArea(map) {
+    const serviceCoords = [
+      { lat: 35.79722, lng: -82.68167 }, // Marshall
+      { lat: 35.82833, lng: -82.54861 }, // Mars Hill
+      { lat: 35.61417, lng: -82.32750 }, // Black Mountain
+      { lat: 35.43167, lng: -82.50389 }, // Fletcher
+      { lat: 35.53639, lng: -82.83861 }  // Canton
+    ];
+    const serviceArea = new google.maps.Polygon({
+      paths: serviceCoords,
+      strokeColor: "#673AB7",
+      strokeOpacity: 0.8,
+      strokeWeight: 2,
+      fillColor: "#673AB7",
+      fillOpacity: 0.2
+    });
+    serviceArea.setMap(map);
+  }
 </script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeB-CBTkpxYcQXyzL5_DcFNPqJACTVebI&callback=initMap" async defer></script>
 </body>
 </html>
