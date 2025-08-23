@@ -26,6 +26,32 @@ document.addEventListener('DOMContentLoaded', function () {
     window.bssInitialized = true;
     makeBSS('.bss-slides');
   }
+
+  const igSection = document.getElementById('instagram-section');
+  if (igSection) {
+    const igObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          loadInstagram();
+          observer.disconnect();
+        }
+      });
+    });
+    igObserver.observe(igSection);
+  }
+
+  const serviceSection = document.getElementById('service-area');
+  if (serviceSection) {
+    const mapObserver = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          loadMap();
+          observer.disconnect();
+        }
+      });
+    });
+    mapObserver.observe(serviceSection);
+  }
 });
 
 // Google Maps callback
@@ -56,5 +82,42 @@ function highlightServiceArea(map) {
     fillOpacity: 0.2
   });
   serviceArea.setMap(map);
+}
+
+// Lazy-load Instagram and Pixlee widgets
+function loadInstagram() {
+  if (window.instagramLoaded) return;
+  window.instagramLoaded = true;
+
+  window.PixleeAsyncInit = function() {
+    if (window.Pixlee) {
+      Pixlee.init({apiKey:'gJFLksbWhYk1jWdGalcu'});
+      Pixlee.addSimpleWidget({widgetId:'14925'});
+    }
+  };
+
+  const pixlee = document.createElement('script');
+  pixlee.src = '//instafeed.assets.pixlee.com/assets/pixlee_widget_1_0_0.js';
+  pixlee.defer = true;
+  document.body.appendChild(pixlee);
+
+  const ig = document.createElement('script');
+  ig.src = '//www.instagram.com/embed.js';
+  ig.async = true;
+  document.body.appendChild(ig);
+}
+
+// Lazy-load Google Maps API
+function loadMap() {
+  if (window.mapLoaded) return;
+  window.mapLoaded = true;
+  const mapEl = document.getElementById('map');
+  if (!mapEl) return;
+  const apiKey = mapEl.dataset.apiKey;
+  if (!apiKey) return;
+  const script = document.createElement('script');
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
+  script.async = true;
+  document.head.appendChild(script);
 }
 
