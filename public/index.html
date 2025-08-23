@@ -84,9 +84,9 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 		"postalCode": "28787"
 	},
 	"image": "https://niemansdetailing.com/images/web-image.jpg",
-	"email": "contact@niemansdetailing.com",
-	"telephone": "8282733894",
-	"url": "https://niemansdetailing.com",
+        "email": "contact@niemansdetailing.com",
+        "telephone": "+1-828-273-3894",
+        "url": "https://niemansdetailing.com",
 	"paymentAccepted": [ "cash", "check", "paypal" ],
 	"openingHours": "Mo,Tu,We,Th,Fr,Sa,Su 09:00-17:00",
 	"openingHoursSpecification": [ {
@@ -124,9 +124,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       a.async = 1;
       a.src = g;
       m.parentNode.insertBefore(a, m)
-    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
-    ga('create', 'UA-109507933-1', 'auto');
-    ga('send', 'pageview');
+    })(window, document, 'script', 'https://www.google-analytics.com/analytics.js', 'ga');
+    if (window.ga) {
+      ga('create', 'UA-109507933-1', 'auto');
+      ga('send', 'pageview');
+    }
   </script>
   <style>
     .hero-cta { margin: 1rem 0; text-align: center; }
@@ -172,8 +174,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <div class="mdl-layout--large-screen-only mdl-layout__header-row">
     </div>
     <div class="mdl-layout--large-screen-only mdl-layout__header-row">
-      <img src="images/ND-logo-white-transparentbg.png" alt="niemans-detailing-logo-white-transparent-background"
-           title="Nieman's Detailing" width="200px" height="200px">
+      <img src="images/ND-logo-white-transparentbg.png" alt="Nieman's Detailing logo"
+           title="Nieman's Detailing" width="200" height="200">
     </div>
     <div class="mdl-layout--large-screen-only mdl-layout__header-row">
     </div>
@@ -181,15 +183,15 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <!--Small Screen Header and Logo-->
     <div class="mdl-layout--small-screen-only mdl-layout__header-row">
       <img class="h-logo" src="images/ND-logo-white-transparentbg-horizontal.png"
-           alt="niemans-detailing-horizontal-logo-white-transparent-background" title="Nieman's Detailing"
-           width="500px" height="50px">
+           alt="Nieman's Detailing horizontal logo" title="Nieman's Detailing"
+           width="500" height="50">
     </div>
     <div class="mdl-layout__tab-bar mdl-js-ripple-effect mdl-color--primary-dark">
-      <a href="#overview" class="mdl-layout__tab is-active" onclick="ga('send','event','Navigation','click','Overview Tab');">Overview</a>
-      <a href="#services" class="mdl-layout__tab" onclick="ga('send','event','Navigation','click','Services Tab');">Services</a>
-      <a href="#about" class="mdl-layout__tab" onclick="ga('send','event','Navigation','click','About Tab');">About</a>
-      <a href="#contact" class="mdl-layout__tab" onclick="ga('send','event','Navigation','click','Contact Tab');">Contact</a>
-      <a href="https://niemansdetailing.com/schedule" class="mdl-layout__tab" onclick="ga('send','event','Navigation','click','Schedule Tab');">Schedule</a>
+      <a href="#overview" class="mdl-layout__tab is-active" onclick="trackEvent('Navigation','click','Overview Tab');">Overview</a>
+      <a href="#services" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','Services Tab');">Services</a>
+      <a href="#about" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','About Tab');">About</a>
+      <a href="#contact" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','Contact Tab');">Contact</a>
+      <a href="https://niemansdetailing.com/schedule" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','Schedule Tab');">Schedule</a>
 
     </div>
   </header>
@@ -201,7 +203,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <span class="mdl-chip mdl-chip--contact mdl-chip-bg">
     <span class="mdl-chip__contact mdl-color--primary mdl-color-text--white"><i
       class="phone-icon material-icons md-light" aria-label="Questions? Call">phone</i></span>
-        <span class="mdl-chip__text">Questions? Call <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="ga('send','event','Contact','click','Phone');">(828) 273-3894</a></strong></span>
+        <span class="mdl-chip__text">Questions? Call <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone');">(828) 273-3894</a></strong></span>
     </span>
     </div>
 
@@ -216,12 +218,12 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h1 class="main-title">Mobile Detailing in Asheville, NC</h1>
               <h3 class="sub-title">We bring the shine right to your driveway</h3>
               <div class="hero-cta">
-                <a href="https://niemansdetailing.com/schedule" class="mdl-button mdl-button--raised mdl-button--colored" onclick="ga('send','event','CTA','click','Book Now');">Book Now</a>
+                <a href="https://niemansdetailing.com/schedule" class="mdl-button mdl-button--raised mdl-button--colored" onclick="trackEvent('CTA','click','Book Now');">Book Now</a>
               </div>
               <!--Slideshow here-->
               <div class="bss-slides">
                 <figure>
-                  <img loading="lazy" src="images/carpics/srv_pics/series-grey.jpeg" alt="Subaru WRX full-mobile-detailing Asheville NC" title="Detailed WRX" width="100%"/>
+                  <img src="images/carpics/srv_pics/series-grey.jpeg" alt="Subaru WRX full-mobile-detailing Asheville NC" title="Detailed WRX" width="100%"/>
                 </figure>
 
                 <figure>
@@ -235,7 +237,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/srv_pics/tesla.jpg" alt="freshly-detailed-tesla-model-x-blue" title="Freshly Detailed MKZ"
+                  <img loading="lazy" src="images/carpics/srv_pics/tesla.jpg" alt="freshly-detailed-tesla-model-x-blue" title="Freshly Detailed Tesla Model X"
                        width="100%"/>
                 </figure>
 
@@ -298,51 +300,51 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
         <div class="mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text mdl-grid mdl-grid--no-spacing">
-            <h4 class="mdl-cell mdl-cell--12-col" style="font-size:1.6rem; font-weight:bold;">Services</h4>
+            <h2 class="mdl-cell mdl-cell--12-col section-title">Services</h2>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
               <img loading="lazy" src="images/carpics/bmw.jpg" alt="car-bmw-cleaned-detailed-grey"
-                   title="BMW 3-Series after The Works" class="circle-pic">
+                   title="BMW 3-Series after The Works" class="circle-pic" width="180" height="180">
             </div>
             <!--<div class="section__circle-container mdl-cell mdl-cell&#45;&#45;2-col mdl-cell&#45;&#45;1-col-phone">-->
             <!--<div class="section__circle-container__circle mdl-color&#45;&#45;primary"></div>-->
             <!--</div>-->
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
-              <h5 style="font-size:1.6rem; font-weight:bold;">The Works</h5>
+              <h3 class="section-title">The Works</h3>
               This package is a safe and comprehensive cleaning of both the interior and exterior including wheel,
               tire, and engine bay detailing, steam cleaning, a premium wax and more.
             </div>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
               <img loading="lazy" src="images/carpics/srv_pics/headlight.jpg" alt="fifty-fifty-headlight-restoration-subaru-outback"
-                   title="Headlight before and after restoration" class="circle-pic">
+                   title="Headlight before and after restoration" class="circle-pic" width="180" height="180">
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
-              <h5 style="font-size:1.6rem; font-weight:bold;">Headlight Restoration</h5>
+              <h3 class="section-title">Headlight Restoration</h3>
               A dull and yellowed headlight gives your car a dated and dull look while reducing safety at night.
               Return your lights permanently to their original condition and see clearly at night.
             </div>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
               <img loading="lazy" src="images/carpics/srv_pics/correction.jpg" alt="blue-auto-paint-corrected-polishing-polished"
-                   title="Car paint after correction" class="circle-pic">
+                   title="Car paint after correction" class="circle-pic" width="180" height="180">
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
-              <h5 style="font-size:1.6rem; font-weight:bold;">Paint Correction and Polishing</h5>
+              <h3 class="section-title">Paint Correction and Polishing</h3>
               This process removes scratches, swirls, holograms and oxidation defects in the clear-coat of your
               vehicle resulting in an extremely glossy, mirror-like finish. The ultimate restoration of your paint.
             </div>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
               <img loading="lazy" src="images/carpics/srv_pics/trim.jpeg" alt="fifty-fifty-trim-restoration-white-black"
-                   title="Trim before and after restoration" class="circle-pic">
+                   title="Trim before and after restoration" class="circle-pic" width="180" height="180">
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
-              <h5 style="font-size:1.6rem; font-weight:bold;">Trim Restoration</h5>
+              <h3 class="section-title">Trim Restoration</h3>
               Permanently restore the grey UV damaged plastics on your vehicle to the deep rich black finish that
               came from the factory
             </div>
@@ -350,7 +352,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           </div>
           <div class="mdl-card__actions">
             <a href="https://niemansdetailing.com/#services" class="mdl-button">View All Services & Pricing</a>
-            <a href="https://niemansdetailing.com/schedule" class="mdl-button mdl-button--raised mdl-button--colored" onclick="ga('send','event','CTA','click','Get a Quote');">Get a Quote</a>
+            <a href="https://niemansdetailing.com/schedule" class="mdl-button mdl-button--raised mdl-button--colored" onclick="trackEvent('CTA','click','Get a Quote');">Get a Quote</a>
           </div>
         </div>
       </section>
@@ -359,7 +361,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
         <div class="mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text">
-            <h5 class="mdl-cell mdl-cell--12-col" style="font-size:1.6rem; font-weight:bold;">Testimonials</h5>
+            <h2 class="mdl-cell mdl-cell--12-col section-title">Testimonials</h2>
             <div class="testimonial-list">
               <blockquote>"Nieman runs a serious business when it comes to car/motorcycle care. His meticulous eye for detail makes his work top notch. He offers multiple services for different types of interiors, has experience in headlight restoration, and made my appointment even easier by coming to me. Thank you, Nieman!!”<footer>— Mindy, Asheville</footer></blockquote>
               <blockquote>“Nieman is the best! At an affordable price, he provides all the punctuality, courtesy, equipment, and elbow grease you need to make your car shine. Mine looks as good as new, if not better than new, after three hard months of ferrying plants and pots in a move from Atlanta. I give him my highest recommendation.”<footer>— Beverly, Weaverville</footer></blockquote>
@@ -374,13 +376,13 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
         <div class="mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text srv-area-img">
-            <h4 class="mdl-cell mdl-cell--12-col">Service Area</h4>
-            <div id="map" style="width:100%; height:450px;"></div>
+            <h2 class="mdl-cell mdl-cell--12-col section-title">Service Area</h2>
+            <div id="map" class="map-container"></div>
           </div>
           <div class="mdl-card__supporting-text srv-area-txt">
-            <h5><strong>Serving Asheville and its Surrounding Areas</strong></h5>
-            <h5>Leave your car where it is, we come to it!</h5>
-            <h5><strong>Don't drop it off when a professional can come to you!</strong></h5>
+            <h3><strong>Serving Asheville and its Surrounding Areas</strong></h3>
+            <h3>Leave your car where it is, we come to it!</h3>
+            <h3><strong>Don't drop it off when a professional can come to you!</strong></h3>
           </div>
         </div>
 
@@ -391,7 +393,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
         <div class="mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text srv-area-img">
-            <h5 class="main-title">Find me on Instagram</h5>
+            <h2 class="main-title">Find me on Instagram</h2>
             <div id="pixlee_container"></div>
             <!-- Instagram Profile Preview -->
             <div class="instagram-profile-embed">
@@ -408,7 +410,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
         <div class="contact-card mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text mdl-grid mdl-grid--no-spacing">
-            <h4 class="mdl-cell mdl-cell--12-col">Contact Me</h4>
+            <h2 class="mdl-cell mdl-cell--12-col section-title">Contact Me</h2>
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
               <div class="section__circle-container__circle mdl-color--primary"><i
@@ -416,8 +418,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-              <h5><strong>By Phone</strong></h5>
-              Call or Text <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="ga('send','event','Contact','click','Phone');">(828) 273-3894</a></strong>
+              <h3><strong>By Phone</strong></h3>
+              Call or Text <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone');">(828) 273-3894</a></strong>
             </div>
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
@@ -426,8 +428,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-              <h5><strong>E-Mail</strong></h5>
-              Send me a message at <a href="mailto:contact@niemansdetailing.com" onclick="ga('send','event','Contact','click','Email');">contact@niemansdetailing.com</a>
+              <h3><strong>E-Mail</strong></h3>
+              Send me a message at <a href="mailto:contact@niemansdetailing.com" onclick="trackEvent('Contact','click','Email');">contact@niemansdetailing.com</a>
             </div>
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
@@ -436,9 +438,9 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-              <h5><strong>Find me on Social Media</strong></h5>
-              Visit my <a href="https://www.facebook.com/niemansdetailing" onclick="ga('send','event','Social','click','Facebook');">Facebook</a> or <a
-              href="https://www.instagram.com/niemansdetailing" onclick="ga('send','event','Social','click','Instagram');">Instagram</a>.
+              <h3><strong>Find me on Social Media</strong></h3>
+              Visit my <a href="https://www.facebook.com/niemansdetailing" onclick="trackEvent('Social','click','Facebook');">Facebook</a> or <a
+              href="https://www.instagram.com/niemansdetailing" onclick="trackEvent('Social','click','Instagram');">Instagram</a>.
             </div>
           </div>
         </div>
@@ -449,9 +451,9 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <div class="mdl-layout__tab-panel" id="services">
       <section class="section--center mdl-grid mdl-grid--no-spacing">
         <div class="mdl-cell mdl-cell--12-col">
-          <h4>Services</h4>
+          <h2 class="section-title">Services</h2>
           <ul class="toc">
-            <h4>Contents</h4>
+            <h3 class="section-title">Contents</h3>
             <a href="#full-detail">The Works</a>
             <a href="#o-over">Quick Once Over</a>
             <a href="#monthly-mini">Monthly Mini</a>
@@ -465,7 +467,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             <a href="#odor-removal">Odor Removal</a>
           </ul>
 
-          <h5 id="full-detail"><strong>The Works</strong></h5>
+          <h3 id="full-detail" class="section-title">The Works</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="works-card-image mdl-card mdl-shadow--2dp">
@@ -487,7 +489,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </div>
 
-          <h5 id="o-over"><strong>Quick Once Over</strong></h5>
+          <h3 id="o-over" class="section-title">Quick Once Over</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="quick-card-image mdl-card mdl-shadow--2dp">
@@ -507,7 +509,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </div>
 
-          <h5 id="monthly-mini"><strong>Monthly Mini</strong></h5>
+          <h3 id="monthly-mini" class="section-title">Monthly Mini</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="monthly-mini-card-image mdl-card mdl-shadow--2dp">
@@ -527,7 +529,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </div>
 
-          <h5 id="h-restoration"><strong>Headlight Restoration</strong></h5>
+          <h3 id="h-restoration" class="section-title">Headlight Restoration</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="headlight-card-image mdl-card mdl-shadow--2dp">
@@ -549,7 +551,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </div>
 
-          <h5 id="p-restoration"><strong>Paint Correction and Polishing</strong></h5>
+          <h3 id="p-restoration" class="section-title">Paint Correction and Polishing</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="paint-card-image mdl-card mdl-shadow--2dp">
@@ -572,7 +574,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </div>
 
-          <h5 id="m-polish"><strong>Metal Polishing</strong></h5>
+          <h3 id="m-polish" class="section-title">Metal Polishing</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="m-polish-card-image mdl-card mdl-shadow--2dp">
@@ -592,7 +594,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </div>
 
-          <h5 id="t-restoration"><strong>Trim Restoration</strong></h5>
+          <h3 id="t-restoration" class="section-title">Trim Restoration</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="trim-card-image mdl-card mdl-shadow--2dp">
@@ -613,7 +615,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </div>
 
-          <h5 id="new-car"><strong>New Car Decontamination and Protection</strong></h5>
+          <h3 id="new-car" class="section-title">New Car Decontamination and Protection</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="new-car-card-image mdl-card mdl-shadow--2dp">
@@ -636,7 +638,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </div>
 
-          <h5 id="o-removal"><strong>Overspray Removal</strong></h5>
+          <h3 id="o-removal" class="section-title">Overspray Removal</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="overspray-card-image mdl-card mdl-shadow--2dp">
@@ -658,7 +660,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </div>
 
-          <h5 id="hw-removal"><strong>Hard Water Spot Removal</strong></h5>
+          <h3 id="hw-removal" class="section-title">Hard Water Spot Removal</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="hw-card-image mdl-card mdl-shadow--2dp">
@@ -678,7 +680,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </div>
 
-          <h5 id="odor-removal"><strong>Odor Removal</strong></h5>
+          <h3 id="odor-removal" class="section-title">Odor Removal</h3>
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="odor-card-image mdl-card mdl-shadow--2dp">
@@ -710,27 +712,27 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <section class="section--center mdl-grid mdl-grid--no-spacing">
         <div class="mdl-cell mdl-cell--12-col">
 
-          <h5 id="about-headline"><strong>About Me</strong></h5>
+          <h2 id="about-headline" class="section-title">About Me</h2>
 
           <div class="content-grid mdl-grid">
-            <div style="display: inline-grid; margin: 0 auto;">
+            <div class="inline-grid-center">
               <div class="profile-card-image mdl-card mdl-shadow--2dp">
                 <div class="mdl-card__actions"></div>
               </div>
               <div class="about-text">
-                <p style="font-size: 18px; padding-top: 15px;">I decided to start Nieman's Detailing simply because I love cars. I love my car and my customers love theirs just as much. My goal is to have every customer trust that their car was treated with the utmost care and respect, so they can have peace of mind and create more value from their hard earned money. So many other "detailing" services skip corners, hide dirt, and use harsh chemicals in sake of quick car turnover. A detail needs to be a timely, conscientious, and safe process to avoid unnecessary or irreparable damage to a vehicle’s paint or finish.</p>
+                <p class="about-intro">I decided to start Nieman's Detailing simply because I love cars. I love my car and my customers love theirs just as much. My goal is to have every customer trust that their car was treated with the utmost care and respect, so they can have peace of mind and create more value from their hard earned money. So many other "detailing" services skip corners, hide dirt, and use harsh chemicals in sake of quick car turnover. A detail needs to be a timely, conscientious, and safe process to avoid unnecessary or irreparable damage to a vehicle’s paint or finish.</p>
               </div>
             </div>
           </div>
 
-          <div style="padding-bottom: 20px;" class="content-grid mdl-grid">
-            <div style="display: inline-grid; margin: 0 auto;">
+          <div class="content-grid mdl-grid pb-20">
+            <div class="inline-grid-center">
               <div class="profile-card-image2 mdl-card mdl-shadow--2dp">
                 <div class="mdl-card__actions"></div>
               </div>
               <div class="about-text">
-                <h6 style="padding-top: 10px">When I'm not detailing you might find me in the forest riding my bike, or hanging out with my cats at home. I also help local businesses with their websites, and I'm developing an Unreal Engine 4 based video game in my free time. </h6>
-                <h6 style="padding-top: 10px">If you're a mountain biker in the area, get in contact! I'm looking for new people to ride with. Some of my favorite places to ride are Big Ivy, Kitsuma, and my own backyard.</h6>
+                <h6 class="pt-10">When I'm not detailing you might find me in the forest riding my bike, or hanging out with my cats at home. I also help local businesses with their websites, and I'm developing an Unreal Engine 4 based video game in my free time. </h6>
+                <h6 class="pt-10">If you're a mountain biker in the area, get in contact! I'm looking for new people to ride with. Some of my favorite places to ride are Big Ivy, Kitsuma, and my own backyard.</h6>
               </div>
             </div>
           </div>
@@ -744,7 +746,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
         <div class="contact-card mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text mdl-grid mdl-grid--no-spacing">
-            <h4 class="mdl-cell mdl-cell--12-col">Contact Me</h4>
+            <h2 class="mdl-cell mdl-cell--12-col section-title">Contact Me</h2>
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
               <div class="section__circle-container__circle mdl-color--primary"><i
@@ -752,8 +754,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-              <h5><strong>By Phone</strong></h5>
-              Call or Text <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="ga('send','event','Contact','click','Phone');">(828) 273-3894</a></strong>
+              <h3><strong>By Phone</strong></h3>
+              Call or Text <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone');">(828) 273-3894</a></strong>
             </div>
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
@@ -762,8 +764,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-              <h5><strong>E-Mail</strong></h5>
-              Send me a message at <a href="mailto:contact@niemansdetailing.com" onclick="ga('send','event','Contact','click','Email');">contact@niemansdetailing.com</a>
+              <h3><strong>E-Mail</strong></h3>
+              Send me a message at <a href="mailto:contact@niemansdetailing.com" onclick="trackEvent('Contact','click','Email');">contact@niemansdetailing.com</a>
             </div>
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
@@ -772,9 +774,9 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-              <h5><strong>Find us on Social Media</strong></h5>
-              Visit my <a href="https://www.facebook.com/niemansdetailing" onclick="ga('send','event','Social','click','Facebook');">Facebook</a> or <a
-              href="https://www.instagram.com/niemansdetailing/" onclick="ga('send','event','Social','click','Instagram');">Instagram</a>.
+              <h3><strong>Find me on Social Media</strong></h3>
+              Visit my <a href="https://www.facebook.com/niemansdetailing" onclick="trackEvent('Social','click','Facebook');">Facebook</a> or <a
+              href="https://www.instagram.com/niemansdetailing/" onclick="trackEvent('Social','click','Instagram');">Instagram</a>.
             </div>
           </div>
         </div>
@@ -786,27 +788,27 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <div class="mdl-mega-footer--middle-section">
         <div class="mdl-mega-footer--drop-down-section">
           <input class="mdl-mega-footer--heading-checkbox" type="checkbox" checked>
-          <h1 class="mdl-mega-footer--heading">Find Me on Social Media</h1>
+          <h2 class="mdl-mega-footer--heading">Find Me on Social Media</h2>
           <ul class="mdl-mega-footer--link-list">
-            <li><a href="https://www.facebook.com/niemansdetailing" onclick="ga('send','event','Social','click','Facebook');">Facebook</a></li>
-            <li><a href="https://www.instagram.com/niemansdetailing/" onclick="ga('send','event','Social','click','Instagram');">Instagram</a></li>
-            <li><a href="https://www.reddit.com/user/niemansdetailing" onclick="ga('send','event','Social','click','Reddit');">Reddit</a></li>
+            <li><a href="https://www.facebook.com/niemansdetailing" onclick="trackEvent('Social','click','Facebook');">Facebook</a></li>
+            <li><a href="https://www.instagram.com/niemansdetailing/" onclick="trackEvent('Social','click','Instagram');">Instagram</a></li>
+            <li><a href="https://www.reddit.com/user/niemansdetailing" onclick="trackEvent('Social','click','Reddit');">Reddit</a></li>
           </ul>
         </div>
 
         <div class="mdl-mega-footer--drop-down-section">
           <input class="mdl-mega-footer--heading-checkbox" type="checkbox" checked>
-          <h1 class="mdl-mega-footer--heading">Call My Phone</h1>
+          <h2 class="mdl-mega-footer--heading">Call My Phone</h2>
           <ul class="mdl-mega-footer--link-list">
-            <li><strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="ga('send','event','Contact','click','Phone');">(828) 273-3894</a></strong></li>
+            <li><strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone');">(828) 273-3894</a></strong></li>
           </ul>
         </div>
 
         <div class="mdl-mega-footer--drop-down-section">
           <input class="mdl-mega-footer--heading-checkbox" type="checkbox" checked>
-          <h1 class="mdl-mega-footer--heading">Send Me an E-Mail</h1>
+          <h2 class="mdl-mega-footer--heading">Send Me an E-Mail</h2>
           <ul class="mdl-mega-footer--link-list">
-            <li><a href="mailto:contact@niemansdetailing.com" onclick="ga('send','event','Contact','click','Email');">contact@niemansdetailing.com</a></li>
+            <li><a href="mailto:contact@niemansdetailing.com" onclick="trackEvent('Contact','click','Email');">contact@niemansdetailing.com</a></li>
           </ul>
         </div>
 
@@ -843,40 +845,9 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 </div>
 
 <!--Scriptz-->
-<script src="https://code.getmdl.io/1.3.0/material.min.js"></script>
-<script src="scripts/main.js"></script>
-<script src="scripts/better-simple-slideshow.min.js"></script>
-<script>
-  makeBSS('.bss-slides');
-</script>
-<script>
-  function initMap() {
-    const map = new google.maps.Map(document.getElementById("map"), {
-      center: { lat: 35.6, lng: -82.55 },
-      zoom: 10
-    });
-    highlightServiceArea(map);
-  }
-
-  function highlightServiceArea(map) {
-    const serviceCoords = [
-      { lat: 35.79722, lng: -82.68167 }, // Marshall
-      { lat: 35.82833, lng: -82.54861 }, // Mars Hill
-      { lat: 35.61417, lng: -82.32750 }, // Black Mountain
-      { lat: 35.43167, lng: -82.50389 }, // Fletcher
-      { lat: 35.53639, lng: -82.83861 }  // Canton
-    ];
-    const serviceArea = new google.maps.Polygon({
-      paths: serviceCoords,
-      strokeColor: "#673AB7",
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: "#673AB7",
-      fillOpacity: 0.2
-    });
-    serviceArea.setMap(map);
-  }
-</script>
-<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeB-CBTkpxYcQXyzL5_DcFNPqJACTVebI&callback=initMap" async defer></script>
+<script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+<script defer src="scripts/better-simple-slideshow.min.js"></script>
+<script defer src="scripts/main.js"></script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeB-CBTkpxYcQXyzL5_DcFNPqJACTVebI&callback=initMap"></script>
 </body>
 </html>

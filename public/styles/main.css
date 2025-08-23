@@ -64,7 +64,7 @@ html {
   color: inherit;
   width: calc(100% - 80px);
 }
-.mdl-site.mdl-site .mdl-card__supporting-text h4 {
+.mdl-site.mdl-site .mdl-card__supporting-text h2 {
   margin-top: 0;
   margin-bottom: 20px;
 }
@@ -131,7 +131,7 @@ html {
   padding-top: 8px;
   padding-left: 15px;
 }
-.mdl-site section .section__text h5 {
+.mdl-site section .section__text h3 {
   font-size: inherit;
   margin: 0;
   margin-bottom: 0.5em;
@@ -177,7 +177,7 @@ html {
   margin-bottom: 40px;
 }
 #features h5,
-.mdl-site #features h4 {
+.mdl-site #features h2 {
   margin-bottom: 16px;
 }
 .mdl-site .toc {
@@ -188,7 +188,7 @@ html {
   display: flex;
   flex-direction: column;
 }
-.mdl-site .toc h4 {
+.mdl-site .toc h3 {
   font-size: 0.9rem;
   margin-top: 0;
 }
@@ -219,11 +219,6 @@ html {
   height: 256px;
   background: url(../images/carpics/srv_pics/trim.jpeg) center/cover;
   float: left;
-}
-.paint-card-image.mdl-card {
-  width: 256px;
-  height: 256px;
-  background: url(../images/carpics/srv_pics/correction.jpg) center/cover;
 }
 .paint-card-image.mdl-card {
   width: 256px;
@@ -392,6 +387,34 @@ h5 {
   padding-top: 4px;
 }
 
+.section-title {
+  font-size: 1.6rem;
+  font-weight: bold;
+}
+.map-container {
+  width: 100%;
+  height: 450px;
+}
+.inline-grid-center {
+  display: inline-grid;
+  margin: 0 auto;
+}
+.pb-20 {
+  padding-bottom: 20px;
+}
+.about-intro {
+  font-size: 18px;
+  padding-top: 15px;
+}
+.pt-10 {
+  padding-top: 10px;
+}
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid #ffeb3b;
+  outline-offset: 2px;
+}
+
 .instagram-profile-embed {
   width: 100%;
   max-width: 500px;
@@ -439,7 +462,7 @@ h5 {
     width: 180px;
     height: 180px;
   }
-  .section__text h5 {
+  .section__text h3 {
     font-size: 1.5rem;
   }
   .section__text {
