@@ -245,6 +245,11 @@ html {
   height: 256px;
   background: url(../images/carpics/srv_pics/honda.jpg) center/cover;
 }
+.quick-card-image.mdl-card {
+  width: 256px;
+  height: 256px;
+  background: url(../images/carpics/srv_pics/series-grey.jpeg) center/cover;
+}
 .new-car-card-image.mdl-card {
   width: 256px;
   height: 256px;
