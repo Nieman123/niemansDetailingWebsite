@@ -199,6 +199,15 @@ html {
   line-height: 28px;
   display: block;
 }
+
+/* Reserve space for slideshow images to prevent layout shift */
+.bss-slides figure {
+  aspect-ratio: 16/9;
+}
+.bss-slides img {
+  width: 100%;
+  height: auto;
+}
 .mdl-site .mdl-menu__container {
   z-index: 99;
 }
