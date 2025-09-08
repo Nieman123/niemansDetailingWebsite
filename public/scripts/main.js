@@ -116,8 +116,15 @@ function loadMap() {
   const apiKey = mapEl.dataset.apiKey;
   if (!apiKey) return;
   const script = document.createElement('script');
-  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
+  // Use Google’s recommended async loading param and weekly channel
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap&loading=async&v=weekly`;
   script.async = true;
+  script.defer = true;
+  script.onerror = () => {
+    console.error('Google Maps script failed to load');
+    try {
+      mapEl.textContent = 'Map failed to load.';
+    } catch (_) {}
+  };
   document.head.appendChild(script);
 }
-
