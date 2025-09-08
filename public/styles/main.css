@@ -326,14 +326,14 @@ html {
   width: 256px;
   height: 256px;
   margin: 0 auto;
-  padding-right: 15px;
+  margin-right: 15px;
   float: left;
 }
 .profile-card-image2.mdl-card {
   width: 256px;
   height: 256px;
   margin: 0 auto;
-  padding-left: 15px;
+  margin-left: 15px;
   float: right;
 }
 .about-text {
