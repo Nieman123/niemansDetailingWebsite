@@ -26,11 +26,14 @@ jobs:
         run: npm ci
 
       - name: Build responsive images
-        run: npm run img:build
+        run: npm run build:images
 
       # If you have a site build step, add it here
       - name: Build site
         run: echo "No build step configured"
+
+      - name: Rewire HTML to responsive images
+        run: npm run img:rewire
 
       - name: Lighthouse CI (pre-deploy)
         run: npm run lhci
