@@ -13,5 +13,8 @@
     "dev:copy:win": "xcopy assets\\images public\\images /E /I /Y",
     "dev:serve": "npx http-server public -p 5173 -c-1",
     "dev": "npm run dev:copy && npm run dev:serve"
+  },
+  "overrides": {
+    "simple-swizzle": "0.2.2"
   }
 }
