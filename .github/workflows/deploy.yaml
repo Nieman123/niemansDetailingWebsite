@@ -24,7 +24,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install deps
-        run: npm install --no-audit --no-fund
+        run: npm ci
 
       - name: Build responsive images
         run: npm run build:images
@@ -55,5 +55,5 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING }}
-          projectId: niemansdetailingwebsite
+          projectId: Niemans-Detailing
           channelId: live
