@@ -21,9 +21,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install deps
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Build responsive images
         run: npm run build:images
