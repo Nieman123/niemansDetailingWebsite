@@ -328,7 +328,6 @@ html {
   margin: 0 auto;
   padding-right: 15px;
   float: left;
-  background: url(../images/profile/nieman.jpg) center/cover;
 }
 .profile-card-image2.mdl-card {
   width: 256px;
@@ -336,7 +335,6 @@ html {
   margin: 0 auto;
   padding-left: 15px;
   float: right;
-  background: url(../images/profile/nieman2.jpg) center/cover;
 }
 .about-text {
   text-align: center;
