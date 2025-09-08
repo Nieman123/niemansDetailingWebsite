@@ -6,6 +6,16 @@ import pc from 'picocolors';
 
 const SIZE_ATTR = '(max-width: 900px) 100vw, 900px';
 
+const DRY = process.argv.includes('--dry');
+
+async function safeWriteFile(file, content) {
+  if (DRY) {
+    console.log(pc.yellow(`[dry] would write: ${file}`));
+    return;
+  }
+  await writeFile(file, content);
+}
+
 let filesScanned = 0;
 let imagesConverted = 0;
 let picturesPatched = 0;
@@ -58,6 +68,10 @@ function chooseFallback(list) {
 
 async function processFile(file) {
   filesScanned++;
+
+  // helpful trace in dry-run
+  if (DRY) console.log(pc.dim(`[dry] scanning ${path.relative(process.cwd(), file)}`));
+
   const html = await readFile(file, 'utf8');
   const $ = load(html, {decodeEntities: false});
   let changed = false;
@@ -152,7 +166,8 @@ async function processFile(file) {
   }
 
   if (changed) {
-    await writeFile(file, $.html());
+    // this is the whole point: respect --dry
+    await safeWriteFile(file, $.html());
   } else if (missingVariantsInFile) {
     filesSkipped++;
   }
