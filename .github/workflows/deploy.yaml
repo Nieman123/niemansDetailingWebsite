@@ -26,7 +26,16 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      - name: Cache generated images
+        id: cache-images
+        uses: actions/cache@v4
+        with:
+          path: |
+            public/images
+          key: ${{ runner.os }}-images-${{ hashFiles('tools/build-images.mjs', 'assets/images/**') }}
+
       - name: Build responsive images
+        if: steps.cache-images.outputs.cache-hit != 'true'
         run: npm run build:images
 
       # If you have a site build step, add it here
