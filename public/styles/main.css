@@ -199,66 +199,72 @@ html {
   line-height: 28px;
   display: block;
 }
+
+/* Reserve space for slideshow images to prevent layout shift */
+.bss-slides figure {
+  aspect-ratio: 16/9;
+}
+.bss-slides img {
+  width: 100%;
+  height: auto;
+}
 .mdl-site .mdl-menu__container {
   z-index: 99;
 }
 .works-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/works.jpg) center/cover;
   float: left;
 }
 .headlight-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/headlight.jpg) center/cover;
   float: left;
 }
 .trim-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/trim.jpeg) center/cover;
   float: left;
 }
 .paint-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/correction.jpg) center/cover;
 }
 .m-polish-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/airstream.png) center/cover;
 }
 .hw-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/hwspots.jpg) center/cover;
 }
 .quick-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/honda.jpg) center/cover;
 }
 .monthly-mini-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/series-grey.jpeg) center/cover;
 }
 .new-car-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/red-truck.jpg) center/cover;
 }
 .overspray-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/overspray.jpg) center/cover;
 }
 .odor-card-image.mdl-card {
   width: 256px;
   height: 256px;
-  background: url(../images/carpics/srv_pics/cleaninterior.jpg) center/cover;
+}
+/* Shared rule for service card images, replacing former background images */
+.card-image__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 0; /* keep square like before */
 }
 .srv-section {
   height: 256px;
@@ -320,17 +326,15 @@ html {
   width: 256px;
   height: 256px;
   margin: 0 auto;
-  padding-right: 15px;
+  margin-right: 15px;
   float: left;
-  background: url(../images/profile/nieman.jpg) center/cover;
 }
 .profile-card-image2.mdl-card {
   width: 256px;
   height: 256px;
   margin: 0 auto;
-  padding-left: 15px;
+  margin-left: 15px;
   float: right;
-  background: url(../images/profile/nieman2.jpg) center/cover;
 }
 .about-text {
   text-align: center;

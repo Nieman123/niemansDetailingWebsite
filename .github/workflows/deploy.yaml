@@ -1,0 +1,58 @@
+name: Build images & deploy to Firebase Hosting
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build responsive images
+        run: npm run build:images
+
+      # If you have a site build step, add it here
+      - name: Build site
+        run: echo "No build step configured"
+
+      - name: Rewire HTML to responsive images
+        run: npm run img:rewire
+
+      - name: Lighthouse CI (pre-deploy)
+        run: npm run lhci
+        continue-on-error: true
+
+      - name: Upload Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci
+          if-no-files-found: ignore
+
+      # Live deploy on pushes to main
+      - name: Deploy Live (main)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING }}
+          projectId: niemansdetailingwebsite
+          channelId: live

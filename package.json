@@ -1,0 +1,17 @@
+{
+  "devDependencies": {
+    "cheerio": "^1.1.0",
+    "fast-glob": "^3.3.3",
+    "picocolors": "^1.1.1",
+    "sharp": "^0.34.3"
+  },
+  "scripts": {
+    "build:images": "node tools/build-images.mjs",
+    "build": "npm run build:images && <your site build here>",
+    "img:rewire": "node scripts/rewire-images.mjs",
+    "dev:copy": "rsync -a assets/images/ public/images/",
+    "dev:copy:win": "xcopy assets\\images public\\images /E /I /Y",
+    "dev:serve": "npx http-server public -p 5173 -c-1",
+    "dev": "npm run dev:copy && npm run dev:serve"
+  }
+}

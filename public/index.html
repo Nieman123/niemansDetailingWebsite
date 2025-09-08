@@ -48,14 +48,25 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   <meta name="theme-color" content="#673ab7">
   <link rel="canonical" href="https://niemansdetailing.com/">
 
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.instagram.com" crossorigin>
+  <link rel="preconnect" href="https://instafeed.assets.pixlee.com" crossorigin>
+  <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
+
+  <link rel="preload" as="image" href="images/carpics/srv_pics/series-grey.webp" imagesrcset="images/carpics/srv_pics/series-grey.webp">
+  <link rel="preload" as="image" href="images/carpics/srv_pics/series-grey.jpeg" imagesrcset="images/carpics/srv_pics/series-grey.jpeg">
+
   <!-- Material Design icons -->
-  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap">
 
   <link rel="stylesheet" href="styles/vendor/material.deep_purple-orange.min.css">
 
   <!-- Styles -->
   <link rel="stylesheet" href="styles/main.css">
   <link rel="stylesheet" href="styles/simple-slideshow-styles.css">
+
+  <!-- Recommended: enable long-term caching and Brotli/gzip compression for static assets (css/js/webp/jpeg/png). -->
 
   <!--I h8 facebook-->
   <meta property="og:url"
@@ -172,7 +183,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     </div>
     <div class="mdl-layout--large-screen-only mdl-layout__header-row">
       <img src="images/ND-logo-white-transparentbg.png" alt="Nieman's Detailing logo"
-           title="Nieman's Detailing" width="200" height="200">
+           title="Nieman's Detailing" width="200" height="200" decoding="async">
     </div>
     <div class="mdl-layout--large-screen-only mdl-layout__header-row">
     </div>
@@ -181,7 +192,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <div class="mdl-layout--small-screen-only mdl-layout__header-row">
       <img class="h-logo" src="images/ND-logo-white-transparentbg-horizontal.png"
            alt="Nieman's Detailing horizontal logo" title="Nieman's Detailing"
-           width="500" height="50">
+           width="500" height="50" decoding="async">
     </div>
     <div class="mdl-layout__tab-bar mdl-js-ripple-effect mdl-color--primary-dark">
       <a href="#overview" class="mdl-layout__tab is-active" onclick="trackEvent('Navigation','click','Overview Tab');">Overview</a>
@@ -220,72 +231,75 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <!--Slideshow here-->
               <div class="bss-slides">
                 <figure>
-                  <img src="images/carpics/srv_pics/series-grey.jpeg" alt="Subaru WRX full-mobile-detailing Asheville NC" title="Detailed WRX" width="100%"/>
+                  <picture>
+                    <source type="image/webp" srcset="images/carpics/srv_pics/series-grey.webp">
+                    <img src="images/carpics/srv_pics/series-grey.jpeg" alt="Subaru WRX full-mobile-detailing Asheville NC" title="Detailed WRX" width="968" height="969" decoding="async" fetchpriority="high" loading="eager">
+                  </picture>
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/srv_pics/red-wrx.png" alt="modified-wrx-impreza"
-                       title="Red Subaru WRX" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/srv_pics/red-wrx.png" alt="modified-wrx-impreza"
+                       title="Red Subaru WRX" width="921" height="920">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/chevy.jpg" alt="chevy-colorado-detail-fifty-fifty-shot"
-                       title="Colorado Fifty-Fifty" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/chevy.jpg" alt="chevy-colorado-detail-fifty-fifty-shot"
+                       title="Colorado Fifty-Fifty" width="926" height="926">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/srv_pics/tesla.jpg" alt="freshly-detailed-tesla-model-x-blue" title="Freshly Detailed Tesla Model X"
-                       width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/srv_pics/tesla.jpg" alt="freshly-detailed-tesla-model-x-blue" title="Freshly Detailed Tesla Model X"
+                       width="969" height="969">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/merc.jpg" alt="white-mercedes-280sl-detailed"
-                       title="Gently Cleaned and Protected" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/merc.jpg" alt="white-mercedes-280sl-detailed"
+                       title="Gently Cleaned and Protected" width="950" height="950">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/srv_pics/correction.jpg" alt="paint-correction-fifty-fifty-shot"
-                       title="Paint Correction Fifty-Fifty" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/srv_pics/correction.jpg" alt="paint-correction-fifty-fifty-shot"
+                       title="Paint Correction Fifty-Fifty" width="969" height="969">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/srv_pics/headlight.jpg" alt="headlight-restoration-fifty-fifty-shot"
-                       title="Headlight Fifty-Fifty" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/srv_pics/headlight.jpg" alt="headlight-restoration-fifty-fifty-shot"
+                       title="Headlight Fifty-Fifty" width="969" height="969">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/srv_pics/hwspots.jpg" alt="hw-spot-removal-fifty-fifty-shot"
-                       title="Hard Water Spot Removal Fifty-Fifty" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/srv_pics/hwspots.jpg" alt="hw-spot-removal-fifty-fifty-shot"
+                       title="Hard Water Spot Removal Fifty-Fifty" width="400" height="400">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/wrx-wheel.png" alt="wheel-cleaning"
-                       title="Wheel Cleaning Fifty-Fifty" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/wrx-wheel.png" alt="wheel-cleaning"
+                       title="Wheel Cleaning Fifty-Fifty" width="969" height="969">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/engine.jpeg" alt="cleaned-and-protected-engine-bay-bmw"
-                       title="Cleaned and UV Protected" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/engine.jpeg" alt="cleaned-and-protected-engine-bay-bmw"
+                       title="Cleaned and UV Protected" width="925" height="925">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/foam.jpg" alt="honeydew-snowfoam-foam-cannon-car-forester"
-                       title="Foamed up Subaru" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/foam.jpg" alt="honeydew-snowfoam-foam-cannon-car-forester"
+                       title="Foamed up Subaru" width="924" height="925">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/wrx.jpg" alt="detailed-wrx-subaru-white-square-photo-sun"
-                       title="Freshly Detailed Subaru WRX" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/wrx.jpg" alt="detailed-wrx-subaru-white-square-photo-sun"
+                       title="Freshly Detailed Subaru WRX" width="925" height="925">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/rv.jpg" alt="white-ford-rv-born-free-detailed" title="Detailed and Waxed"
-                       width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/rv.jpg" alt="white-ford-rv-born-free-detailed" title="Detailed and Waxed"
+                       width="924" height="924">
                 </figure>
 
                 <figure>
-                  <img loading="lazy" src="images/carpics/pillar.jpg" alt="fifty-fifty-cleaned-smoke-car-pillar"
-                       title="Smoke Damage Removal" width="100%"/>
+                  <img loading="lazy" decoding="async" src="images/carpics/pillar.jpg" alt="fifty-fifty-cleaned-smoke-car-pillar"
+                       title="Smoke Damage Removal" width="974" height="974">
                 </figure>
               </div>
             </div>
@@ -300,8 +314,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             <h2 class="mdl-cell mdl-cell--12-col section-title">Services</h2>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-              <img loading="lazy" src="images/carpics/bmw.jpg" alt="car-bmw-cleaned-detailed-grey"
-                   title="BMW 3-Series after The Works" class="circle-pic" width="180" height="180">
+              <picture>
+                <source type="image/webp" srcset="images/carpics/bmw.webp">
+                <img loading="lazy" decoding="async" src="images/carpics/bmw.jpg" alt="car-bmw-cleaned-detailed-grey"
+                     title="BMW 3-Series after The Works" class="circle-pic" width="180" height="180">
+              </picture>
             </div>
             <!--<div class="section__circle-container mdl-cell mdl-cell&#45;&#45;2-col mdl-cell&#45;&#45;1-col-phone">-->
             <!--<div class="section__circle-container__circle mdl-color&#45;&#45;primary"></div>-->
@@ -314,8 +331,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-              <img loading="lazy" src="images/carpics/srv_pics/headlight.jpg" alt="fifty-fifty-headlight-restoration-subaru-outback"
-                   title="Headlight before and after restoration" class="circle-pic" width="180" height="180">
+              <picture>
+                <source type="image/webp" srcset="images/carpics/srv_pics/headlight.webp">
+                <img loading="lazy" decoding="async" src="images/carpics/srv_pics/headlight.jpg" alt="fifty-fifty-headlight-restoration-subaru-outback"
+                     title="Headlight before and after restoration" class="circle-pic" width="180" height="180">
+              </picture>
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
@@ -325,8 +345,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-              <img loading="lazy" src="images/carpics/srv_pics/correction.jpg" alt="blue-auto-paint-corrected-polishing-polished"
-                   title="Car paint after correction" class="circle-pic" width="180" height="180">
+              <picture>
+                <source type="image/webp" srcset="images/carpics/srv_pics/correction.webp">
+                <img loading="lazy" decoding="async" src="images/carpics/srv_pics/correction.jpg" alt="blue-auto-paint-corrected-polishing-polished"
+                     title="Car paint after correction" class="circle-pic" width="180" height="180">
+              </picture>
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
@@ -336,8 +359,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-              <img loading="lazy" src="images/carpics/srv_pics/trim.jpeg" alt="fifty-fifty-trim-restoration-white-black"
-                   title="Trim before and after restoration" class="circle-pic" width="180" height="180">
+              <picture>
+                <source type="image/webp" srcset="images/carpics/srv_pics/trim.webp">
+                <img loading="lazy" decoding="async" src="images/carpics/srv_pics/trim.jpeg" alt="fifty-fifty-trim-restoration-white-black"
+                     title="Trim before and after restoration" class="circle-pic" width="180" height="180">
+              </picture>
             </div>
 
             <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
@@ -369,12 +395,12 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       </section>
 
       <!--service area-->
-      <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
+      <section id="service-area" class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
 
         <div class="mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text srv-area-img">
             <h2 class="mdl-cell mdl-cell--12-col section-title">Service Area</h2>
-            <div id="map" class="map-container"></div>
+            <div id="map" class="map-container" data-api-key="AIzaSyCeB-CBTkpxYcQXyzL5_DcFNPqJACTVebI"></div>
           </div>
           <div class="mdl-card__supporting-text srv-area-txt">
             <h3><strong>Serving Asheville and its Surrounding Areas</strong></h3>
@@ -386,7 +412,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       </section>
 
       <!--insta section-->
-      <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
+      <section id="instagram-section" class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
 
         <div class="mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text srv-area-img">
@@ -394,16 +420,19 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             <div id="pixlee_container"></div>
             <!-- Instagram Profile Preview -->
             <div class="instagram-profile-embed">
-              <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/niemansdetailing/?utm_source=ig_embed&amp;utm_campaign=loading" data-instgrm-version="14" style=" background:#FFF; border:0; border-radius:3px; box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15); margin: 1px; max-width:540px; min-width:326px; padding:0; width:99.375%; width:-webkit-calc(100% - 2px); width:calc(100% - 2px);"><div style="padding:16px;"> <a href="https://www.instagram.com/niemansdetailing/?utm_source=ig_embed&amp;utm_campaign=loading" style=" background:#FFFFFF; line-height:0; padding:0 0; text-align:center; text-decoration:none; width:100%;" target="_blank"> <div style=" display: flex; flex-direction: row; align-items: center;"> <div style="background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 40px; margin-right: 14px; width: 40px;"></div> <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center;"> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 100px;"></div> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 60px;"></div></div></div><div style="padding: 19% 0;"></div> <div style="display:block; height:50px; margin:0 auto 12px; width:50px;"><svg width="50px" height="50px" viewBox="0 0 60 60" version="1.1" xmlns="https://www.w3.org/2000/svg" xmlns:xlink="https://www.w3.org/1999/xlink"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(-511.000000, -20.000000)" fill="#000000"><g><path d="M556.869,30.41 C554.814,30.41 553.148,32.076 553.148,34.131 C553.148,36.186 554.814,37.852 556.869,37.852 C558.924,37.852 560.59,36.186 560.59,34.131 C560.59,32.076 558.924,30.41 556.869,30.41 M541,60.657 C535.114,60.657 530.342,55.887 530.342,50 C530.342,44.114 535.114,39.342 541,39.342 C546.887,39.342 551.658,44.114 551.658,50 C551.658,55.887 546.887,60.657 541,60.657 M541,33.886 C532.1,33.886 524.886,41.1 524.886,50 C524.886,58.899 532.1,66.113 541,66.113 C549.9,66.113 557.115,58.899 557.115,50 C557.115,41.1 549.9,33.886 541,33.886 M565.378,62.101 C565.244,65.022 564.756,66.606 564.346,67.663 C563.803,69.06 563.154,70.057 562.106,71.106 C561.058,72.155 560.06,72.803 558.662,73.347 C557.607,73.757 556.021,74.244 553.102,74.378 C549.944,74.521 548.997,74.552 541,74.552 C533.003,74.552 532.056,74.521 528.898,74.378 C525.979,74.244 524.393,73.757 523.338,73.347 C521.94,72.803 520.942,72.155 519.894,71.106 C518.846,70.057 518.197,69.06 517.654,67.663 C517.244,66.606 516.755,65.022 516.623,62.101 C516.479,58.943 516.448,57.996 516.448,50 C516.448,42.003 516.479,41.056 516.623,37.899 C516.755,34.978 517.244,33.391 517.654,32.338 C518.197,30.938 518.846,29.942 519.894,28.894 C520.942,27.846 521.94,27.196 523.338,26.654 C524.393,26.244 525.979,25.756 528.898,25.623 C532.057,25.479 533.004,25.448 541,25.448 C548.997,25.448 549.943,25.479 553.102,25.623 C556.021,25.756 557.607,26.244 558.662,26.654 C560.06,27.196 561.058,27.846 562.106,28.894 C563.154,29.942 563.803,30.938 564.346,32.338 C564.756,33.391 565.244,34.978 565.378,37.899 C565.522,41.056 565.552,42.003 565.552,50 C565.552,57.996 565.522,58.943 565.378,62.101 M570.82,37.631 C570.674,34.438 570.167,32.258 569.425,30.349 C568.659,28.377 567.633,26.702 565.965,25.035 C564.297,23.368 562.623,22.342 560.652,21.575 C558.743,20.834 556.562,20.326 553.369,20.18 C550.169,20.033 549.148,20 541,20 C532.853,20 531.831,20.033 528.631,20.18 C525.438,20.326 523.257,20.834 521.349,21.575 C519.376,22.342 517.703,23.368 516.035,25.035 C514.368,26.702 513.342,28.377 512.574,30.349 C511.834,32.258 511.326,34.438 511.181,37.631 C511.035,40.831 511,41.851 511,50 C511,58.147 511.035,59.17 511.181,62.369 C511.326,65.562 511.834,67.743 512.574,69.651 C513.342,71.625 514.368,73.296 516.035,74.965 C517.703,76.634 519.376,77.658 521.349,78.425 C523.257,79.167 525.438,79.673 528.631,79.82 C531.831,79.965 532.853,80.001 541,80.001 C549.148,80.001 550.169,79.965 553.369,79.82 C556.562,79.673 558.743,79.167 560.652,78.425 C562.623,77.658 564.297,76.634 565.965,74.965 C567.633,73.296 568.659,71.625 569.425,69.651 C570.167,67.743 570.674,65.562 570.82,62.369 C570.966,59.17 571,58.147 571,50 C571,41.851 570.966,40.831 570.82,37.631"></path></g></g></g></svg></div><div style="padding-top: 8px;"> <div style=" color:#3897f0; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:550; line-height:18px;">View this profile on Instagram</div></div><div style="padding: 12.5% 0;"></div> <div style="display: flex; flex-direction: row; margin-bottom: 14px; align-items: center;"><div> <div style="background-color: #F4F4F4; border-radius: 50%; height: 12.5px; width: 12.5px; transform: translateX(0px) translateY(7px);"></div> <div style="background-color: #F4F4F4; height: 12.5px; transform: rotate(-45deg) translateX(3px) translateY(1px); width: 12.5px; flex-grow: 0; margin-right: 14px; margin-left: 2px;"></div> <div style="background-color: #F4F4F4; border-radius: 50%; height: 12.5px; width: 12.5px; transform: translateX(9px) translateY(-18px);"></div></div><div style="margin-left: 8px;"> <div style=" background-color: #F4F4F4; border-radius: 50%; flex-grow: 0; height: 20px; width: 20px;"></div> <div style=" width: 0; height: 0; border-top: 2px solid transparent; border-left: 6px solid #f4f4f4; border-bottom: 2px solid transparent; transform: translateX(16px) translateY(-4px) rotate(30deg)"></div></div><div style="margin-left: auto;"> <div style=" width: 0px; border-top: 8px solid #F4F4F4; border-right: 8px solid transparent; transform: translateY(16px);"></div> <div style=" background-color: #F4F4F4; flex-grow: 0; height: 12px; width: 16px; transform: translateY(-4px);"></div> <div style=" width: 0; height: 0; border-top: 8px solid #F4F4F4; border-left: 8px solid transparent; transform: translateY(-4px) translateX(8px);"></div></div></div> <div style="display: flex; flex-direction: column; flex-grow: 1; justify-content: center; margin-bottom: 24px;"> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; margin-bottom: 6px; width: 224px;"></div> <div style=" background-color: #F4F4F4; border-radius: 4px; flex-grow: 0; height: 14px; width: 144px;"></div></div></a><p style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; line-height:17px; margin-bottom:0; margin-top:8px; overflow:hidden; padding:8px 0 7px; text-align:center; text-overflow:ellipsis; white-space:nowrap;"><a href="https://www.instagram.com/niemansdetailing/?utm_source=ig_embed&amp;utm_campaign=loading" style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:normal; line-height:17px;" target="_blank">Jonathan Nieman</a> (@<a href="https://www.instagram.com/niemansdetailing/?utm_source=ig_embed&amp;utm_campaign=loading" style=" color:#c9c8cd; font-family:Arial,sans-serif; font-size:14px; font-style:normal; font-weight:normal; line-height:17px;" target="_blank">niemansdetailing</a>) • Instagram photos and videos</p></div></blockquote>
-<script async src="//www.instagram.com/embed.js"></script>
+              <blockquote
+                class="instagram-media"
+                data-instgrm-permalink="https://www.instagram.com/niemansdetailing/?utm_source=ig_embed&amp;utm_campaign=loading"
+                data-instgrm-version="14"
+                style="background:#FFF;border:0;border-radius:3px;box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15);margin:1px;max-width:540px;min-width:326px;padding:0;width:99.375%;"></blockquote>
             </div>
-            <script type="text/javascript">window.PixleeAsyncInit = function() {Pixlee.init({apiKey:'gJFLksbWhYk1jWdGalcu'});Pixlee.addSimpleWidget({widgetId:'14925'});};</script><script src="//instafeed.assets.pixlee.com/assets/pixlee_widget_1_0_0.js"></script>
           </div>
         </div>
 
       </section>
 
       <!--contact section-->
+
       <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
         <div class="contact-card mdl-card mdl-cell mdl-cell--12-col">
           <div class="mdl-card__supporting-text mdl-grid mdl-grid--no-spacing">
@@ -468,7 +497,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="works-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/works.jpg" alt="The Works service example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -490,7 +519,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="quick-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/honda.jpg" alt="Quick Once Over example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -510,7 +539,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="monthly-mini-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/series-grey.jpeg" alt="Monthly Mini example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -530,7 +559,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="headlight-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/headlight.jpg" alt="Headlight restoration example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -552,7 +581,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="paint-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/correction.jpg" alt="Paint correction example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -575,7 +604,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="m-polish-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/airstream.png" alt="Metal polishing example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -595,7 +624,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="trim-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/trim.jpeg" alt="Trim restoration example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -616,7 +645,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="new-car-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/red-truck.jpg" alt="New car decontamination example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -639,7 +668,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="overspray-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/overspray.jpg" alt="Overspray removal example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -661,7 +690,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="hw-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/hwspots.jpg" alt="Hard water spot removal example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -681,7 +710,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="mdl-cell">
               <div class="odor-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/carpics/srv_pics/cleaninterior.jpg" alt="Odor removal example">
               </div>
             </div>
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
@@ -714,7 +743,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid">
             <div class="inline-grid-center">
               <div class="profile-card-image mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/profile/nieman.jpg" alt="Nieman's Detailing owner portrait">
               </div>
               <div class="about-text">
                 <p class="about-intro">I decided to start Nieman's Detailing simply because I love cars. I love my car and my customers love theirs just as much. My goal is to have every customer trust that their car was treated with the utmost care and respect, so they can have peace of mind and create more value from their hard earned money. So many other "detailing" services skip corners, hide dirt, and use harsh chemicals in sake of quick car turnover. A detail needs to be a timely, conscientious, and safe process to avoid unnecessary or irreparable damage to a vehicle’s paint or finish.</p>
@@ -725,7 +754,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="content-grid mdl-grid pb-20">
             <div class="inline-grid-center">
               <div class="profile-card-image2 mdl-card mdl-shadow--2dp">
-                <div class="mdl-card__actions"></div>
+                <img class="card-image__img" src="images/profile/nieman2.jpg" alt="Nieman's Detailing owner portrait 2">
               </div>
               <div class="about-text">
                 <h6 class="pt-10">When I'm not detailing you might find me in the forest riding my bike, or hanging out with my cats at home. I also help local businesses with their websites, and I'm developing an Unreal Engine 4 based video game in my free time. </h6>
@@ -845,6 +874,5 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
 <script defer src="scripts/better-simple-slideshow.min.js"></script>
 <script defer src="scripts/main.js"></script>
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCeB-CBTkpxYcQXyzL5_DcFNPqJACTVebI&callback=initMap"></script>
 </body>
 </html>
