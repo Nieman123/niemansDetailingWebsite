@@ -2,11 +2,12 @@
   "devDependencies": {
     "fast-glob": "^3.3.3",
     "picocolors": "^1.1.1",
-    "sharp": "^0.34.3"
+    "sharp": "^0.34.3",
+    "cheerio": "^1.0.0-rc.12"
   },
   "scripts": {
     "build:images": "node build-images.mjs",
-    "build": "npm run build:images && <your site build here>"
+    "build": "npm run build:images && <your site build here>",
+    "img:rewire": "node scripts/rewire-images.mjs"
   }
 }
-  
