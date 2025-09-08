@@ -45,6 +45,7 @@ jobs:
         with:
           name: lighthouse-report
           path: .lighthouseci
+          if-no-files-found: ignore
 
       # Live deploy on pushes to main
       - name: Deploy Live (main)
