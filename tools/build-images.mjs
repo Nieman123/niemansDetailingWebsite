@@ -4,8 +4,8 @@ import pc from 'picocolors';
 import { mkdirSync } from 'fs';
 import { dirname, join, extname, basename } from 'path';
 
-const SRC_DIR = 'assets';     // originals live here (png/jpg/webp)
-const OUT_DIR = 'optimized';  // generated sizes+formats go here
+const SRC_DIR = 'assets/images';     // originals live here (png/jpg/webp)
+const OUT_DIR = 'public/images';  // generated sizes+formats go here
 const SIZES   = [150, 300, 512, 640, 800, 1024, 1375]; // tweak per need
 
 const formats = {
