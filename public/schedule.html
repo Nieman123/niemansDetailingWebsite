@@ -67,11 +67,12 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
   <!-- Inline minimal scheduler styles to avoid CLS and keep first paint clean -->
   <style>
-    .scheduler-shell{max-width:950px;margin:0 auto;background:#1f1f1f;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}
-    .scheduler-frame{width:100%;min-height:900px;background:#121212;border:0;border-radius:8px}
-    .scheduler-skeleton{height:56px;border-radius:8px;background:linear-gradient(90deg,rgba(255,255,255,.06) 25%,rgba(255,255,255,.10) 37%,rgba(255,255,255,.06) 63%);background-size:400% 100%;animation:sk 1.2s infinite linear;margin:10px 0}
+    /* Keep this minimal to preserve white background per Google embed */
+    .scheduler-shell{max-width:950px;margin:0 auto;background:#fff;border:0;border-radius:0;padding:0}
+    .scheduler-frame{width:100%;min-height:600px;border:0;border-radius:0;background:transparent}
+    .scheduler-skeleton{height:56px;border-radius:8px;background:linear-gradient(90deg,rgba(0,0,0,.06) 25%,rgba(0,0,0,.10) 37%,rgba(0,0,0,.06) 63%);background-size:400% 100%;animation:sk 1.2s infinite linear;margin:10px 0}
     @keyframes sk {0%{background-position:100% 0}100%{background-position:0 0}}
-    .scheduler-note{color:#bbb;font-size:.95rem;margin:8px 0}
+    .scheduler-note{color:#666;font-size:.95rem;margin:8px 0}
     .scheduler-fallback{margin-top:10px;font-size:.95rem}
     .scheduler-fallback a{color:#4dd0e1}
     .scheduler-shell.ready .scheduler-note,
