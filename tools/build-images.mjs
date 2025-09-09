@@ -1,7 +1,7 @@
 import fg from 'fast-glob';
 import sharp from 'sharp';
 import pc from 'picocolors';
-import { mkdirSync } from 'fs';
+import { mkdirSync, existsSync, statSync } from 'fs';
 import { dirname, join, extname, basename } from 'path';
 
 const SRC_DIR = 'assets/images';     // originals live here (png/jpg/webp)
@@ -24,6 +24,7 @@ if (!files.length) {
 for (const file of files) {
   const relDir = dirname(file).replace(/^assets\/?/, ''); // keep subfolders
   const base = basename(file, extname(file));
+  const srcStat = statSync(file);
 
   for (const w of SIZES) {
     const basePipe = sharp(file).resize({ width: w, withoutEnlargement: true });
@@ -32,6 +33,14 @@ for (const file of files) {
       mkdirSync(outDir, { recursive: true });
       const outPath = join(outDir, `${base}-${w}.${fmt}`);
       try {
+        // Skip if output exists and is up-to-date relative to source
+        if (existsSync(outPath)) {
+          const outStat = statSync(outPath);
+          if (outStat.mtimeMs >= srcStat.mtimeMs) {
+            console.log(pc.dim('• skip'), outPath);
+            continue;
+          }
+        }
         let p = basePipe.clone();
         if (fmt === 'avif') p = p.avif(opts);
         if (fmt === 'webp') p = p.webp(opts);

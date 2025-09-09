@@ -34,8 +34,7 @@ jobs:
             public/images
           key: ${{ runner.os }}-images-${{ hashFiles('tools/build-images.mjs', 'assets/images/**') }}
 
-      - name: Build responsive images
-        if: steps.cache-images.outputs.cache-hit != 'true'
+      - name: Build responsive images (incremental)
         run: npm run build:images
 
       # If you have a site build step, add it here
