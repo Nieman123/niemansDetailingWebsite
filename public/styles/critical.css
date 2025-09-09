@@ -10,7 +10,34 @@ html, body { margin:0; padding:0; background:#303030; color:#eee; font-family: R
 .main-title { font-weight:500; margin:0.5rem 0 0; text-align:center; }
 .sub-title { margin:0 0 1rem; text-align:center; }
 .hero-cta { margin:1rem 0; text-align:center; }
-.bss-slides { max-width:950px; margin:0 auto; }
-.bss-slides figure { aspect-ratio:16/9; margin:0; }
-.bss-slides img { width:100%; height:auto; display:block; }
+.slideshow { max-width:950px; margin:0 auto; }
+.slideshow .slide { aspect-ratio:16/9; margin:0; }
+.slideshow img { width:100%; height:auto; display:block; }
 .mdl-chip-float-contact { position:fixed; right:200px; bottom:40px; z-index:99; }
+/* prevent any sneaky shifts */
+.hero-img { display:block; width:100%; height:auto; }
+
+/* Make the hero slideshow paint before headings on small screens */
+.mdl-card__supporting-text {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Identify the slideshow container for ordering */
+.slideshow { order: 0; }
+
+/* On mobile, move the slideshow to the top and push headings down */
+@media (max-width: 768px) {
+  .slideshow { order: -1; }
+  .main-title, .sub-title, .hero-cta { order: 0; }
+  /* Allow content to span full width on phones so hero can be largest */
+  .mdl-site .mdl-card .mdl-card__supporting-text { width: 100%; }
+  /* Tame heading size a bit to ensure hero dominates LCP */
+  .main-title { font-size: 1.6rem; }
+  .sub-title { font-size: 1.1rem; }
+  /* Make hero square on mobile for stronger LCP dominance */
+  .slides-viewport .slide, .slides-viewport .slide picture { aspect-ratio: 1 / 1; }
+}
+
+/* Ensure first slide shows immediately */
+.slideshow .slide.is-active img { transition: none !important; opacity: 1; }

@@ -30,12 +30,12 @@ function onIdle(cb) {
 
 // Initialize slideshow after DOM is ready but defer to idle
 document.addEventListener('DOMContentLoaded', function () {
+  // Lazy import minimal slider after idle; zero JS on first paint
   onIdle(() => {
-    if (window.makeBSS && !window.bssInitialized) {
-      window.bssInitialized = true;
-      // small timeout to yield to main thread
-      setTimeout(() => { window.makeBSS('.bss-slides', { auto: false, swipe: true }); }, 0);
-    }
+    if (window.sliderHydrated) return;
+    import('/scripts/slider.js').then(m => {
+      try { m.hydrateSlider && m.hydrateSlider('.slideshow'); window.sliderHydrated = true; } catch (_) {}
+    }).catch(() => {});
   });
 
   const igSection = document.getElementById('instagram-section');
