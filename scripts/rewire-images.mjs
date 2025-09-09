@@ -25,7 +25,10 @@ let filesSkipped = 0;
 function normalizeSrc(src) {
   if (!src) return '';
   const clean = src.split(/[?#]/)[0];
-  return clean.startsWith('/') ? clean : '/' + clean;
+  let s = clean.startsWith('/') ? clean : '/' + clean;
+  // Tolerate accidental /public/ prefixes and normalize to root-relative
+  s = s.replace(/^\/public\//, '/');
+  return s;
 }
 
 async function getVariants(base) {

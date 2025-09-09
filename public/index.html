@@ -50,6 +50,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
   <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" media="print" onload="this.media='all'">
+  <noscript>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap">
+  </noscript>
   <link rel="preconnect" href="https://www.instagram.com" crossorigin>
   <link rel="preconnect" href="https://instafeed.assets.pixlee.com" crossorigin>
   <link rel="preconnect" href="https://maps.googleapis.com" crossorigin>
@@ -65,20 +70,22 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap">
 
   <!-- Inline critical CSS -->
-  <style>@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap');</style>
   <style>
   /* Critical CSS (see public/styles/critical.css for source) */
-  html, body { margin:0; padding:0; font-family: Roboto, Helvetica, Arial, sans-serif; background:#303030; color:#eee; }
+  html, body { margin:0; padding:0; background:#303030; color:#eee; font-family: Roboto, Helvetica, Arial, sans-serif; }
   .mdl-layout__header { background:#424242; }
   .mdl-layout__tab-bar { background:#512da8; }
+  .mdl-layout__tab-bar .mdl-layout__tab { color:#fff; }
   .mdl-layout--large-screen-only .mdl-layout__header-row img { display:block; margin:0; height:auto; }
   .mdl-layout--small-screen-only .mdl-layout__header-row .h-logo { display:block; margin:0 auto; height:auto; }
+  .h-logo { max-width:100%; height:auto; }
   .main-title { font-weight:500; margin:0.5rem 0 0; text-align:center; }
   .sub-title { margin:0 0 1rem; text-align:center; }
+  .hero-cta { margin:1rem 0; text-align:center; }
   .bss-slides { max-width:950px; margin:0 auto; }
   .bss-slides figure { aspect-ratio:16/9; margin:0; }
   .bss-slides img { width:100%; height:auto; display:block; }
-  .hero-cta { margin:1rem 0; text-align:center; }
+  .mdl-chip-float-contact { position:fixed; right:200px; bottom:40px; z-index:99; }
   </style>
 
   <!-- Preload non-critical CSS -->

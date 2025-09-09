@@ -20,12 +20,23 @@ function trackEvent(category, action, label) {
   }
 }
 
-// Initialize slideshow after DOM is ready
-document.addEventListener('DOMContentLoaded', function () {
-  if (window.makeBSS && !window.bssInitialized) {
-    window.bssInitialized = true;
-    makeBSS('.bss-slides');
+// Helper: run work during idle time to avoid blocking paint
+function onIdle(cb) {
+  if ('requestIdleCallback' in window) {
+    return requestIdleCallback(cb, { timeout: 2000 });
   }
+  return setTimeout(cb, 0);
+}
+
+// Initialize slideshow after DOM is ready but defer to idle
+document.addEventListener('DOMContentLoaded', function () {
+  onIdle(() => {
+    if (window.makeBSS && !window.bssInitialized) {
+      window.bssInitialized = true;
+      // small timeout to yield to main thread
+      setTimeout(() => { window.makeBSS('.bss-slides', { auto: false, swipe: true }); }, 0);
+    }
+  });
 
   const igSection = document.getElementById('instagram-section');
   if (igSection) {

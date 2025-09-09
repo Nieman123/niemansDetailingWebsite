@@ -39,6 +39,7 @@ html {
 .mdl-site .mdl-layout__tab-bar .mdl-layout__tab {
   height: 64px;
   line-height: 64px;
+  color: #fff;
 }
 .mdl-site .mdl-layout__tab-bar .mdl-layout__tab.is-active::after {
   background-color: #fff;
