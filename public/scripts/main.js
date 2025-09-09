@@ -142,7 +142,9 @@ function loadMap() {
 
 // Scheduler auto-hydration without user interaction
 (function(){
+  var mounted = false;
   function mountScheduler(){
+    if (mounted) return; // idempotent
     try {
       var host = document.getElementById('scheduler');
       if (!host) return;
@@ -161,13 +163,25 @@ function loadMap() {
       mount.appendChild(frame);
       var fb = document.getElementById('scheduler-fallback-link');
       if (fb) fb.href = src;
+      // when the iframe loads, hide placeholder skeleton/text
+      frame.addEventListener('load', function(){
+        try { host.classList.add('ready'); } catch(_) {}
+      });
+      mounted = true;
     } catch (e) {
       // No-op: never block paint
     }
   }
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  function scheduleMount() {
+    // Try ASAP after first paint, but ensure it runs even if idle never fires
     onIdle(mountScheduler);
-  } else {
-    window.addEventListener('DOMContentLoaded', function(){ onIdle(mountScheduler); }, { once: true });
+    setTimeout(mountScheduler, 1500);
   }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    scheduleMount();
+  } else {
+    window.addEventListener('DOMContentLoaded', scheduleMount, { once: true });
+  }
+  // Absolute fallback if DOMContentLoaded timing is quirky
+  window.addEventListener('load', scheduleMount, { once: true });
 })();

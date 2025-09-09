@@ -74,23 +74,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     .scheduler-note{color:#bbb;font-size:.95rem;margin:8px 0}
     .scheduler-fallback{margin-top:10px;font-size:.95rem}
     .scheduler-fallback a{color:#4dd0e1}
+    .scheduler-shell.ready .scheduler-note,
+    .scheduler-shell.ready .scheduler-skeleton { display:none }
   </style>
 
-  <script>
-    (function (i, s, o, g, r, a, m) {
-      i['GoogleAnalyticsObject'] = r;
-      i[r] = i[r] || function () {
-          (i[r].q = i[r].q || []).push(arguments)
-        }, i[r].l = 1 * new Date();
-      a = s.createElement(o),
-        m = s.getElementsByTagName(o)[0];
-      a.async = 1;
-      a.src = g;
-      m.parentNode.insertBefore(a, m)
-    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
-    ga('create', 'UA-109507933-1', 'auto');
-    ga('send', 'pageview');
-  </script>
+  <!-- Inline GA removed to comply with CSP; analytics can be loaded via external script if desired. -->
 </head>
 <body class="mdl-site mdl-color--grey-800 mdl-color-text--grey-700 mdl-base">
 <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
