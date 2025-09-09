@@ -50,12 +50,31 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   <!-- Material Design icons -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 
+  <!-- Scheduler preconnects to speed up handshake without blocking render -->
+  <link rel="preconnect" href="https://calendar.google.com" crossorigin>
+  <link rel="preconnect" href="https://accounts.google.com" crossorigin>
+  <link rel="preconnect" href="https://ssl.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="//calendar.google.com">
+  <link rel="dns-prefetch" href="//accounts.google.com">
+  <link rel="dns-prefetch" href="//ssl.gstatic.com">
+
 
   <!-- Material Design-->
   <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.deep_purple-orange.min.css"/>
 
   <!-- Styles -->
   <link rel="stylesheet" href="styles/promo.css">
+
+  <!-- Inline minimal scheduler styles to avoid CLS and keep first paint clean -->
+  <style>
+    .scheduler-shell{max-width:950px;margin:0 auto;background:#1f1f1f;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px}
+    .scheduler-frame{width:100%;min-height:900px;background:#121212;border:0;border-radius:8px}
+    .scheduler-skeleton{height:56px;border-radius:8px;background:linear-gradient(90deg,rgba(255,255,255,.06) 25%,rgba(255,255,255,.10) 37%,rgba(255,255,255,.06) 63%);background-size:400% 100%;animation:sk 1.2s infinite linear;margin:10px 0}
+    @keyframes sk {0%{background-position:100% 0}100%{background-position:0 0}}
+    .scheduler-note{color:#bbb;font-size:.95rem;margin:8px 0}
+    .scheduler-fallback{margin-top:10px;font-size:.95rem}
+    .scheduler-fallback a{color:#4dd0e1}
+  </style>
 
   <script>
     (function (i, s, o, g, r, a, m) {
@@ -99,10 +118,20 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
     <section class="section--center mdl-grid">
 
-      <div style="height: 600px; background-color: white;" class="mdl-cell mdl-cell--12-col">
-        <!-- Google Calendar Appointment Scheduling begin -->
-        <iframe src="https://calendar.google.com/calendar/appointments/schedules/AcZssZ1x2b4zxOQOM9jIy8FMHwa6Si_21lWTBeXdoA-OHJIygkJhOJavZH0kYXVaKJgBsSvmQR9Yrjlz?gv=true" style="border: 0" width="100%" height="600" frameborder="0"></iframe>
-        <!-- end Google Calendar Appointment Scheduling -->
+      <!-- Defer the iframe; show a styled placeholder immediately to avoid LCP hit -->
+      <div class="mdl-cell mdl-cell--12-col">
+        <div id="scheduler" class="scheduler-shell"
+             data-src="https://calendar.google.com/calendar/appointments/schedules/AcZssZ1x2b4zxOQOM9jIy8FMHwa6Si_21lWTBeXdoA-OHJIygkJhOJavZH0kYXVaKJgBsSvmQR9Yrjlz?gv=true">
+          <h2 class="section-title" style="text-align:center;margin:8px 0 12px;">Schedule an Appointment</h2>
+          <div class="scheduler-note">Loading the live scheduler…</div>
+          <div class="scheduler-skeleton"></div>
+          <div class="scheduler-skeleton"></div>
+          <div class="scheduler-skeleton"></div>
+          <div id="scheduler-mount"></div>
+          <div class="scheduler-fallback">
+            Can’t see the scheduler? <a id="scheduler-fallback-link" href="#" rel="noopener">Open it in a new tab</a>.
+          </div>
+        </div>
       </div>
 
       <div class="mdl-cell mdl-card mdl-shadow--2dp small-card">

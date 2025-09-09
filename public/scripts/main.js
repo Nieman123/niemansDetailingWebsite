@@ -139,3 +139,35 @@ function loadMap() {
   };
   document.head.appendChild(script);
 }
+
+// Scheduler auto-hydration without user interaction
+(function(){
+  function mountScheduler(){
+    try {
+      var host = document.getElementById('scheduler');
+      if (!host) return;
+      var src = host.getAttribute('data-src');
+      if (!src) return;
+      var mount = document.getElementById('scheduler-mount');
+      if (!mount) return;
+      var frame = document.createElement('iframe');
+      frame.className = 'scheduler-frame';
+      frame.src = src;
+      frame.title = 'Appointment Scheduler';
+      frame.loading = 'eager'; // injected after paint
+      frame.referrerPolicy = 'strict-origin-when-cross-origin';
+      frame.allow = 'clipboard-write; fullscreen';
+      frame.setAttribute('aria-label', 'Appointment Scheduler');
+      mount.appendChild(frame);
+      var fb = document.getElementById('scheduler-fallback-link');
+      if (fb) fb.href = src;
+    } catch (e) {
+      // No-op: never block paint
+    }
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    onIdle(mountScheduler);
+  } else {
+    window.addEventListener('DOMContentLoaded', function(){ onIdle(mountScheduler); }, { once: true });
+  }
+})();
