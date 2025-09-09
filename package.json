@@ -4,7 +4,7 @@
     "fast-glob": "^3.3.3",
     "picocolors": "^1.1.1",
     "sharp": "^0.34.3",
-    "lighthouse-ci": "^0.15.1"
+    "@lhci/cli": "^0.15.1"
   },
   "scripts": {
     "build:images": "node tools/build-images.mjs",
