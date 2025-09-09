@@ -1,0 +1,12 @@
+/* critical.css: small, ~6–12 KB tops */
+html, body { margin:0; padding:0; font-family: Roboto, Helvetica, Arial, sans-serif; background:#303030; color:#eee; }
+.mdl-layout__header { background:#424242; }
+.mdl-layout__tab-bar { background:#512da8; }
+.mdl-layout--large-screen-only .mdl-layout__header-row img { display:block; margin:0; height:auto; }
+.mdl-layout--small-screen-only .mdl-layout__header-row .h-logo { display:block; margin:0 auto; height:auto; }
+.main-title { font-weight:500; margin:0.5rem 0 0; text-align:center; }
+.sub-title { margin:0 0 1rem; text-align:center; }
+.bss-slides { max-width:950px; margin:0 auto; }
+.bss-slides figure { aspect-ratio:16/9; margin:0; }
+.bss-slides img { width:100%; height:auto; display:block; }
+.hero-cta { margin:1rem 0; text-align:center; }
