@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Nieman’s Detailing — Links</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="canonical" href="https://niemansdetailing.com/links/">
+
+  <!-- OG -->
+  <meta property="og:title" content="Nieman’s Detailing — Quick Links">
+  <meta property="og:description" content="Mobile detailing in Asheville and surrounding areas. Book, follow, or add me to contacts.">
+  <meta property="og:url" content="https://niemansdetailing.com/links/">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://niemansdetailing.com/images/carpics/facebookogimage.png">
+
+  <!-- Optional icons (won’t block render) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap"></noscript>
+
+  <style>
+    :root{
+      --bg:#1f1f1f;
+      --card:#2a2a2a;
+      --text:#eaeaea;
+      --muted:#bdbdbd;
+      --primary:#673ab7; /* matches site theme */
+      --primary-ink:#ffffff;
+      --btn:#333;
+      --btn-hover:#3d3d3d;
+      --radius:16px;
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji"}
+    body{min-height:100dvh;display:flex;align-items:center;justify-content:center}
+    .wrap{width:100%;max-width:420px;padding:24px}
+    .card{background:var(--card);border-radius:var(--radius);padding:24px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+    header{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:16px}
+    .logo{display:inline-block;border-radius:50%;overflow:hidden;width:96px;height:96px;border:2px solid rgba(255,255,255,.12)}
+    .logo img{width:100%;height:100%;object-fit:cover;display:block}
+    .brand{font-size:1.25rem;font-weight:600;text-align:center}
+    .tag{font-size:.95rem;color:var(--muted);text-align:center;margin-top:-4px}
+    .links{display:flex;flex-direction:column;gap:12px;margin-top:16px}
+    .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:56px;border-radius:12px;text-decoration:none;background:var(--btn);color:var(--text);font-size:1.05rem;font-weight:600;border:1px solid rgba(255,255,255,.08)}
+    .btn:hover{background:var(--btn-hover)}
+    .btn:focus-visible{outline:2px solid #ffeb3b;outline-offset:2px}
+    .btn.primary{background:var(--primary);color:var(--primary-ink);border-color:transparent}
+    .btn .material-icons{font-size:22px;line-height:0}
+    .footer{margin-top:20px;text-align:center;color:var(--muted);font-size:.85rem}
+    .footer a{color:var(--muted)}
+    /* reduce motion users: no hover color shift */
+    @media (prefers-reduced-motion: reduce){ .btn{transition:none} }
+  </style>
+  <meta name="theme-color" content="#673ab7">
+  <meta name="robots" content="index,follow">
+</head>
+<body>
+  <main class="wrap">
+    <section class="card" aria-label="Quick links">
+      <header>
+        <a href="/" class="logo" aria-label="Go to homepage">
+          <img src="/images/ND-logo-white-transparentbg.png" alt="Nieman’s Detailing logo" width="200" height="200" decoding="async" loading="eager">
+        </a>
+        <div class="brand">Nieman’s Detailing</div>
+        <div class="tag">Mobile detailing in Asheville, NC</div>
+      </header>
+
+      <nav class="links" aria-label="Links">
+        <a class="btn primary" href="/schedule">
+          <span class="material-icons" aria-hidden="true">event_available</span>
+          Book / Schedule
+        </a>
+        <a class="btn" href="tel:+18282733894">
+          <span class="material-icons" aria-hidden="true">phone</span>
+          Call (828) 273-3894
+        </a>
+        <a class="btn" href="mailto:contact@niemansdetailing.com">
+          <span class="material-icons" aria-hidden="true">email</span>
+          Email
+        </a>
+        <a class="btn" href="/nieman.vcf" download>
+          <span class="material-icons" aria-hidden="true">person_add</span>
+          Add to Contacts
+        </a>
+        <a class="btn" href="https://www.instagram.com/niemansdetailing/" rel="me noopener">
+          <span class="material-icons" aria-hidden="true">photo_camera</span>
+          Instagram
+        </a>
+        <a class="btn" href="https://www.facebook.com/niemansdetailing" rel="me noopener">
+          <span class="material-icons" aria-hidden="true">thumb_up</span>
+          Facebook
+        </a>
+        <a class="btn" href="/" >
+          <span class="material-icons" aria-hidden="true">home</span>
+          Visit Website
+        </a>
+      </nav>
+
+      <div class="footer">
+        © <span id="y"></span> Nieman’s Detailing
+      </div>
+    </section>
+  </main>
+  <script>
+    // year stamp without blocking
+    document.getElementById('y').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
+
