@@ -8,7 +8,6 @@
   },
   "scripts": {
     "build:images": "node tools/build-images.mjs",
-    "build": "npm run build:images && <your site build here>",
     "img:rewire": "node scripts/rewire-images.mjs",
     "dev:copy": "rsync -a assets/images/ public/images/",
     "dev:copy:win": "xcopy assets\\images public\\images /E /I /Y",
