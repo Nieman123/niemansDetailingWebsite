@@ -371,11 +371,12 @@ html {
   background: url(../images/carpics/bmw.jpg);
 }
 .circle-pic {
-  max-width: 100px;
-  max-height: 100px;
-  margin: 0 auto;
-  padding-top: 10px;
+  width: 100px;
+  height: 100px;
+  margin: 10px auto; /* add breathing room around circles */
   border-radius: 50%;
+  display: block;
+  object-fit: cover;
 }
 .dollar-icon {
   padding-top: 3px;
@@ -509,10 +510,9 @@ button:focus-visible {
 /* larger services images and text on desktop */
 @media (min-width: 1024px) {
   .circle-pic {
-    max-width: none;
-    max-height: none;
     width: 180px;
     height: 180px;
+    margin: 12px auto; /* maintain spacing on larger screens */
   }
   .section__text h3 {
     font-size: 1.5rem;
