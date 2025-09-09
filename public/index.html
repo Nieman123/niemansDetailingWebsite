@@ -268,7 +268,12 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <span class="mdl-chip__contact mdl-color--primary mdl-color-text--white"><i
       class="phone-icon material-icons md-light" aria-label="Questions? Call">phone</i></span>
         <span class="mdl-chip__text">Questions? Call <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone');">(828) 273-3894</a></strong></span>
-    </span>
+      </span>
+      <div style="margin-top:8px;">
+        <a class="mdl-button mdl-button--raised mdl-button--colored" href="/nieman.vcf" download rel="nofollow">
+          ADD TO CONTACTS
+        </a>
+      </div>
     </div>
 
     <!--Main Panel-->
@@ -548,7 +553,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
                 class="material-icons md-light" aria-label="Phone">phone</i></div>
             </div>
 
-            <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
+            <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone" style="text-align:center;">
               <h3><strong>By Phone</strong></h3>
               Call or Text <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone');">(828) 273-3894</a></strong>
             </div>
@@ -894,10 +899,12 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
                 class="material-icons md-light" aria-label="Email">email</i></div>
             </div>
 
-            <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
+            <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone" style="text-align:center;">
               <h3><strong>E-Mail</strong></h3>
               Send me a message at <a href="mailto:contact@niemansdetailing.com" onclick="trackEvent('Contact','click','Email');">contact@niemansdetailing.com</a>
             </div>
+
+            
 
             <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
               <div class="section__circle-container__circle mdl-color--primary"><i
@@ -908,6 +915,15 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3><strong>Find me on Social Media</strong></h3>
               Visit my <a href="https://www.facebook.com/niemansdetailing" onclick="trackEvent('Social','click','Facebook');">Facebook</a> or <a
               href="https://www.instagram.com/niemansdetailing/" onclick="trackEvent('Social','click','Instagram');">Instagram</a>.
+            </div>
+
+            <!-- QR + Button row at bottom of contact section -->
+            <div class="mdl-cell mdl-cell--12-col">
+              <div class="add-contact-row" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:8px;flex-wrap:wrap;">
+                <img class="qr-img" src="/images/qr-add-contact.png" alt="Scan to add Nieman's Detailing to contacts" width="180" height="180" decoding="async" loading="lazy">
+                <a class="mdl-button mdl-button--raised mdl-button--colored add-contact-btn" href="/nieman.vcf" download rel="nofollow">ADD TO CONTACTS</a>
+              </div>
+              <div class="mdl-typography--caption add-contact-caption">Scan to add my contact</div>
             </div>
           </div>
         </div>
@@ -941,6 +957,15 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <ul class="mdl-mega-footer--link-list">
             <li><a href="mailto:contact@niemansdetailing.com" onclick="trackEvent('Contact','click','Email');">contact@niemansdetailing.com</a></li>
           </ul>
+        </div>
+
+        <div class="mdl-mega-footer--drop-down-section footer-add-contact">
+          <input class="mdl-mega-footer--heading-checkbox" type="checkbox" checked>
+          <h2 class="mdl-mega-footer--heading">Add to Contacts</h2>
+          <div class="add-contact-qr" style="text-align:center;margin-top:8px;">
+            <img src="/images/qr-add-contact.png" alt="Scan to add Nieman's Detailing to contacts" width="180" height="180" decoding="async" loading="lazy">
+            <div class="mdl-typography--caption add-contact-caption">Scan to add my contact</div>
+          </div>
         </div>
 
         <div class="mdl-mega-footer--drop-down-section">

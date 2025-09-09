@@ -1,0 +1,12 @@
+BEGIN:VCARD
+VERSION:3.0
+N:;Nieman's Detailing;;;
+FN:Nieman's Detailing
+ORG:Nieman's Detailing
+TEL;TYPE=CELL,VOICE,PREF:+1-828-273-3894
+EMAIL;TYPE=INTERNET,PREF:contact@niemansdetailing.com
+URL:https://niemansdetailing.com
+ADR;TYPE=WORK:;;;Asheville;NC;28801;USA
+NOTE:Premium mobile detailing in Asheville and surrounding areas. Mobile service.
+END:VCARD
+

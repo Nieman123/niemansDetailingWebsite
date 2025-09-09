@@ -307,11 +307,33 @@ html {
 .mdl-chip-float-contact {
   text-align: center;
   position: fixed;
-  width: 60px;
-  height: 60px;
+  /* Allow chip and button to size naturally */
+  width: auto;
+  height: auto;
   bottom: 40px;
   right: 200px;
   z-index: 99;
+}
+
+/* Improve floating contact UI on mobile */
+@media (max-width: 768px) {
+  .mdl-chip-float-contact {
+    right: 16px;
+    bottom: 16px;
+  }
+  .mdl-chip-float-contact .mdl-chip {
+    max-width: 85vw;
+    display: inline-flex;
+  }
+  .mdl-chip-float-contact .mdl-button {
+    margin-top: 8px;
+    white-space: nowrap;
+  }
+}
+
+/* Hide footer QR on mobile to reduce clutter */
+@media (max-width: 768px) {
+  .footer-add-contact { display: none !important; }
 }
 .mdl-chip__contact {
   text-align: center;
@@ -427,9 +449,16 @@ button:focus-visible {
   align-content: center;
 }
 
+/* Caption under Add-to-Contacts QR */
+.add-contact-caption {
+  margin-top: 8px;
+  font-size: 1rem;
+  text-align: center;
+}
+
 /* Testimonial adjustments */
 .testimonial-list {
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   line-height: 1.5;
 }
 .testimonial-list blockquote {
@@ -437,7 +466,8 @@ button:focus-visible {
   quotes: none;
   border-left: 4px solid #673ab7;
   padding-left: 1rem;
-  position: relative;
+  position: relative;  
+  font-size: 1.5rem; 
 }
 .testimonial-list blockquote::before,
 .testimonial-list blockquote::after {
@@ -451,11 +481,28 @@ button:focus-visible {
     flex-wrap: wrap;
   }
   .testimonial-list blockquote {
-    text-size-adjust: 70%;
-    margin-right: 1rem;
+    margin-right: 2rem;
   }
   .testimonial-list blockquote:last-child {
     margin-right: 0;
+  }
+}
+
+/* Slightly smaller testimonials on small screens */
+@media (max-width: 768px) {
+  .testimonial-list { font-size: 1rem; }
+  .testimonial-list blockquote { font-size: 1rem; }
+}
+
+/* Contact panel QR sizing */
+.add-contact-row .qr-img {
+  width: 180px;
+  height: 180px;
+}
+@media (max-width: 480px) {
+  .add-contact-row .qr-img {
+    width: 150px;
+    height: 150px;
   }
 }
 
