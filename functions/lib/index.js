@@ -130,7 +130,7 @@ function getClientIP(req) {
 const HOSTING_ORIGIN_PARAM = (0, params_1.defineString)("HOSTING_ORIGIN", { default: "https://niemansdetailing.com" });
 const TELEGRAM_BOT_TOKEN = (0, params_1.defineString)("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_CHAT_ID = (0, params_1.defineString)("TELEGRAM_CHAT_ID");
-exports.api = (0, https_1.onRequest)({ region: "us-central1" }, async (req, res) => {
+exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) => {
     const HOSTING_ORIGIN = HOSTING_ORIGIN_PARAM.value();
     const ALLOWED_ORIGINS = new Set([
         HOSTING_ORIGIN,

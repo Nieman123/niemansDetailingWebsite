@@ -105,7 +105,7 @@ const HOSTING_ORIGIN_PARAM = defineString("HOSTING_ORIGIN", { default: "https://
 const TELEGRAM_BOT_TOKEN = defineString("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_CHAT_ID = defineString("TELEGRAM_CHAT_ID");
 
-export const api = onRequest({ region: "us-central1" }, async (req, res) => {
+export const api = onRequest({ region: "us-east1" }, async (req, res) => {
   const HOSTING_ORIGIN = HOSTING_ORIGIN_PARAM.value();
   const ALLOWED_ORIGINS = new Set([
     HOSTING_ORIGIN,
