@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Get a Quick Quote • Nieman’s Detailing</title>
+    <link rel="stylesheet" href="quote.css" />
+  </head>
+  <body>
+    <main class="wrap" id="app" aria-live="polite">
+      <header class="header">
+        <a class="brand" href="index.html" aria-label="Nieman’s Detailing home">
+          <img class="brand-logo" src="images/ND-logo-white-transparentbg-horizontal.png" alt="Nieman’s Detailing" width="600" height="132" />
+        </a>
+        <h1>Quick Quote</h1>
+        <p class="sub">Five quick taps — get a quote in seconds.</p>
+      </header>
+
+      <!-- Step 1: Vehicle -->
+      <section class="screen" id="step-1" aria-labelledby="step1-label">
+        <h2 id="step1-label">1. Vehicle type</h2>
+        <div class="options" role="listbox" aria-label="Vehicle type">
+          <button class="btn option" data-value="sedan" role="option" aria-checked="false">Sedan/Coupe</button>
+          <button class="btn option" data-value="suv" role="option" aria-checked="false">SUV/Crossover</button>
+          <button class="btn option" data-value="truck" role="option" aria-checked="false">Truck/Van</button>
+        </div>
+      </section>
+
+      <!-- Step 2: Service -->
+      <section class="screen" id="step-2" aria-labelledby="step2-label" hidden>
+        <h2 id="step2-label">2. Service</h2>
+        <div class="options" role="listbox" aria-label="Service">
+          <button class="btn option" data-value="quick" role="option" aria-checked="false">Quick Once Over</button>
+          <button class="btn option" data-value="full" role="option" aria-checked="false">Full Detail</button>
+          <button class="btn option" data-value="interior" role="option" aria-checked="false">Interior Refresh ($99)</button>
+          <button class="btn option" data-value="other" role="option" aria-checked="false">Other (consult)</button>
+        </div>
+        <p class="note consult-note" id="consult-note" hidden>Consult only — we’ll confirm pricing by text.</p>
+      </section>
+
+      <!-- Step 3: Add-ons -->
+      <section class="screen" id="step-3" aria-labelledby="step3-label" hidden>
+        <h2 id="step3-label">3. Add-ons</h2>
+        <div class="options options-grid" aria-label="Add-ons">
+          <button class="btn toggle" data-addon="wax" aria-pressed="false">Wax/Sealant <span class="delta" data-delta="wax">+ $0</span></button>
+          <button class="btn toggle" data-addon="pethair" aria-pressed="false">Pet Hair <span class="delta" data-delta="pethair">+ $0</span></button>
+          <button class="btn toggle" data-addon="odor" aria-pressed="false">Odor/Ozone <span class="delta" data-delta="odor">+ $0</span></button>
+          <button class="btn toggle" data-addon="engine" aria-pressed="false">Engine Bay <span class="delta" data-delta="engine">+ $0</span></button>
+          <button class="btn toggle" data-addon="soiled" aria-pressed="false">Heavily Soiled <span class="delta" data-delta="soiled">+ $0</span></button>
+          <button class="btn toggle" data-addon="ceramic" aria-pressed="false">Ceramic Consult <span class="delta" data-delta="ceramic">+ $0</span></button>
+        </div>
+        <div class="nav">
+          <button class="btn secondary" data-prev="2">Back</button>
+          <button class="btn primary" data-next="4">Next</button>
+        </div>
+      </section>
+
+      <!-- Step 4: Location -->
+      <section class="screen" id="step-4" aria-labelledby="step4-label" hidden>
+        <h2 id="step4-label">4. Location</h2>
+        <label class="field">
+          <span>ZIP</span>
+          <input id="zip" inputmode="numeric" pattern="^[0-9]{5}$" maxlength="5" placeholder="5 digits" aria-describedby="zip-help" />
+          <small id="zip-help">We come to you — Asheville area.</small>
+        </label>
+        <label class="field">
+          <span>Notes (optional)</span>
+          <textarea id="notes" rows="3" placeholder="Anything we should know?" ></textarea>
+        </label>
+        <div class="nav">
+          <button class="btn secondary" data-prev="3">Back</button>
+          <button class="btn primary" data-next="5">Next</button>
+        </div>
+      </section>
+
+      <!-- Step 5: Contact + Quote -->
+      <section class="screen" id="step-5" aria-labelledby="step5-label" hidden>
+        <h2 id="step5-label">5. Contact + Quote</h2>
+        <p id="quote-line" class="quote-line" aria-live="polite">We’ll confirm pricing by text.</p>
+        <div class="grid">
+          <label class="field">
+            <span>Name</span>
+            <input id="name" autocomplete="name" placeholder="Full name" />
+          </label>
+          <label class="field">
+            <span>Phone</span>
+            <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(828) 555-1234" />
+          </label>
+        </div>
+        <p class="consent">By tapping Book, you agree we can text you to schedule.</p>
+        <div class="nav">
+          <button class="btn secondary" data-prev="4">Back</button>
+          <button class="btn cta" id="submit">Book</button>
+        </div>
+      </section>
+
+      <!-- Confirmation -->
+      <section class="screen" id="confirm" hidden>
+        <h2>Got it — we’ll text you shortly.</h2>
+        <div id="recap"></div>
+      </section>
+    </main>
+
+    <script src="quote.js" defer></script>
+  </body>
+  </html>

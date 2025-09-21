@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Leads: allow public read (for private admin page), deny client writes
+    match /leads/{id} {
+      allow read: if true;           // v1: unlisted admin viewer uses REST
+      allow write: if false;         // all client writes denied
+    }
+
+    // Everything else: deny by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

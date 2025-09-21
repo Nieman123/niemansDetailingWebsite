@@ -1,10 +1,10 @@
 {
   "devDependencies": {
+    "@lhci/cli": "^0.15.1",
     "cheerio": "^1.1.0",
     "fast-glob": "^3.3.3",
     "picocolors": "^1.1.1",
-    "sharp": "^0.34.3",
-    "@lhci/cli": "^0.15.1"
+    "sharp": "^0.34.3"
   },
   "scripts": {
     "build:images": "node tools/build-images.mjs",
@@ -17,5 +17,9 @@
   },
   "overrides": {
     "simple-swizzle": "0.2.2"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.5.0",
+    "firebase-functions": "^6.4.0"
   }
 }

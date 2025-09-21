@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lead Viewer (Private)</title>
+    <style>
+      :root { --bg:#0e0f10; --card:#171a1d; --text:#f2f4f8; --muted:#b8bcc6; --brand:#f59e0b; }
+      html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+      .wrap{max-width:800px;margin:0 auto;padding:16px}
+      .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.25)}
+      h1{font-size:22px;margin:0 0 12px}
+      .row{display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;margin:6px 0}
+      .k{color:var(--muted)} .v{white-space:pre-wrap}
+      a.btn{display:inline-block;background:var(--brand);color:#111;padding:10px 14px;border-radius:10px;font-weight:700;text-decoration:none;margin-right:8px}
+      .pill{display:inline-block;background:#24272e;color:var(--text);padding:6px 10px;border-radius:999px;margin:2px}
+      #warn{color:#ffb4b4}
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>Lead Viewer</h1>
+      <p id="warn">This page is private and unlisted. Do not share.</p>
+      <div id="content" class="card">Loading…</div>
+    </div>
+    <script>
+      (async () => {
+        const params = new URLSearchParams(location.search);
+        const id = params.get('id');
+        if (!id) { document.getElementById('content').textContent = 'Missing id param'; return; }
+
+        // Firestore REST v1 (open read via rules)
+        const PROJECT_ID = 'niemans-detailing-90ce1'; // adjust if project changes
+        const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/leads/${encodeURIComponent(id)}`;
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error('Fetch failed');
+          const doc = await res.json();
+          const data = fromV1(doc.fields || {});
+          render(id, data);
+        } catch (e) {
+          console.error(e);
+          document.getElementById('content').textContent = 'Failed to load lead';
+        }
+
+        function fromV1(fields) {
+          const parse = (v) => {
+            if (v == null) return null;
+            if ('stringValue' in v) return v.stringValue;
+            if ('integerValue' in v) return Number(v.integerValue);
+            if ('doubleValue' in v) return Number(v.doubleValue);
+            if ('booleanValue' in v) return !!v.booleanValue;
+            if ('nullValue' in v) return null;
+            if ('timestampValue' in v) return v.timestampValue;
+            if ('arrayValue' in v) return (v.arrayValue.values||[]).map(parse);
+            if ('mapValue' in v) return fromV1(v.mapValue.fields||{});
+            return v;
+          };
+          const out = {};
+          for (const k of Object.keys(fields)) out[k] = parse(fields[k]);
+          return out;
+        }
+
+        function telDigits(s){ return (s||'').replace(/\D/g,''); }
+        function fmtPhone(s){ const d=telDigits(s); return d.length===10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : s; }
+
+        function render(id, d) {
+          const content = document.getElementById('content');
+          const addons = (d.addons||[]).join(', ') || 'None';
+          const price = d.quoted_total == null ? 'Consult' : `$${d.quoted_total}`;
+          const smsTo = telDigits(d.phone || d.phone_normalized || '');
+          const smsHref = smsTo ? `sms:+1${smsTo.length===10?smsTo:smsTo.startsWith('1')?smsTo.slice(1):smsTo}` : '#';
+          content.innerHTML = `
+            <div class="row"><div class="k">Lead ID</div><div class="v">${id}</div></div>
+            <div class="row"><div class="k">Vehicle</div><div class="v">${d.vehicle}</div></div>
+            <div class="row"><div class="k">Service</div><div class="v">${d.service}${d.quote_note?` (${d.quote_note})`:''}</div></div>
+            <div class="row"><div class="k">Add-ons</div><div class="v">${addons}</div></div>
+            <div class="row"><div class="k">ZIP</div><div class="v">${d.zip||'—'}</div></div>
+            <div class="row"><div class="k">Name</div><div class="v">${d.name||'—'}</div></div>
+            <div class="row"><div class="k">Phone</div><div class="v">${fmtPhone(d.phone||d.phone_normalized||'—')}</div></div>
+            <div class="row"><div class="k">Quoted</div><div class="v">${price}</div></div>
+            <div class="row"><div class="k">Notes</div><div class="v">${(d.notes||'').replace(/</g,'&lt;')}</div></div>
+            <div class="row"><div class="k">UTM</div><div class="v"><code>${JSON.stringify(d.utm||{}, null, 2)}</code></div></div>
+            <div class="row"><div class="k">Created</div><div class="v">${d.ts||'—'}</div></div>
+            <div class="row"><div class="k">User Agent</div><div class="v">${d.user_agent||'—'}</div></div>
+            <div class="row"><div class="k">Referrer</div><div class="v">${d.referrer||'—'}</div></div>
+            <div style="margin-top:12px">
+              <a class="btn" href="${smsHref}">Text Customer</a>
+            </div>
+          `;
+        }
+      })();
+    </script>
+  </body>
+  </html>
+

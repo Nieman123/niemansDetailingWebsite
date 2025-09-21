@@ -69,3 +69,4 @@ node_modules/
 .dataconnect
 .DS_Store
 .lighthouseci
+functions/.env.local

@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "source": "functions"
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
     "public": "public",
     "ignore": [
@@ -7,6 +13,13 @@
       "**/node_modules/**"
     ],
     "headers": [
+      { "source": "**", "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" },
+        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains; preload" }
+      ] },
       { "source": "**/*.avif", "headers": [ { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" } ] },
       { "source": "**/*.webp", "headers": [ { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" } ] },
       { "source": "**/*.jpg",  "headers": [ { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" } ] },
@@ -22,6 +35,13 @@
     ],
    "rewrites": [
       {
+        "source": "/api/**",
+        "function": {
+          "functionId": "api",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "/schedule",
         "destination": "/schedule.html"
       },
@@ -30,5 +50,11 @@
         "destination": "/index.html"
       }
     ]
+  },
+  "emulators": {
+    "ui": { "enabled": true, "port": 4000 },
+    "functions": { "port": 5001 },
+    "hosting": { "port": 5010 },
+    "firestore": { "port": 8080 }
   }
 }
