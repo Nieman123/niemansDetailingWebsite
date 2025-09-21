@@ -197,6 +197,7 @@ export const api = onRequest({ region: "us-central1" }, async (req, res) => {
 
         const text = [
           `New Lead: ${vLabel} • ${sLabel} • ${pricePart}`,
+          `Name: ${name}`,
           `${zip ? `ZIP ${zip}` : "ZIP —"} • ${phonePretty}`,
           `Add-ons: ${addonsList}`,
           notes ? `Notes: ${notes}` : null,
