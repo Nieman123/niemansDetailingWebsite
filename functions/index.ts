@@ -9,7 +9,7 @@ const db = admin.firestore();
 
 type Vehicle = "sedan" | "suv" | "truck";
 type Service = "quick" | "full" | "interior" | "other";
-type Addon = "wax" | "pethair" | "odor" | "engine" | "soiled" | "ceramic";
+type Addon = "wax" | "pethair" | "odor" | "engine" | "soiled" | "ceramic" | "headlights";
 
 const VEHICLE_LABELS: Record<Vehicle, string> = {
   sedan: "Sedan/Coupe",
@@ -29,6 +29,7 @@ const ADDON_LABELS: Record<Addon, string> = {
   engine: "Engine Bay",
   soiled: "Heavily Soiled",
   ceramic: "Ceramic Consult",
+  headlights: "Headlight Restoration",
 };
 
 const BASE: Record<Vehicle, Partial<Record<Service, number>>> = {
@@ -43,6 +44,7 @@ const ADDONS: Record<Addon, Record<Vehicle, number>> = {
   engine: { sedan: 25, suv: 25, truck: 30 },
   soiled: { sedan: 40, suv: 60, truck: 80 },
   ceramic: { sedan: 0, suv: 0, truck: 0 },
+  headlights: { sedan: 75, suv: 85, truck: 95 },
 };
 
 const isConsult = (service: Service) => service === "other";
@@ -70,7 +72,7 @@ function coerceService(s: unknown): Service | null {
 }
 function coerceAddons(arr: unknown): Addon[] {
   if (!Array.isArray(arr)) return [];
-  const valid: Addon[] = ["wax","pethair","odor","engine","soiled","ceramic"];
+  const valid: Addon[] = ["wax","pethair","odor","engine","soiled","ceramic","headlights"];
   return arr.map(x => String(x||"").toLowerCase().trim()).filter((x): x is Addon => (valid as string[]).includes(x));
 }
 
@@ -146,6 +148,7 @@ export const api = onRequest({ region: "us-central1" }, async (req, res) => {
     const zip = String(body.zip || "").replace(/\D/g, "").slice(0, 5) || null;
     const notes = stripHtml(body.notes);
     const utm = typeof body.utm === "object" && body.utm !== null ? body.utm : {};
+    const honeypot = Boolean(body.honeypot);
 
     // Validate required fields
     const errors: string[] = [];
@@ -171,7 +174,8 @@ export const api = onRequest({ region: "us-central1" }, async (req, res) => {
       quote_note: quote.consult ? "consult" : null,
       utm,
       ts: new Date().toISOString(),
-      status: "new",
+      status: honeypot ? "spam" : "new",
+      honeypot,
       user_agent: (body.user_agent || req.headers["user-agent"] || "").toString().slice(0, 512),
       referrer: (body.referrer || req.headers["referer"] || "").toString().slice(0, 1024),
       ip: getClientIP(req),
@@ -187,7 +191,7 @@ export const api = onRequest({ region: "us-central1" }, async (req, res) => {
       const chatId = TELEGRAM_CHAT_ID.value();
       if (!botToken || !chatId) {
         logger.error("Missing Telegram config via .env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)");
-      } else {
+      } else if (!honeypot) {
         const vLabel = VEHICLE_LABELS[vehicle as Vehicle];
         const sLabel = SERVICE_LABELS[service as Service];
         const pricePart = quote.consult ? "consult" : `$${quote.total}`;

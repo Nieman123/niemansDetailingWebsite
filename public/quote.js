@@ -339,14 +339,27 @@
         quoted_total: consult ? null : total,
         utm: readUTMs(),
         ts: new Date().toISOString(),
-        status: 'new',
+        status: 'spam',
         referrer: document.referrer || null,
         user_agent: navigator.userAgent,
+        honeypot: true,
       };
+      // Try to record spam server-side without triggering Telegram
+      try {
+        const res = await fetch(`${API_BASE}/api/createLead`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          const data = await res.json().catch(() => null);
+          if (data && data.ok && data.id) {
+            showConfirm(payload, data.id);
+            return;
+          }
+        }
+      } catch {}
       showConfirm(payload, fake.id);
-      if (window.gtag) {
-        gtag('event', 'lead_submit', { method: 'quick_quote', value: state.quote || 0, service: state.service, vehicle: state.vehicle });
-      }
       return;
     }
 
@@ -367,6 +380,7 @@
       status: 'new',
       referrer: document.referrer || null,
       user_agent: navigator.userAgent,
+      honeypot: false,
     };
 
     const submitBtn = $('#submit');
