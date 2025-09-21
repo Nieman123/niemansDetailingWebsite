@@ -54,3 +54,31 @@ input:focus, textarea:focus { border-color: var(--brand); outline: none; }
 
 button, input, textarea { font-family: inherit; }
 button { touch-action: manipulation; }
+
+/* Tap-friendly buttons */
+.btn {
+  min-height: 56px;
+  font-size: 18px;
+  line-height: 1.2;
+  padding: 14px 16px;
+}
+
+/* Spacing for option lists */
+.options { display: grid; gap: 12px; }
+.options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 520px) { .options-grid { grid-template-columns: 1fr; } }
+
+/* Progress bar and step count */
+.progress-wrap { height: 6px; background: #1f2026; border-radius: 999px; overflow: hidden; margin: 8px 0 4px; }
+.progress-bar { height: 100%; width: 0; background: linear-gradient(90deg,#7c5cff,#4ad1c9); transition: width .25s ease; }
+.step-count { color:#9aa3b2; font-size: 13px; margin: 0 0 8px; }
+
+/* Trust strip */
+.trust { display:flex; flex-wrap:wrap; gap:8px 12px; list-style:none; padding:0; margin:6px 0 14px; color:#c7cfe0; font-size:13px; }
+.trust li { padding:6px 10px; border:1px solid rgba(255,255,255,.15); border-radius:999px; }
+
+/* Quote teaser/line */
+.quote-line { color:#e7ebf7; font-weight:600; margin: 6px 0 10px; }
+
+/* Honeypot */
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
