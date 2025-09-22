@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="firebase-api-key" content="AIzaSyBgUntKRCQsi_SyJmNOgJLBI8Yj8gEsmA4" />
     <title>Lead Viewer (Private)</title>
     <style>
       :root { --bg:#0e0f10; --card:#171a1d; --text:#f2f4f8; --muted:#b8bcc6; --brand:#f59e0b; }
@@ -31,10 +32,17 @@
 
         // Firestore REST v1 (open read via rules)
         const PROJECT_ID = 'niemansdetailing'; // adjust if project changes
-        const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/leads/${encodeURIComponent(id)}`;
+        const API_KEY = (document.querySelector('meta[name="firebase-api-key"]')?.getAttribute('content') || '').trim();
+        const baseUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/leads/${encodeURIComponent(id)}`;
+        const url = API_KEY ? `${baseUrl}?key=${encodeURIComponent(API_KEY)}` : baseUrl;
         try {
           const res = await fetch(url);
-          if (!res.ok) throw new Error('Fetch failed');
+          if (!res.ok) {
+            let body = '';
+            try { body = await res.text(); } catch {}
+            console.error('Fetch failed', res.status, res.statusText, body);
+            throw new Error('Fetch failed');
+          }
           const doc = await res.json();
           const data = fromV1(doc.fields || {});
           render(id, data);
@@ -93,4 +101,3 @@
     </script>
   </body>
   </html>
-

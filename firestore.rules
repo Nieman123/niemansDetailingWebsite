@@ -4,7 +4,8 @@ service cloud.firestore {
     // Leads: allow public read (for private admin page), deny client writes
     match /leads/{id} {
       allow read: if true;           // v1: unlisted admin viewer uses REST
-      allow write: if false;         // all client writes denied
+      allow write: if false;
+      allow create, update, delete: if false;
     }
 
     // Everything else: deny by default
