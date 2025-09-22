@@ -30,7 +30,7 @@
         if (!id) { document.getElementById('content').textContent = 'Missing id param'; return; }
 
         // Firestore REST v1 (open read via rules)
-        const PROJECT_ID = 'niemans-detailing-90ce1'; // adjust if project changes
+        const PROJECT_ID = 'niemansdetailing'; // adjust if project changes
         const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/leads/${encodeURIComponent(id)}`;
         try {
           const res = await fetch(url);
