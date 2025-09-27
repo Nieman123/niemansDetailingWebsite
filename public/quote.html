@@ -23,6 +23,17 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
       gtag('config', 'AW-17602789326');
     </script>
+    <!-- Event snippet for Submit lead form conversion page -->
+    <script>
+      window.reportQuoteConversion = function(value, currency) {
+        if (typeof gtag !== 'function') return;
+        gtag('event', 'conversion', {
+          send_to: 'AW-17602789326/DjI6CICLnaIbEM7_1MlB',
+          value: typeof value === 'number' ? value : 1.0,
+          currency: currency || 'USD'
+        });
+      };
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Get an instant detailing quote in seconds — Asheville mobile detailing by Nieman’s Detailing." />

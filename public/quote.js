@@ -414,6 +414,17 @@
           vehicle: state.vehicle
         });
       }
+      const conversionValue = typeof state.quote === 'number' ? state.quote : 0;
+      const conversionCurrency = 'USD';
+      if (typeof window.reportQuoteConversion === 'function') {
+        window.reportQuoteConversion(conversionValue, conversionCurrency);
+      } else if (window.gtag) {
+        gtag('event', 'conversion', {
+          send_to: 'AW-17602789326/DjI6CICLnaIbEM7_1MlB',
+          value: conversionValue,
+          currency: conversionCurrency
+        });
+      }
     } catch (err) {
       console.error(err);
       alert('Submission failed. If testing locally, use Firebase emulators or set API_BASE to your domain.');
