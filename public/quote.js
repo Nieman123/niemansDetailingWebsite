@@ -414,7 +414,7 @@
           vehicle: state.vehicle
         });
       }
-      const conversionValue = typeof state.quote === 'number' ? state.quote : 0;
+      const conversionValue = typeof state.quote === 'number' ? state.quote : 1.0;
       const conversionCurrency = 'USD';
       if (typeof window.reportQuoteConversion === 'function') {
         window.reportQuoteConversion(conversionValue, conversionCurrency);
