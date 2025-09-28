@@ -26,12 +26,21 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <!-- Event snippet for Submit lead form conversion page -->
     <script>
       window.reportQuoteConversion = function(value, currency) {
-        if (typeof gtag !== 'function') return;
-        gtag('event', 'conversion', {
+        const amount = typeof value === 'number' ? value : 1.0;
+        const payload = {
           send_to: 'AW-17602789326/DjI6CICLnaIbEM7_1MlB',
-          value: typeof value === 'number' ? value : 1.0,
+          value: amount,
           currency: currency || 'USD'
-        });
+        };
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', 'conversion', payload);
+        } else {
+          window.dataLayer = window.dataLayer || [];
+          window.dataLayer.push({ event: 'conversion', ...payload });
+        }
+        if (typeof window.console !== 'undefined' && window.console.debug) {
+          window.console.debug('[Ads] conversion fired', payload);
+        }
       };
     </script>
     <meta charset="UTF-8" />
