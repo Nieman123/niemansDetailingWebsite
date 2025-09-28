@@ -28,6 +28,8 @@ function onIdle(cb) {
   return setTimeout(cb, 0);
 }
 
+const TAB_HASHES = new Set(['#overview', '#services', '#about', '#contact']);
+
 // Initialize slideshow after DOM is ready but defer to idle
 document.addEventListener('DOMContentLoaded', function () {
   // Lazy import minimal slider after idle; zero JS on first paint
@@ -63,6 +65,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     mapObserver.observe(serviceSection);
   }
+
+  initHashDrivenTabs();
 });
 
 // Google Maps callback
@@ -138,6 +142,26 @@ function loadMap() {
     } catch (_) {}
   };
   document.head.appendChild(script);
+}
+
+// Sync tabs with URL hash for deep linking
+function initHashDrivenTabs() {
+  const sync = () => activateTabFromHash(window.location.hash);
+  if (window.location.hash) {
+    requestAnimationFrame(sync);
+  }
+  window.addEventListener('hashchange', sync);
+}
+
+function activateTabFromHash(hash) {
+  if (!hash) return;
+  const normalized = hash.startsWith('#') ? hash : `#${hash}`;
+  if (!TAB_HASHES.has(normalized)) return;
+  const tab = document.querySelector(`.mdl-layout__tab[href="${normalized}"]`);
+  const panel = document.querySelector(normalized);
+  if (!tab || !panel) return;
+  if (tab.classList.contains('is-active') && panel.classList.contains('is-active')) return;
+  tab.click();
 }
 
 // Scheduler auto-hydration without user interaction
