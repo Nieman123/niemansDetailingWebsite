@@ -23,26 +23,6 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
       gtag('config', 'AW-17602789326');
     </script>
-    <!-- Event snippet for Submit lead form conversion page -->
-    <script>
-      window.reportQuoteConversion = function(value, currency) {
-        const amount = typeof value === 'number' ? value : 1.0;
-        const payload = {
-          send_to: 'AW-17602789326/DjI6CICLnaIbEM7_1MlB',
-          value: amount,
-          currency: currency || 'USD'
-        };
-        if (typeof window.gtag === 'function') {
-          window.gtag('event', 'conversion', payload);
-        } else {
-          window.dataLayer = window.dataLayer || [];
-          window.dataLayer.push({ event: 'conversion', ...payload });
-        }
-        if (typeof window.console !== 'undefined' && window.console.debug) {
-          window.console.debug('[Ads] conversion fired', payload);
-        }
-      };
-    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Get an instant detailing quote in seconds — Asheville mobile detailing by Nieman’s Detailing." />

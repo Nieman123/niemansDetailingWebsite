@@ -53,6 +53,25 @@
 
   let state = loadState();
 
+  const fireAdsConversion = (value, currency = 'USD') => {
+    const amount = typeof value === 'number' ? value : 1.0;
+    const payload = {
+      send_to: 'AW-17602789326/DjI6CICLnaIbEM7_1MlB',
+      value: amount,
+      currency,
+    };
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'conversion', payload);
+    }
+    if (typeof window.console !== 'undefined') {
+      const log = window.console.info || window.console.log;
+      if (log) log.call(window.console, '[Ads] conversion fired', payload);
+    }
+    window.__lastQuoteConversion = payload;
+  };
+
+  window.reportQuoteConversion = fireAdsConversion;
+
   const priceDelta = (addon, vehicle) => (vehicle ? (PRICES.addons[addon]?.[vehicle] || 0) : 0);
 
   const computeQuote = (s) => {
