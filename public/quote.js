@@ -54,7 +54,7 @@
   let state = loadState();
 
   const fireAdsConversion = (value, currency = 'USD') => {
-    const amount = typeof value === 'number' ? value : 1.0;
+    const amount = typeof value === 'number' && isFinite(value) ? value : 1.0;
     const payload = {
       send_to: 'AW-17602789326/DjI6CICLnaIbEM7_1MlB',
       value: amount,
@@ -62,10 +62,12 @@
     };
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'conversion', payload);
+    } else {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({ event: 'conversion', ...payload });
     }
-    if (typeof window.console !== 'undefined') {
-      const log = window.console.info || window.console.log;
-      if (log) log.call(window.console, '[Ads] conversion fired', payload);
+    if (typeof window.console !== 'undefined' && typeof window.console.log === 'function') {
+      window.console.log('[Ads] conversion fired', payload);
     }
     window.__lastQuoteConversion = payload;
   };
@@ -435,15 +437,7 @@
       }
       const conversionValue = typeof state.quote === 'number' ? state.quote : 1.0;
       const conversionCurrency = 'USD';
-      if (typeof window.reportQuoteConversion === 'function') {
-        window.reportQuoteConversion(conversionValue, conversionCurrency);
-      } else if (window.gtag) {
-        gtag('event', 'conversion', {
-          send_to: 'AW-17602789326/DjI6CICLnaIbEM7_1MlB',
-          value: conversionValue,
-          currency: conversionCurrency
-        });
-      }
+      fireAdsConversion(conversionValue, conversionCurrency);
     } catch (err) {
       console.error(err);
       alert('Submission failed. If testing locally, use Firebase emulators or set API_BASE to your domain.');
