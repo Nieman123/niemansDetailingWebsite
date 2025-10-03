@@ -468,3 +468,50 @@
   setStep(state.vehicle ? (state.service ? (state.zip || state.name || state.phone ? 5 : 3) : 2) : 1);
   recalculate();
 })();
+
+// Before/After slider wiring (square frame, no visible range)
+(function(){
+  const frame = document.querySelector('.ba-frame');
+  if (!frame) return;
+  const after = frame.querySelector('.ba-after');
+  const bar = frame.querySelector('.ba-bar');
+  const grip = frame.querySelector('.ba-grip');
+  const range = document.getElementById('ba-range');
+
+  if (!after || !bar || !grip) return;
+
+  function setSplit(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    const right = 100 - pct;
+    after.style.clipPath = `inset(0 ${right}% 0 0)`;
+    bar.style.left = pct + '%';
+    grip.style.left = `calc(${pct}% - 18px)`;
+    if (range) {
+      range.value = String(pct);
+      range.setAttribute('aria-valuenow', String(Math.round(pct)));
+    }
+  }
+
+  // init at 50%
+  setSplit(50);
+
+  // Keyboard accessibility via hidden range (optional but supported)
+  if (range) {
+    range.addEventListener('input', e => setSplit(parseFloat(e.target.value) || 50));
+  }
+
+  // Pointer/touch drag directly on the image area
+  let dragging = false;
+  function pctFromEvent(ev){
+    const rect = frame.getBoundingClientRect();
+    const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    const x = clientX - rect.left;
+    return (x / rect.width) * 100;
+  }
+  frame.addEventListener('pointerdown', e => { dragging = true; setSplit(pctFromEvent(e)); });
+  window.addEventListener('pointermove', e => { if (dragging) setSplit(pctFromEvent(e)); });
+  window.addEventListener('pointerup', () => { dragging = false; });
+
+  frame.addEventListener('touchstart', e => { setSplit(pctFromEvent(e)); }, {passive:true});
+  frame.addEventListener('touchmove', e => { setSplit(pctFromEvent(e)); }, {passive:true});
+})();
