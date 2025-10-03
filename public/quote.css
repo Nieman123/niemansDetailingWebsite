@@ -85,14 +85,32 @@ button { touch-action: manipulation; }
 
 .final-image {
   display: block;
-  margin: 0 auto 1rem;
+  width: 100%;
+  max-width: 100%;
   max-height: 420px;
-  width: auto;
   height: auto;
   border-radius: 12px;
   box-shadow: 0 6px 16px rgba(0,0,0,0.12);
-  margin-bottom: 1.5rem;
   object-fit: cover;
+}
+
+.step5-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.step5-content {
+  flex: 1 1 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.step5-layout .final-image {
+  flex: 0 1 340px;
+  max-width: 360px;
 }
 
 /* Visually hidden utility (for a11y range control) */
@@ -229,6 +247,23 @@ button { touch-action: manipulation; }
     min-width: 0;
     width: 100%;
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .step5-layout {
+    flex-direction: column;
+  }
+
+  .step5-content {
+    order: 1;
+  }
+
+  .step5-layout .final-image {
+    order: 2;
+    max-width: 100%;
+    margin-top: 16px;
+    margin-bottom: 1.5rem;
   }
 }
 

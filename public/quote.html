@@ -165,25 +165,29 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <!-- Step 5: Contact + Quote -->
       <section class="screen" id="step-5" aria-labelledby="step5-label" hidden>
         <h2 id="step5-label" tabindex="-1">5. Contact + Quote</h2>
-        <img class="final-image" src="images/carpics/srv_pics/cleaninterior.jpg" alt="Spotless car interior after professional detailing" loading="lazy" />
-        <p id="quote-line" class="quote-line" aria-live="polite">We’ll confirm pricing by text.</p>
-        <div class="grid">
-          <label class="field">
-            <span>Name</span>
-            <input id="name" autocomplete="name" placeholder="Full name" maxlength="120" required />
-            <small class="error" id="name-error" aria-live="polite" hidden></small>
-          </label>
-          <label class="field">
-            <span>Phone</span>
-            <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(828) 555-1234" required />
-            <small class="error" id="phone-error" aria-live="polite" hidden></small>
-          </label>
-        </div>
-        <p class="consent">By tapping Confirm my quote, you agree we can text you to schedule.</p>
-        <input type="text" id="company" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
-        <div class="nav">
-          <button class="btn secondary" data-prev="4">Back</button>
-          <button class="btn cta" id="submit" data-mode="quote">Confirm my quote</button>
+        <div class="step5-layout">
+          <div class="step5-content">
+            <p id="quote-line" class="quote-line" aria-live="polite">We’ll confirm pricing by text.</p>
+            <div class="grid">
+              <label class="field">
+                <span>Name</span>
+                <input id="name" autocomplete="name" placeholder="Full name" maxlength="120" required />
+                <small class="error" id="name-error" aria-live="polite" hidden></small>
+              </label>
+              <label class="field">
+                <span>Phone</span>
+                <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(828) 555-1234" required />
+                <small class="error" id="phone-error" aria-live="polite" hidden></small>
+              </label>
+            </div>
+            <p class="consent">By tapping Confirm my quote, you agree we can text you to schedule.</p>
+            <input type="text" id="company" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
+            <div class="nav">
+              <button class="btn secondary" data-prev="4">Back</button>
+              <button class="btn cta" id="submit" data-mode="quote">Confirm my quote</button>
+            </div>
+          </div>
+          <img class="final-image" src="images/carpics/srv_pics/cleaninterior.jpg" alt="Spotless car interior after professional detailing" loading="lazy" />
         </div>
       </section>
 
