@@ -206,6 +206,43 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
     </main>
 
+    <a
+      class="call-fab"
+      href="tel:+18282733894"
+      aria-label="Tap to call Nieman’s Detailing"
+      data-cta="fab-call"
+    >
+      <span class="sr-only">Tap to Call</span>
+      <span class="fab-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" role="img" focusable="false">
+          <path d="M6.62 10.79a15.05 15.05 0 006.59 6.59l1.5-1.5a1 1 0 011.01-.24 11.36 11.36 0 003.55.57 1 1 0 011 1V20a1 1 0 01-1 1A17.62 17.62 0 013 3a1 1 0 011-1h2.79a1 1 0 011 1 11.36 11.36 0 00.57 3.55 1 1 0 01-.24 1.01l-1.5 1.5z" />
+        </svg>
+      </span>
+      <span class="fab-text" aria-hidden="true">Call</span>
+    </a>
+
+    <script>
+      (function () {
+        const init = () => {
+          const fab = document.querySelector('.call-fab');
+          if (!fab) return;
+          const possibleFooters = document.querySelectorAll(
+            'footer, .footer, [data-fixed-footer], .fixed-footer, .site-footer'
+          );
+          const hasFixedFooter = Array.from(possibleFooters).some((el) => {
+            return window.getComputedStyle(el).position === 'fixed';
+          });
+          document.body.classList.toggle('fixed-footer-offset', hasFixedFooter);
+        };
+        if (document.readyState === 'complete') {
+          init();
+        } else {
+          window.addEventListener('load', init, { once: true });
+        }
+        window.addEventListener('resize', init, { passive: true });
+      })();
+    </script>
+
     <script src="quote.js" defer></script>
   </body>
   </html>
