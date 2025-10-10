@@ -53,23 +53,30 @@
 
   let state = loadState();
 
-  const fireAdsConversion = (value, currency = 'USD') => {
+  const fireAdsConversion = (value, currency = 'USD', options = {}) => {
     const amount = typeof value === 'number' && isFinite(value) ? value : 1.0;
+    const extraParams = options && typeof options.params === 'object' ? options.params : null;
+    const eventCallback = options && typeof options.eventCallback === 'function' ? options.eventCallback : null;
     const payload = {
       send_to: 'AW-17602789326/DjI6CICLnaIbEM7_1MlB',
       value: amount,
       currency,
+      ...(extraParams || {}),
     };
+    if (eventCallback) payload.event_callback = eventCallback;
     if (typeof window.gtag === 'function') {
       window.gtag('event', 'conversion', payload);
     } else {
       window.dataLayer = window.dataLayer || [];
       window.dataLayer.push({ event: 'conversion', ...payload });
+      if (eventCallback) setTimeout(eventCallback, 0);
     }
     if (typeof window.console !== 'undefined' && typeof window.console.log === 'function') {
       window.console.log('[Ads] conversion fired', payload);
     }
-    window.__lastQuoteConversion = payload;
+    const lastPayload = { ...payload };
+    if (eventCallback) delete lastPayload.event_callback;
+    window.__lastQuoteConversion = lastPayload;
   };
 
   window.reportQuoteConversion = fireAdsConversion;
@@ -307,6 +314,51 @@
     $('#submit').addEventListener('click', submit);
   };
 
+  const wireCallFab = () => {
+    const fab = document.querySelector('.call-fab');
+    if (!fab) return;
+    fab.addEventListener('click', (event) => {
+      const href = fab.getAttribute('href') || '';
+      const shouldIntercept = /^tel:/i.test(href);
+      let navigationHandled = false;
+      const resumeNavigation = () => {
+        if (navigationHandled) return;
+        navigationHandled = true;
+        if (shouldIntercept && href) {
+          window.location.href = href;
+        }
+      };
+
+      if (shouldIntercept) event.preventDefault();
+
+      const conversionValue = typeof state.quote === 'number' ? state.quote : 1;
+      const conversionOptions = {
+        params: { event_label: 'quote_call_fab' },
+      };
+      if (shouldIntercept) conversionOptions.eventCallback = resumeNavigation;
+      fireAdsConversion(conversionValue, 'USD', conversionOptions);
+
+      const analyticsPayload = {
+        method: 'quote_call_fab',
+        page: 'quote',
+        service: state.service || 'unset',
+        vehicle: state.vehicle || 'unset',
+        value: conversionValue,
+      };
+
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', 'call_click', analyticsPayload);
+      } else {
+        window.dataLayer = window.dataLayer || [];
+        window.dataLayer.push({ event: 'call_click', ...analyticsPayload });
+      }
+
+      if (shouldIntercept) {
+        setTimeout(resumeNavigation, 1200);
+      }
+    });
+  };
+
   const validate = () => {
     const errors = [];
     if (!state.vehicle) errors.push('Select a vehicle type');
@@ -465,6 +517,7 @@
   captureUTMs();
   hydrateSelections();
   wire();
+  wireCallFab();
   setStep(state.vehicle ? (state.service ? (state.zip || state.name || state.phone ? 5 : 3) : 2) : 1);
   recalculate();
 })();
