@@ -74,7 +74,7 @@ button { touch-action: manipulation; }
 .step-count { color:#9aa3b2; font-size: 13px; margin: 0 0 8px; }
 
 /* Trust strip */
-.trust { display:flex; flex-wrap:wrap; gap:8px 12px; list-style:none; padding:0; margin:6px 0 14px; color:#c7cfe0; font-size:13px; }
+.trust { display:flex; flex-wrap:wrap; justify-content:center; gap:8px 12px; list-style:none; padding:0; margin:6px 0 14px; color:#c7cfe0; font-size:13px; }
 .trust li { padding:6px 10px; border:1px solid rgba(255,255,255,.15); border-radius:999px; }
 
 /* Quote teaser/line */
