@@ -71,6 +71,44 @@ html {
   color: inherit;
   width: calc(100% - 80px);
 }
+.hero-layout {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.hero-copy {
+  flex: 0 1 36%;
+  text-align: center;
+}
+.hero-copy .main-title,
+.hero-copy .sub-title,
+.hero-copy .hero-cta {
+  text-align: center;
+}
+.hero-layout .slideshow {
+  flex: 1 1 64%;
+  max-width: none;
+  margin: 0;
+}
+@media (max-width: 900px) {
+  .hero-layout {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .hero-layout .slideshow {
+    order: -1;
+    width: 100%;
+  }
+  .hero-copy {
+    width: 100%;
+    text-align: center;
+  }
+  .hero-copy .main-title,
+  .hero-copy .sub-title,
+  .hero-copy .hero-cta {
+    text-align: center;
+  }
+}
 .mdl-site.mdl-site .mdl-card__supporting-text h2 {
   margin-top: 0;
   margin-bottom: 20px;

@@ -91,18 +91,27 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   .main-title { font-weight:500; margin:0.5rem 0 0; text-align:center; }
   .sub-title { margin:0 0 1rem; text-align:center; }
   .hero-cta { margin:1rem 0; text-align:center; }
+  .hero-layout { display:flex; align-items:center; gap:32px; }
+  .hero-copy { flex:0 1 36%; text-align:center; }
+  .hero-copy .main-title,
+  .hero-copy .sub-title,
+  .hero-copy .hero-cta { text-align:center; }
+  .hero-layout .slideshow { flex:1 1 64%; max-width:none; margin:0; }
   .slideshow { max-width:950px; margin:0 auto; }
   .slideshow .slide { aspect-ratio:16/9; margin:0; }
   .slideshow img { width:100%; height:auto; display:block; }
   .mdl-chip-float-contact { position:fixed; right:200px; bottom:40px; z-index:99; }
   /* prevent any sneaky shifts */
   .hero-img { display:block; width:100%; height:auto; }
-  /* Make the hero slideshow paint before headings on small screens */
-  .mdl-card__supporting-text { display:flex; flex-direction:column; }
-  .slideshow { order: 0; }
+  @media (max-width: 900px) {
+    .hero-layout { flex-direction:column; gap:16px; }
+    .hero-layout .slideshow { order:-1; width:100%; }
+    .hero-copy { width:100%; text-align:center; }
+    .hero-copy .main-title,
+    .hero-copy .sub-title,
+    .hero-copy .hero-cta { text-align:center; }
+  }
   @media (max-width: 768px) {
-    .slideshow { order: -1; }
-    .main-title, .sub-title, .hero-cta { order: 0; }
     .mdl-site .mdl-card .mdl-card__supporting-text { width: 100%; }
     .main-title { font-size: 1.6rem; }
     .sub-title { font-size: 1.1rem; }
@@ -295,11 +304,13 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
         <div class="mdl-card mdl-cell mdl-cell--12-col">
 
-            <div class="mdl-card__supporting-text">
-              <h1 class="main-title">Mobile Detailing in Asheville, NC</h1>
-              <h3 class="sub-title">Bringing the shine right to your driveway!</h3>
-              <div class="hero-cta">
-                <a href="https://niemansdetailing.com/schedule" class="mdl-button mdl-button--raised mdl-button--colored" onclick="trackEvent('CTA','click','Book Now');">Book Now</a>
+            <div class="mdl-card__supporting-text hero-layout">
+              <div class="hero-copy">
+                <h2 class="main-title">Mobile Detailing in Asheville, NC</h2>
+                <h3 class="sub-title">Bringing the shine right to your driveway!</h3>
+                <div class="hero-cta">
+                  <a href="https://niemansdetailing.com/schedule" class="mdl-button mdl-button--raised mdl-button--colored" onclick="trackEvent('CTA','click','Book Now');">Book Now</a>
+                </div>
               </div>
               <!--Slideshow here-->
               <div class="slideshow">
