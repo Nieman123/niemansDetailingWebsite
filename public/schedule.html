@@ -85,18 +85,23 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     .scheduler-fallback a{color:#4dd0e1}
     .scheduler-shell.ready .scheduler-note,
     .scheduler-shell.ready .scheduler-skeleton { display:none }
+    .schedule-header .mdl-layout__header-row { padding-left: 0; padding-right: 0; }
+    .schedule-header .schedule-logo-row,
+    .schedule-header .schedule-logo-row--mobile { justify-content: center; }
+    .schedule-header .schedule-logo-row img,
+    .schedule-header .schedule-logo-row--mobile img { display: block; margin: 0 auto; }
   </style>
 
   <!-- Inline GA removed to comply with CSP; analytics can be loaded via external script if desired. -->
 </head>
 <body class="mdl-site mdl-color--grey-800 mdl-color-text--grey-700 mdl-base">
 <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
-  <header class="mdl-layout__header mdl-layout__header--scroll mdl-color--grey-800">
+  <header class="mdl-layout__header mdl-layout__header--scroll mdl-color--grey-800 schedule-header">
 
     <!--Large Screen Header and Logo-->
     <div class="mdl-layout--large-screen-only mdl-layout__header-row">
     </div>
-    <div class="mdl-layout--large-screen-only mdl-layout__header-row">
+    <div class="mdl-layout--large-screen-only mdl-layout__header-row schedule-logo-row">
       <a href="https://niemansdetailing.com/"><img src="images/ND-logo-white-transparentbg.png" alt="niemans-detailing-logo-white-transparent-background"
            title="Nieman's Detailing" width="200px" height="200px"></a>
     </div>
@@ -104,7 +109,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     </div>
 
     <!--Small Screen Header and Logo-->
-    <div class="mdl-layout--small-screen-only mdl-layout__header-row">
+    <div class="mdl-layout--small-screen-only mdl-layout__header-row schedule-logo-row--mobile">
       <img class="h-logo" src="images/ND-logo-white-transparentbg-horizontal.png"
            alt="niemans-detailing-horizontal-logo-white-transparent-background" title="Nieman's Detailing"
            width="500px" height="50px">
@@ -248,9 +253,6 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
         <!--</div>-->
       </div>
       <div class="mdl-mega-footer--bottom-section">
-        <div class="mdl-logo">
-          A Daft Ware creation
-        </div>
         <ul class="mdl-mega-footer--link-list">
 
         </ul>
