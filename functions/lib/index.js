@@ -59,6 +59,7 @@ const ADDON_LABELS = {
     engine: "Engine Bay",
     soiled: "Heavily Soiled",
     ceramic: "Ceramic Consult",
+    headlights: "Headlight Restoration",
 };
 const BASE = {
     sedan: { quick: 150, full: 300, interior: 99 },
@@ -72,6 +73,7 @@ const ADDONS = {
     engine: { sedan: 25, suv: 25, truck: 30 },
     soiled: { sedan: 40, suv: 60, truck: 80 },
     ceramic: { sedan: 0, suv: 0, truck: 0 },
+    headlights: { sedan: 75, suv: 85, truck: 95 },
 };
 const isConsult = (service) => service === "other";
 function coerceVehicle(v) {
@@ -98,7 +100,7 @@ function coerceService(s) {
 function coerceAddons(arr) {
     if (!Array.isArray(arr))
         return [];
-    const valid = ["wax", "pethair", "odor", "engine", "soiled", "ceramic"];
+    const valid = ["wax", "pethair", "odor", "engine", "soiled", "ceramic", "headlights"];
     return arr.map(x => String(x || "").toLowerCase().trim()).filter((x) => valid.includes(x));
 }
 function computeQuote(vehicle, service, addons) {
@@ -118,8 +120,6 @@ function normalizeUSPhone(input) {
         return { e164: "+1" + digits, national: `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}` };
     if (digits.length === 11 && digits.startsWith("1"))
         return { e164: "+" + digits, national: `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}` };
-    if (String(input || "").startsWith("+"))
-        return { e164: String(input), national: null };
     return { e164: null, national: null };
 }
 function getClientIP(req) {
@@ -176,6 +176,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
         const zip = String(body.zip || "").replace(/\D/g, "").slice(0, 5) || null;
         const notes = stripHtml(body.notes);
         const utm = typeof body.utm === "object" && body.utm !== null ? body.utm : {};
+        const honeypot = Boolean(body.honeypot);
         // Validate required fields
         const errors = [];
         if (!vehicle)
@@ -184,7 +185,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             errors.push("service");
         if (!name)
             errors.push("name");
-        if (!phoneRaw)
+        if (!phone_normalized)
             errors.push("phone");
         if (zip && !/^\d{5}$/.test(zip))
             errors.push("zip");
@@ -207,7 +208,8 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             quote_note: quote.consult ? "consult" : null,
             utm,
             ts: new Date().toISOString(),
-            status: "new",
+            status: honeypot ? "spam" : "new",
+            honeypot,
             user_agent: (body.user_agent || req.headers["user-agent"] || "").toString().slice(0, 512),
             referrer: (body.referrer || req.headers["referer"] || "").toString().slice(0, 1024),
             ip: getClientIP(req),
@@ -222,7 +224,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             if (!botToken || !chatId) {
                 firebase_functions_1.logger.error("Missing Telegram config via .env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)");
             }
-            else {
+            else if (!honeypot) {
                 const vLabel = VEHICLE_LABELS[vehicle];
                 const sLabel = SERVICE_LABELS[service];
                 const pricePart = quote.consult ? "consult" : `$${quote.total}`;
@@ -231,6 +233,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                 const openLink = `${HOSTING_ORIGIN}/admin/index.html?id=${encodeURIComponent(ref.id)}`;
                 const text = [
                     `New Lead: ${vLabel} • ${sLabel} • ${pricePart}`,
+                    `Name: ${name}`,
                     `${zip ? `ZIP ${zip}` : "ZIP —"} • ${phonePretty}`,
                     `Add-ons: ${addonsList}`,
                     notes ? `Notes: ${notes}` : null,

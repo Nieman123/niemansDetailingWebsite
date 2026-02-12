@@ -91,7 +91,6 @@ function normalizeUSPhone(input: unknown): { e164: string | null, national: stri
   const digits = String(input || "").replace(/\D/g, "");
   if (digits.length === 10) return { e164: "+1" + digits, national: `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}` };
   if (digits.length === 11 && digits.startsWith("1")) return { e164: "+" + digits, national: `(${digits.slice(1,4)}) ${digits.slice(4,7)}-${digits.slice(7)}` };
-  if (String(input || "").startsWith("+")) return { e164: String(input), national: null };
   return { e164: null, national: null };
 }
 
@@ -155,7 +154,7 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
     if (!vehicle) errors.push("vehicle");
     if (!service) errors.push("service");
     if (!name) errors.push("name");
-    if (!phoneRaw) errors.push("phone");
+    if (!phone_normalized) errors.push("phone");
     if (zip && !/^\d{5}$/.test(zip)) errors.push("zip");
     if (errors.length) { res.status(400).json({ ok: false, error: `invalid_fields:${errors.join(',')}` }); return; }
 

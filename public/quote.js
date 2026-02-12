@@ -192,13 +192,29 @@
 
   const sanitize = (s) => (s || '').replace(/<[^>]*>/g, '').trim();
 
+  const getUsPhoneDigits = (value) => {
+    const rawDigits = (value || '').replace(/\D/g, '');
+    const digits = rawDigits.length > 10 && rawDigits.startsWith('1')
+      ? rawDigits.slice(1)
+      : rawDigits;
+    return digits.slice(0, 10);
+  };
+
   const formatPhone = (value) => {
-    const digits = (value || '').replace(/\D/g, '').slice(0, 10);
+    const digits = getUsPhoneDigits(value);
     const p1 = digits.slice(0,3), p2 = digits.slice(3,6), p3 = digits.slice(6,10);
     if (digits.length > 6) return `(${p1}) ${p2}-${p3}`;
     if (digits.length > 3) return `(${p1}) ${p2}`;
     if (digits.length > 0) return `(${p1}`;
     return '';
+  };
+
+  const clearStoredPii = () => {
+    state.zip = '';
+    state.notes = '';
+    state.name = '';
+    state.phone = '';
+    saveState(state);
   };
 
   const getQueryParams = () => {
@@ -362,7 +378,7 @@
     if (!state.vehicle) errors.push('Select a vehicle type');
     if (!state.service) errors.push('Select a service');
     if (!sanitize(state.name)) errors.push('Enter your name');
-    const phoneDigits = (state.phone || '').replace(/\D/g, '');
+    const phoneDigits = getUsPhoneDigits(state.phone);
     if (phoneDigits.length !== 10) {
       showPhoneError('Enter a valid US phone');
       errors.push('Enter a valid US phone');
@@ -426,6 +442,7 @@
           const data = await res.json().catch(() => null);
           if (data && data.ok && data.id) {
             showConfirm(payload, data.id);
+            clearStoredPii();
             return;
           }
         }
@@ -477,6 +494,7 @@
       }
       if (!data.ok) throw new Error(data.error || 'Failed to submit');
       showConfirm(payload, data.id);
+      clearStoredPii();
       if (window.gtag) {
         gtag('event', 'lead_submit', {
           method: 'quick_quote',
