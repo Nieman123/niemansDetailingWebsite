@@ -46,6 +46,10 @@
         "destination": "/schedule.html"
       },
       {
+        "source": "/promo",
+        "destination": "/promo.html"
+      },
+      {
         "source": "/quote",
         "destination": "/quote.html"
       },
