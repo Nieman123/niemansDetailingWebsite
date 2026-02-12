@@ -21,7 +21,7 @@ html, body { margin:0; padding:0; background:linear-gradient(180deg,#060a18 0%,#
 .slideshow { max-width:950px; margin:0 auto; }
 .slideshow .slide { aspect-ratio:16/9; margin:0; }
 .slideshow img { width:100%; height:auto; display:block; }
-.mdl-chip-float-contact { position:fixed; right:200px; bottom:40px; z-index:99; }
+.mdl-chip-float-contact { position:fixed; right:200px; bottom:40px; z-index:99; opacity:0; transform:translateY(10px); pointer-events:none; }
 /* prevent any sneaky shifts */
 .hero-img { display:block; width:100%; height:auto; }
 @media (max-width: 900px) {

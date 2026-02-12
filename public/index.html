@@ -102,7 +102,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   .slideshow { max-width:950px; margin:0 auto; }
   .slideshow .slide { aspect-ratio:16/9; margin:0; }
   .slideshow img { width:100%; height:auto; display:block; }
-  .mdl-chip-float-contact { position:fixed; right:200px; bottom:40px; z-index:99; }
+  .mdl-chip-float-contact { position:fixed; right:200px; bottom:40px; z-index:99; opacity:0; transform:translateY(10px); pointer-events:none; }
   /* prevent any sneaky shifts */
   .hero-img { display:block; width:100%; height:auto; }
   @media (max-width: 900px) {
@@ -308,16 +308,14 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
     <!--Contact Chip-->
     <div class="mdl-chip-float-contact">
+      <div class="call-fab-blurb" role="status" aria-live="polite">
+        Feel free to call me and leave a voicemail if I don't pick up, texting works too!
+      </div>
       <span class="mdl-chip mdl-chip--contact mdl-chip-bg">
     <span class="mdl-chip__contact mdl-color--primary mdl-color-text--white"><i
       class="phone-icon material-icons md-light" aria-label="Questions? Call">phone</i></span>
         <span class="mdl-chip__text">Questions? Call <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone');">(828) 273-3894</a></strong></span>
       </span>
-      <div style="margin-top:8px;">
-        <a class="mdl-button mdl-button--raised mdl-button--colored" href="/nieman.vcf" download rel="nofollow">
-          ADD TO CONTACTS
-        </a>
-      </div>
     </div>
 
     <!--Main Panel-->
@@ -484,8 +482,24 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3 class="section-title">The Works</h3>
               This package is a safe and comprehensive cleaning of both the interior and exterior including wheel,
               tire, and engine bay detailing, steam cleaning, a premium wax and more.
-              <div class="service-more-wrap">
-                <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More The Works'); return navigateToService('full-detail');">More &gt;</a>
+              <div class="overview-service-actions">
+                <div class="overview-service-meta">
+                  <span class="mdl-chip mdl-chip--contact">
+                    <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
+                      <i class="material-icons md-light dollar-icon">attach_money</i>
+                    </span>
+                    <span class="mdl-chip__text">$300 sedan / $350 SUV</span>
+                  </span>
+                  <span class="mdl-chip mdl-chip--contact overview-popular-chip">
+                    <span class="mdl-chip__contact mdl-color--primary mdl-color-text--white">
+                      <i class="material-icons md-light">star</i>
+                    </span>
+                    <span class="mdl-chip__text">Most Popular</span>
+                  </span>
+                </div>
+                <div class="service-more-wrap">
+                  <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More The Works'); return navigateToService('full-detail');">More &gt;</a>
+                </div>
               </div>
             </div>
 
@@ -501,8 +515,18 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3 class="section-title">Headlight Restoration</h3>
               A dull and yellowed headlight gives your car a dated and dull look while reducing safety at night.
               Return your lights permanently to their original condition and see clearly at night.
-              <div class="service-more-wrap">
-                <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Headlight'); return navigateToService('h-restoration');">More &gt;</a>
+              <div class="overview-service-actions">
+                <div class="overview-service-meta">
+                  <span class="mdl-chip mdl-chip--contact">
+                    <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
+                      <i class="material-icons md-light dollar-icon">attach_money</i>
+                    </span>
+                    <span class="mdl-chip__text">$75</span>
+                  </span>
+                </div>
+                <div class="service-more-wrap">
+                  <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Headlight'); return navigateToService('h-restoration');">More &gt;</a>
+                </div>
               </div>
             </div>
 
@@ -518,8 +542,18 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3 class="section-title">Paint Correction and Polishing</h3>
               This process removes scratches, swirls, holograms and oxidation defects in the clear-coat of your
               vehicle resulting in an extremely glossy, mirror-like finish. The ultimate restoration of your paint.
-              <div class="service-more-wrap">
-                <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Paint Correction'); return navigateToService('p-restoration');">More &gt;</a>
+              <div class="overview-service-actions">
+                <div class="overview-service-meta">
+                  <span class="mdl-chip mdl-chip--contact">
+                    <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
+                      <i class="material-icons md-light dollar-icon">attach_money</i>
+                    </span>
+                    <span class="mdl-chip__text">Call for quote</span>
+                  </span>
+                </div>
+                <div class="service-more-wrap">
+                  <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Paint Correction'); return navigateToService('p-restoration');">More &gt;</a>
+                </div>
               </div>
             </div>
 
@@ -535,8 +569,18 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3 class="section-title">Trim Restoration</h3>
               Permanently restore the grey UV damaged plastics on your vehicle to the deep rich black finish that
               came from the factory
-              <div class="service-more-wrap">
-                <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Trim'); return navigateToService('t-restoration');">More &gt;</a>
+              <div class="overview-service-actions">
+                <div class="overview-service-meta">
+                  <span class="mdl-chip mdl-chip--contact">
+                    <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
+                      <i class="material-icons md-light dollar-icon">attach_money</i>
+                    </span>
+                    <span class="mdl-chip__text">$75</span>
+                  </span>
+                </div>
+                <div class="service-more-wrap">
+                  <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Trim'); return navigateToService('t-restoration');">More &gt;</a>
+                </div>
               </div>
             </div>
 
@@ -674,6 +718,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3 id="full-detail" class="section-title">The Works</h3>
               <p class="sec-text">This package is a safe and comprehensive cleaning of both the interior and exterior
                 including wheel, tire, and engine bay detailing, steam cleaning, a premium wax and more.</p>
+              <p class="sec-text">Best for first-time clients or vehicles that have gone a while between details. Most
+                appointments run 4-6 hours depending on vehicle size and overall condition.</p>
                 <p class="sec-text"><strong>Why it may cost more:</strong> pricing varies by vehicle size and condition. Large SUVs/trucks, heavy soil, pet hair, excessive sap/bug buildup, and add-ons like clay/iron decontamination or paint correction increase labor and materials. We’ll quote it up front so there are no surprises.</p>
             </div>
             <div class="mdl-cell">
@@ -695,6 +741,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
               <h3 id="o-over" class="section-title">Quick Once Over</h3>
               <p class="sec-text">A quicker, less intensive detail that removes the majority of the dirt and contaminants on the interior and exterior. Wheels and glass are cleaned and the interior is vacuumed and wiped down. Finished with a sun-safe SiO₂ spray sealant for slickness and water beading.</p>
+              <p class="sec-text">Great for regular upkeep between full details and ideal every 4-8 weeks to keep your
+                vehicle looking clean without committing to a full restoration each visit.</p>
             </div>
             <div class="mdl-cell">
                 <span class="mdl-chip mdl-chip--contact">
@@ -715,6 +763,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
               <h3 id="monthly-mini" class="section-title">Monthly Mini</h3>
               <p class="sec-text">A 60–75 minute maintenance service for existing clients: exterior wash, wheels/tires, glass, light interior vacuum and wipe-down, finished with a SiO₂ spray sealant for fresh gloss and hydrophobics.</p>
+              <p class="sec-text">Designed as a maintenance plan after an initial detail so buildup never gets out of
+                hand and your protection stays topped up month to month.</p>
             </div>
             <div class="mdl-cell">
               <span class="mdl-chip mdl-chip--contact">
@@ -737,6 +787,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <p class="sec-text">A dull and yellowed headlight gives your car a dated and dull look while reducing
                 safety at night.
                 Return your lights permanently to their original condition and see clearly at night.</p>
+              <p class="sec-text">Service includes sanding and polishing stages, then a UV-resistant finish to help slow
+                future yellowing and keep nighttime visibility clear.</p>
             </div>
             <div class="mdl-cell">
                 <span class="mdl-chip mdl-chip--contact">
@@ -760,6 +812,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
                 clear-coat of your
                 vehicle resulting in an extremely glossy, mirror-like finish. The ultimate restoration of your
                 paint</p>
+              <p class="sec-text">Single-step and multi-step correction options are available based on paint condition
+                and your target finish. A test spot helps determine the safest and most effective approach.</p>
             </div>
             <div class="mdl-cell">
                 <span class="mdl-chip mdl-chip--contact">
@@ -780,6 +834,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
               <h3 id="m-polish" class="section-title">Metal Polishing</h3>
               <p class="sec-text">From Airstreams to truck wheels to boats, if it's metal we can polish it. Put the reflections back into your metal and protect it for the long run.</p>
+              <p class="sec-text">Aluminum, chrome, and stainless can all be restored. Time and final pricing depend on
+                oxidation level, access, and the amount of correction needed.</p>
             </div>
             <div class="mdl-cell">
                 <span class="mdl-chip mdl-chip--contact">
@@ -801,6 +857,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3 id="t-restoration" class="section-title">Trim Restoration</h3>
               <p class="sec-text">Permanently restore the grey UV damaged plastics on your vehicle to the deep rich
                 black finish that came from the factory.</p>
+              <p class="sec-text">Unlike temporary dressings, this process deep-cleans and restores trim for a
+                longer-lasting, factory-like appearance that resists wash-off and fading.</p>
             </div>
             <div class="mdl-cell">
                 <span class="mdl-chip mdl-chip--contact">
@@ -824,6 +882,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               industrial fallout contamination removed and the paint sealed with long lasting and protective wax.
               Also included is an interior and exterior trim protectant to block damaging UV rays. Ensure that your
                 paint and plastic remain how it looked from the factory. Paint correction can be added additionally.</p>
+              <p class="sec-text">Even new vehicles often arrive with embedded rail dust and dealer-installed residue.
+                Early decontamination and protection keeps the finish cleaner, glossier, and easier to maintain.</p>
             </div>
             <div class="mdl-cell">
                 <span class="mdl-chip mdl-chip--contact">
@@ -846,6 +906,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
                <p class="sec-text">A complete removal of excess paint or other substance that's been sprayed onto your
                  paint. Whether it's spray foam insulation, or paint from the body shop, this process leaves the paint
                  clean and smooth to the touch.</p>
+               <p class="sec-text">Each job starts with a test spot so the safest method is used for your specific
+                 contamination. Goal is full removal while protecting your clear coat.</p>
             </div>
             <div class="mdl-cell">
                 <span class="mdl-chip mdl-chip--contact">
@@ -866,6 +928,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
               <h3 id="hw-removal" class="section-title">Hard Water Spot Removal</h3>
               <p class="sec-text">Water spots on your paint or glass? Get them removed permanently!</p>
+              <p class="sec-text">Mineral deposits can etch into paint and glass if left untreated. This service removes
+                buildup and restores clarity and smoothness.</p>
             </div>
             <div class="mdl-cell">
                 <span class="mdl-chip mdl-chip--contact">
@@ -888,6 +952,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <p class="sec-text">Sometimes a vehicle can develop an unwanted smell or even mold over in humid
                 environments like the Appalachian mountains. Our industrial strength ozone and steam treatment will
                 leave your car smelling better.</p>
+              <p class="sec-text">Source removal comes first, then ozone treatment for deeper neutralization. Smoke,
+                mildew, and pet odors may require multiple steps depending on severity.</p>
             </div>
             <div class="mdl-cell">
                 <span class="mdl-chip mdl-chip--contact">
@@ -1061,6 +1127,6 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 <!--Scriptz-->
 <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
 <!-- removed better-simple-slideshow; minimal slider hydrates on idle -->
-<script defer src="scripts/main.js?v=20260212"></script>
+<script defer src="scripts/main.js?v=20260212f"></script>
 </body>
 </html>

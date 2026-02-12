@@ -463,12 +463,22 @@ html {
 .mdl-chip-float-contact {
   text-align: center;
   position: fixed;
-  /* Allow chip and button to size naturally */
+  /* Allow chip to size naturally */
   width: auto;
   height: auto;
   bottom: 40px;
   right: 200px;
   z-index: 99;
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.mdl-chip-float-contact.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 /* Improve floating contact UI on mobile */
@@ -481,9 +491,8 @@ html {
     max-width: 85vw;
     display: inline-flex;
   }
-  .mdl-chip-float-contact .mdl-button {
-    margin-top: 8px;
-    white-space: nowrap;
+  .mdl-chip-float-contact .call-fab-blurb {
+    max-width: min(84vw, 340px);
   }
 }
 
@@ -815,8 +824,85 @@ body.mdl-site {
 }
 
 .mdl-site #overview .overview-services .service-more-wrap {
-  margin-top: 10px;
+  margin-top: 0;
   text-align: center;
+}
+
+.mdl-site #overview .overview-services .overview-service-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.mdl-site #overview .overview-services .overview-service-meta {
+  margin-top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+
+.mdl-site #overview .overview-services .overview-service-meta .mdl-chip {
+  margin: 0;
+  background: linear-gradient(
+    140deg,
+    rgba(250, 244, 255, 0.8) 0%,
+    rgba(230, 219, 255, 0.62) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
+}
+
+.mdl-site #overview .overview-services .overview-service-meta .mdl-chip__text {
+  color: #241f36;
+  font-weight: 600;
+}
+
+.mdl-site #overview .overview-services .overview-service-meta .mdl-chip__contact {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.mdl-site #overview .overview-services .overview-popular-chip .mdl-chip__text {
+  color: #2b1f60;
+}
+
+@keyframes ndOverviewActionFade {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mdl-site #overview .overview-services .overview-service-actions.overview-reveal .mdl-chip,
+.mdl-site #overview .overview-services .overview-service-actions.overview-reveal .service-more-btn {
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+}
+
+.mdl-site #overview .overview-services .overview-service-actions.overview-reveal.is-visible .mdl-chip,
+.mdl-site #overview .overview-services .overview-service-actions.overview-reveal.is-visible .service-more-btn {
+  animation: ndOverviewActionFade 0.5s ease forwards;
+}
+
+.mdl-site #overview .overview-services .overview-service-actions.overview-reveal.is-visible .overview-service-meta .mdl-chip:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.mdl-site #overview .overview-services .overview-service-actions.overview-reveal.is-visible .overview-service-meta .mdl-chip:nth-child(2) {
+  animation-delay: 0.13s;
+}
+
+.mdl-site #overview .overview-services .overview-service-actions.overview-reveal.is-visible .service-more-btn {
+  animation-delay: 0.22s;
 }
 
 .mdl-site #overview .overview-services .service-more-btn {
@@ -837,9 +923,11 @@ body.mdl-site {
   text-transform: none;
   font-weight: 600;
   letter-spacing: 0.01em;
-  min-height: 0;
-  line-height: 1.2;
-  padding: 8px 14px;
+  min-height: 32px;
+  height: 32px;
+  line-height: 32px;
+  padding: 0 14px;
+  white-space: nowrap;
 }
 
 .mdl-site #overview .overview-services .service-more-btn:hover {
@@ -849,6 +937,15 @@ body.mdl-site {
     rgba(255, 250, 255, 0.82) 0%,
     rgba(240, 231, 255, 0.64) 100%
   );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mdl-site #overview .overview-services .overview-service-actions.overview-reveal .mdl-chip,
+  .mdl-site #overview .overview-services .overview-service-actions.overview-reveal .service-more-btn {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
 }
 
 .card-image__img {
@@ -888,14 +985,31 @@ body.mdl-site {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
 
-.mdl-chip-float-contact .mdl-button {
+.mdl-chip-float-contact .call-fab-blurb {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  max-width: 360px;
+  padding: 10px 12px;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(111, 67, 219, 0.96), rgba(77, 42, 170, 0.97));
-  box-shadow: 0 12px 26px rgba(16, 10, 39, 0.42);
+  text-align: left;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: #f4efff;
+  border: 1px solid rgba(200, 186, 255, 0.4);
+  background: linear-gradient(140deg, rgba(22, 30, 64, 0.94) 0%, rgba(13, 19, 45, 0.96) 100%);
+  box-shadow: 0 12px 26px rgba(8, 10, 24, 0.45);
+  backdrop-filter: blur(8px) saturate(125%);
+  -webkit-backdrop-filter: blur(8px) saturate(125%);
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.mdl-chip-float-contact .mdl-button:hover {
-  background: linear-gradient(135deg, rgba(124, 79, 231, 0.98), rgba(88, 48, 188, 0.98));
+.mdl-chip-float-contact.show-blurb .call-fab-blurb {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .mdl-site .mdl-mega-footer {

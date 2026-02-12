@@ -18,6 +18,9 @@ export function hydrateSlider(rootSelector = '.slideshow') {
   const slides = Array.from(track.children);
   let index = 0;
   const count = slides.length;
+  const AUTO_MS = 3000;
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let autoTimer = null;
 
   // Show controls if more than 1 slide
   const showControls = count > 1;
@@ -34,8 +37,23 @@ export function hydrateSlider(rootSelector = '.slideshow') {
   prev && prev.addEventListener('click', () => go(index - 1));
   next && next.addEventListener('click', () => go(index + 1));
 
+  function stopAutoplay() {
+    if (!autoTimer) return;
+    clearInterval(autoTimer);
+    autoTimer = null;
+  }
+
+  function startAutoplay() {
+    if (prefersReducedMotion || count <= 1 || autoTimer) return;
+    autoTimer = setInterval(() => {
+      go(index + 1);
+    }, AUTO_MS);
+  }
+
   // Basic swipe support
   let startX = null;
+  root.addEventListener('touchstart', () => stopAutoplay(), { passive: true });
+  root.addEventListener('touchend', () => startAutoplay(), { passive: true });
   track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
   track.addEventListener('touchmove', e => {
     if (startX == null) return;
@@ -45,5 +63,18 @@ export function hydrateSlider(rootSelector = '.slideshow') {
       startX = null;
     }
   }, { passive: true });
-}
 
+  // Auto switch every 3s, pause on interaction, resume on idle.
+  root.addEventListener('mouseenter', stopAutoplay);
+  root.addEventListener('mouseleave', startAutoplay);
+  root.addEventListener('focusin', stopAutoplay);
+  root.addEventListener('focusout', startAutoplay);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopAutoplay();
+      return;
+    }
+    startAutoplay();
+  });
+  startAutoplay();
+}

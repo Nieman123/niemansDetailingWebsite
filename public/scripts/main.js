@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Lazy import minimal slider after idle; zero JS on first paint
   onIdle(() => {
     if (window.sliderHydrated) return;
-    import('/scripts/slider.js').then(m => {
+    import('/scripts/slider.js?v=20260212b').then(m => {
       try { m.hydrateSlider && m.hydrateSlider('.slideshow'); window.sliderHydrated = true; } catch (_) {}
     }).catch(() => {});
   });
@@ -89,6 +89,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   initHashDrivenTabs();
   initMobileMenu();
+  initOverviewActionReveal();
+  initDelayedCallFab();
 });
 
 // Google Maps callback
@@ -392,6 +394,48 @@ function initMobileMenu() {
   window.addEventListener('resize', function () {
     if (window.innerWidth > 768) closeMenu();
   });
+}
+
+function initOverviewActionReveal() {
+  const actionRows = Array.from(document.querySelectorAll('#overview .overview-service-actions'));
+  if (!actionRows.length) return;
+
+  actionRows.forEach((row) => {
+    row.classList.add('overview-reveal');
+  });
+
+  if (!('IntersectionObserver' in window)) {
+    actionRows.forEach((row) => row.classList.add('is-visible'));
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries, obs) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add('is-visible');
+      obs.unobserve(entry.target);
+    });
+  }, {
+    threshold: 0.2,
+    rootMargin: '0px 0px -10% 0px'
+  });
+
+  actionRows.forEach((row) => observer.observe(row));
+}
+
+function initDelayedCallFab() {
+  const callFab = document.querySelector('.mdl-chip-float-contact');
+  if (!callFab) return;
+
+  const SHOW_DELAY_MS = 5000;
+  const BLURB_DURATION_MS = 10000;
+
+  window.setTimeout(() => {
+    callFab.classList.add('is-visible', 'show-blurb');
+    window.setTimeout(() => {
+      callFab.classList.remove('show-blurb');
+    }, BLURB_DURATION_MS);
+  }, SHOW_DELAY_MS);
 }
 
 // Programmatically open Services tab and jump to a specific service block.

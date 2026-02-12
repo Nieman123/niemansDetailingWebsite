@@ -1,7 +1,7 @@
 /* minimal slider; no hiding the first slide */
 .slideshow { position: relative; max-width: 950px; margin: 0 auto; }
-.slides-viewport { overflow: hidden; }
-.slides-track { display: flex; will-change: transform; }
+.slides-viewport { overflow: hidden; border-radius: 22px; }
+.slides-track { display: flex; will-change: transform; transition: transform 560ms ease; }
 
 .slide { min-width: 100%; }
 .slide picture, .slide img { display: block; width: 100%; height: auto; }
@@ -22,3 +22,7 @@
 .slide-next { right: 10px; }
 .slideshow:hover .slide-prev,
 .slideshow:hover .slide-next { opacity: .85; }
+
+@media (prefers-reduced-motion: reduce) {
+  .slides-track { transition: none; }
+}
