@@ -331,26 +331,24 @@
 
       if (shouldIntercept) event.preventDefault();
 
-      const conversionValue = typeof state.quote === 'number' ? state.quote : 1;
-      const conversionOptions = {
-        params: { event_label: 'quote_call_fab' },
-      };
-      if (shouldIntercept) conversionOptions.eventCallback = resumeNavigation;
-      fireAdsConversion(conversionValue, 'USD', conversionOptions);
-
+      const callClickValue = typeof state.quote === 'number' ? state.quote : 1;
       const analyticsPayload = {
         method: 'quote_call_fab',
         page: 'quote',
         service: state.service || 'unset',
         vehicle: state.vehicle || 'unset',
-        value: conversionValue,
+        value: callClickValue,
       };
 
       if (typeof window.gtag === 'function') {
-        window.gtag('event', 'call_click', analyticsPayload);
+        const payload = shouldIntercept
+          ? { ...analyticsPayload, event_callback: resumeNavigation, event_timeout: 1200 }
+          : analyticsPayload;
+        window.gtag('event', 'call_click', payload);
       } else {
         window.dataLayer = window.dataLayer || [];
         window.dataLayer.push({ event: 'call_click', ...analyticsPayload });
+        if (shouldIntercept) setTimeout(resumeNavigation, 0);
       }
 
       if (shouldIntercept) {
