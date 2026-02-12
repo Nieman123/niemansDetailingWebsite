@@ -893,6 +893,10 @@ body.mdl-site {
 }
 
 @media (max-width: 768px) {
+  .mdl-site #overview .overview-services .circle-pic {
+    width: 200px;
+    height: 200px;
+  }
   .mdl-site #services .content-grid {
     padding: 14px 12px;
     border-radius: 14px;
