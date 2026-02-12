@@ -49,6 +49,12 @@ html {
   padding: 8px;
   padding-top: 48px;
 }
+.mdl-site .mdl-layout__tab-panel {
+  display: none;
+}
+.mdl-site .mdl-layout__tab-panel.is-active {
+  display: block;
+}
 .mdl-site .mdl-card {
   height: auto;
   display: flex;

@@ -146,10 +146,31 @@ function loadMap() {
 
 // Sync tabs with URL hash for deep linking
 function initHashDrivenTabs() {
+  const tabLinks = Array.from(document.querySelectorAll('.mdl-layout__tab[href^="#"]'))
+    .map((tab) => ({ tab, hash: tab.getAttribute('href') }))
+    .filter(({ hash }) => TAB_HASHES.has(hash));
+
+  if (!tabLinks.length) return;
+
+  tabLinks.forEach(({ tab, hash }) => {
+    tab.addEventListener('click', function (event) {
+      event.preventDefault();
+      if (window.location.hash !== hash) {
+        history.pushState(null, '', hash);
+      }
+      activateTabFromHash(hash);
+    });
+  });
+
+  requestAnimationFrame(function () {
+    if (TAB_HASHES.has(window.location.hash)) {
+      activateTabFromHash(window.location.hash);
+      return;
+    }
+    activateTabFromHash('#overview');
+  });
+
   const sync = () => activateTabFromHash(window.location.hash);
-  if (window.location.hash) {
-    requestAnimationFrame(sync);
-  }
   window.addEventListener('hashchange', sync);
 }
 
@@ -157,11 +178,18 @@ function activateTabFromHash(hash) {
   if (!hash) return;
   const normalized = hash.startsWith('#') ? hash : `#${hash}`;
   if (!TAB_HASHES.has(normalized)) return;
-  const tab = document.querySelector(`.mdl-layout__tab[href="${normalized}"]`);
-  const panel = document.querySelector(normalized);
-  if (!tab || !panel) return;
-  if (tab.classList.contains('is-active') && panel.classList.contains('is-active')) return;
-  tab.click();
+
+  document.querySelectorAll('.mdl-layout__tab[href^="#"]').forEach((tab) => {
+    const isActive = tab.getAttribute('href') === normalized;
+    tab.classList.toggle('is-active', isActive);
+    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+
+  document.querySelectorAll('.mdl-layout__tab-panel').forEach((panel) => {
+    const isActive = `#${panel.id}` === normalized;
+    panel.classList.toggle('is-active', isActive);
+    panel.hidden = !isActive;
+  });
 }
 
 // Scheduler auto-hydration without user interaction
