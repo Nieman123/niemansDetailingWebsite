@@ -13,3 +13,83 @@ Note: any .css or .scss files included in the 'styles' directory
 will be correctly compiled during `gulp serve` and `gulp`
 */
 .mdl-site .toc a,.mdl-site section .section__text a{text-decoration:none}body,html{font-family:Roboto,Helvetica,sans-serif;margin:0;padding:0}.material-icons.md-light{color:rgba(255,255,255,1)}.material-icons.md-light.md-inactive{color:rgba(255,255,255,.3)}.mdl-site .mdl-layout__header-row{padding-left:40px}.mdl-site .mdl-layout.is-small-screen .mdl-layout__header-row h3{font-size:inherit}.mdl-site .mdl-layout.is-small-screen .mdl-layout__tab-bar .mdl-button,.mdl-site .mdl-layout__tab-bar-button{display:none}.mdl-site .mdl-layout:not(.is-small-screen) .mdl-layout__tab-bar,.mdl-site .mdl-layout:not(.is-small-screen) .mdl-layout__tab-bar-container{overflow:visible}.mdl-site .mdl-layout__tab-bar-container{height:64px}.mdl-site .mdl-layout__tab-bar{padding:0 0 0 16px;box-sizing:border-box;height:100%;width:100%}.mdl-site .mdl-layout__tab-bar .mdl-layout__tab{height:64px;line-height:64px}.mdl-site .mdl-layout__tab-bar .mdl-layout__tab.is-active::after{background-color:#fff;height:4px}.mdl-site main>.mdl-layout__tab-panel{padding:48px 8px 8px}.mdl-site .mdl-card{height:auto;display:flex;flex-direction:column}.mdl-site .mdl-card>*{height:auto}.mdl-site .mdl-card .mdl-card__supporting-text{margin:0 auto;padding:10px;text-align:center;flex-grow:1;color:inherit;width:calc(100% - 80px)}.mdl-site.mdl-site .mdl-card__supporting-text h4{margin-top:0;margin-bottom:20px}.mdl-site .mdl-card__actions{margin:0;padding:4px 40px;color:inherit}.mdl-site .mdl-card__actions a{color:#00BCD4;margin:0}.mdl-site .mdl-card__actions a:active,.mdl-site .mdl-card__actions a:hover{color:inherit;background-color:transparent}.mdl-site .mdl-card__supporting-text+.mdl-card__actions{border-top:1px solid rgba(0,0,0,.12)}.mdl-site #add{position:absolute;right:40px;top:36px;z-index:999}.mdl-site .mdl-layout__content section:not(:last-of-type){position:relative;margin-bottom:48px}.mdl-site section.section--center{max-width:950px}.mdl-site #features section.section--center{max-width:620px}.mdl-site section>header{display:flex;align-items:center;justify-content:center}.mdl-site section>.section__play-btn{min-height:200px}.mdl-site section>header>.material-icons{font-size:3rem}.mdl-site section>button{position:absolute;z-index:99;top:8px;right:8px}.mdl-site section .section__circle{display:flex;align-items:center;justify-content:flex-start;flex-grow:0;flex-shrink:1}.mdl-site section .section__text{flex-grow:1;flex-shrink:0;padding-top:8px;padding-left:15px}.mdl-site section .section__text h5{font-size:inherit;margin:0 0 .5em}.mdl-site section .section__circle-container>.section__circle-container__circle{width:64px;height:64px;border-radius:32px;margin:8px 0}.mdl-site section.section--footer .section__circle--big{width:100px;height:100px;border-radius:50px;margin:8px 32px}.mdl-site .is-small-screen section.section--footer .section__circle--big{width:50px;height:50px;border-radius:25px;margin:8px 16px}.mdl-site section.section--footer{padding:64px 0;margin:0 -8px -8px}.mdl-site section.section--center .section__text:not(:last-child){border-bottom:1px solid rgba(0,0,0,.13)}.mdl-site .mdl-card .mdl-card__supporting-text>h3:first-child{margin-bottom:24px}.mdl-site .mdl-layout__tab-panel:not(#overview){background-color:#fff}.mdl-site #contact section{margin-bottom:40px}#features h5,.mdl-site #features h4{margin-bottom:16px}.mdl-site .toc{border-left:4px solid #C1EEF4;margin:24px;padding:0 0 0 8px;display:flex;flex-direction:column}.mdl-site .toc h4{font-size:.9rem;margin-top:0}.mdl-site .toc a{color:#4DD0E1;font-size:16px;line-height:28px;display:block}.mdl-site .mdl-menu__container{z-index:99}.works-card-image.mdl-card{width:256px;height:256px;background:url(../images/carpics/srv_pics/works.jpg) center/cover;float:left}.headlight-card-image.mdl-card{width:256px;height:256px;background:url(../images/carpics/srv_pics/headlight.jpg) center/cover;float:left}.trim-card-image.mdl-card{width:256px;height:256px;background:url(../images/carpics/srv_pics/trim.jpeg) center/cover;float:left}.paint-card-image.mdl-card{width:256px;height:256px;background:url(../images/carpics/srv_pics/correction.jpg) center/cover}.srv-section{height:256px;width:600px;margin:auto}.srv-left,.srv-right{height:256px;width:300px}.srv-left{float:left}.srv-right{float:right}.srv-container{height:300px;padding-bottom:30px;margin:auto}#section-padding{width:50%}.sec-text{width:auto;height:auto;float:right}.contact-card .material-icons{text-align:center;vertical-align:middle;line-height:64px;width:64px;font-size:3rem}.mdl-chip{margin:0 auto}.mdl-chip__contact{text-align:center;vertical-align:middle;line-height:32px;width:32px;font-size:2rem}.about-card-image.mdl-card{width:256px;height:256px;background:url(../images/profile/nieman.jpg) center/cover}.about-text,.promo-img{width:100%}.works-bg{background:url(../images/carpics/bmw.jpg)}.circle-pic{max-width:100px;max-height:100px;margin:.5em;border-radius:50%}.dollar-icon{padding-top:3px}.h-logo{max-width:100%;height:auto}.main-title{margin-top:0}.mdl-cell--3-col-phone{padding-bottom:10px}h1,h2,h3,h4,h5{font-weight:100}.promo-img{height:auto}img.small-card-image{width:100%;height:auto}.large-card{width:calc(100% - 16px)}.large-card .mdl-card__media{background-color:#fff;padding-left:10px}
+
+/* Visual refresh overrides for schedule page */
+:root {
+  --nd-bg-0: #0f1323;
+  --nd-bg-1: #171a2e;
+  --nd-bg-2: #0e1220;
+  --nd-surface: #f6f5ff;
+  --nd-surface-strong: #ffffff;
+  --nd-border: rgba(103, 58, 183, 0.2);
+  --nd-shadow: 0 20px 44px rgba(8, 10, 26, 0.44), 0 0 0 1px rgba(132, 96, 227, 0.1);
+  --nd-text-on-dark: #ece8ff;
+  --nd-text-on-surface: #2d2b3d;
+}
+
+html,
+body.mdl-site {
+  background: radial-gradient(1100px circle at 10% -8%, rgba(127, 92, 232, 0.25), transparent 46%),
+    radial-gradient(850px circle at 88% 0%, rgba(87, 63, 167, 0.18), transparent 43%),
+    linear-gradient(180deg, var(--nd-bg-0) 0%, var(--nd-bg-1) 52%, var(--nd-bg-2) 100%) !important;
+  color: var(--nd-text-on-dark);
+}
+
+.mdl-site .mdl-layout__header {
+  background: rgba(16, 20, 38, 0.94) !important;
+  box-shadow: 0 8px 28px rgba(5, 8, 22, 0.45);
+}
+
+.mdl-site .mdl-layout__tab-panel,
+.mdl-site .mdl-layout__tab-panel:not(#overview) {
+  background: transparent;
+}
+
+.mdl-site .mdl-card,
+.scheduler-shell {
+  background: linear-gradient(180deg, var(--nd-surface-strong) 0%, var(--nd-surface) 100%);
+  border: 1px solid var(--nd-border);
+  border-radius: 20px;
+  box-shadow: var(--nd-shadow);
+  color: var(--nd-text-on-surface);
+}
+
+.mdl-site .mdl-card {
+  overflow: hidden;
+}
+
+.scheduler-shell {
+  padding: 18px !important;
+}
+
+.scheduler-frame {
+  border-radius: 12px;
+  background: #fff;
+}
+
+.small-card .mdl-card__media {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.small-card .mdl-card__supporting-text,
+.contact-card .mdl-card__supporting-text {
+  color: #312a4b;
+}
+
+.section-title,
+.mdl-site .mdl-card__supporting-text h4 {
+  color: #2f1f62;
+  font-weight: 700;
+}
+
+.phone-link {
+  color: #4a2fb8;
+}
+
+@media (max-width: 768px) {
+  .scheduler-shell {
+    border-radius: 14px;
+    padding: 12px !important;
+  }
+}

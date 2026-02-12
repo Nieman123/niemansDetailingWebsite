@@ -569,3 +569,186 @@ button:focus-visible {
     padding-left: 5rem;
   }
 }
+
+/* Visual refresh: deeper background + modern card surfaces */
+:root {
+  --nd-bg-0: #0f1323;
+  --nd-bg-1: #171a2e;
+  --nd-bg-2: #0e1220;
+  --nd-surface: #f6f5ff;
+  --nd-surface-strong: #ffffff;
+  --nd-border: rgba(103, 58, 183, 0.2);
+  --nd-shadow: 0 20px 44px rgba(8, 10, 26, 0.44),
+    0 0 0 1px rgba(132, 96, 227, 0.1);
+  --nd-text-on-dark: #ece8ff;
+  --nd-text-on-surface: #2d2b3d;
+}
+
+html,
+body.mdl-site {
+  background: radial-gradient(
+      1100px circle at 10% -8%,
+      rgba(127, 92, 232, 0.25),
+      transparent 46%
+    ),
+    radial-gradient(
+      850px circle at 88% 0%,
+      rgba(87, 63, 167, 0.18),
+      transparent 43%
+    ),
+    linear-gradient(
+      180deg,
+      var(--nd-bg-0) 0%,
+      var(--nd-bg-1) 52%,
+      var(--nd-bg-2) 100%
+    ) !important;
+  color: var(--nd-text-on-dark);
+}
+
+.mdl-site .mdl-layout__header {
+  background: rgba(16, 20, 38, 0.94) !important;
+  box-shadow: 0 8px 28px rgba(5, 8, 22, 0.45);
+}
+
+.mdl-site .mdl-layout__tab-bar {
+  background: linear-gradient(90deg, #432780 0%, #6038b7 50%, #432780 100%);
+}
+
+.mdl-site .mdl-layout__tab-bar .mdl-layout__tab {
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.mdl-site .mdl-layout__tab-panel,
+.mdl-site .mdl-layout__tab-panel:not(#overview) {
+  background: transparent;
+}
+
+.mdl-site .mdl-card,
+.mdl-site #services .section--center > .mdl-cell--12-col,
+.mdl-site #about .section--center > .mdl-cell--12-col {
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(240, 231, 255, 0.6) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 20px;
+  box-shadow: 0 22px 46px rgba(8, 10, 26, 0.4), 0 0 0 1px rgba(132, 96, 227, 0.14);
+  backdrop-filter: blur(14px) saturate(135%);
+  -webkit-backdrop-filter: blur(14px) saturate(135%);
+  color: var(--nd-text-on-surface);
+}
+
+.mdl-site .mdl-card {
+  overflow: hidden;
+}
+
+.mdl-site .mdl-card .mdl-card__supporting-text {
+  padding: 26px;
+}
+
+.mdl-site #services .section--center > .mdl-cell--12-col,
+.mdl-site #about .section--center > .mdl-cell--12-col {
+  padding: 20px 18px 12px;
+}
+
+.mdl-site #services .content-grid {
+  margin: 0 0 24px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 90, 220, 0.25);
+  background: linear-gradient(
+    140deg,
+    rgba(255, 255, 255, 0.74) 0%,
+    rgba(246, 240, 255, 0.56) 100%
+  );
+  box-shadow: 0 12px 30px rgba(18, 12, 42, 0.18);
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (hover: hover) {
+  .mdl-site #services .content-grid:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 34px rgba(18, 12, 42, 0.18);
+  }
+}
+
+.mdl-site #services .content-grid .mdl-cell {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.mdl-site #services .section-title,
+.section-title {
+  color: #2f1f62;
+}
+
+.mdl-site #overview h3.section-title,
+.mdl-site #services h3.section-title {
+  text-align: left;
+  padding-left: 8px;
+}
+
+.card-image__img {
+  border-radius: 14px;
+}
+
+.mdl-site #services .content-grid .mdl-card,
+.profile-card-image.mdl-card,
+.profile-card-image2.mdl-card,
+.small-card.mdl-card {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 10px 22px rgba(21, 16, 45, 0.2) !important;
+}
+
+.phone-link {
+  color: #4a2fb8;
+}
+
+.mdl-chip-float-contact .mdl-chip.mdl-chip-bg {
+  background: linear-gradient(
+    140deg,
+    rgba(250, 244, 255, 0.82) 0%,
+    rgba(230, 219, 255, 0.62) 100%
+  ) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: 0 14px 30px rgba(9, 11, 30, 0.34);
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
+}
+
+.mdl-chip-float-contact .mdl-chip__text {
+  color: #241f36;
+}
+
+.mdl-chip-float-contact .mdl-chip__contact {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+.mdl-chip-float-contact .mdl-button {
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(111, 67, 219, 0.96), rgba(77, 42, 170, 0.97));
+  box-shadow: 0 12px 26px rgba(16, 10, 39, 0.42);
+}
+
+.mdl-chip-float-contact .mdl-button:hover {
+  background: linear-gradient(135deg, rgba(124, 79, 231, 0.98), rgba(88, 48, 188, 0.98));
+}
+
+@media (max-width: 768px) {
+  .mdl-site #services .content-grid {
+    padding: 14px 12px;
+    border-radius: 14px;
+  }
+  .mdl-site #services .section--center > .mdl-cell--12-col,
+  .mdl-site #about .section--center > .mdl-cell--12-col {
+    padding: 14px 10px 6px;
+  }
+  .mdl-site .mdl-card .mdl-card__supporting-text {
+    padding: 18px;
+  }
+}
