@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   initHashDrivenTabs();
+  initMobileMenu();
 });
 
 // Google Maps callback
@@ -189,6 +190,44 @@ function activateTabFromHash(hash) {
     const isActive = `#${panel.id}` === normalized;
     panel.classList.toggle('is-active', isActive);
     panel.hidden = !isActive;
+  });
+}
+
+function initMobileMenu() {
+  const toggle = document.querySelector('.mobile-nav-toggle');
+  const panel = document.getElementById('mobileNav');
+  const backdrop = document.querySelector('.mobile-nav-backdrop');
+  if (!toggle || !panel || !backdrop) return;
+
+  const closeMenu = () => {
+    document.body.classList.remove('mobile-menu-open');
+    toggle.setAttribute('aria-expanded', 'false');
+  };
+
+  const openMenu = () => {
+    document.body.classList.add('mobile-menu-open');
+    toggle.setAttribute('aria-expanded', 'true');
+  };
+
+  toggle.addEventListener('click', function () {
+    if (document.body.classList.contains('mobile-menu-open')) {
+      closeMenu();
+      return;
+    }
+    openMenu();
+  });
+
+  backdrop.addEventListener('click', closeMenu);
+  panel.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('click', closeMenu);
+  });
+
+  window.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') closeMenu();
+  });
+
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 768) closeMenu();
   });
 }
 

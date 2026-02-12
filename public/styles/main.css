@@ -50,6 +50,109 @@ html {
   background-color: #fff;
   height: 4px;
 }
+.mobile-nav-toggle,
+.mobile-nav-panel,
+.mobile-nav-backdrop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mdl-site .mdl-layout--small-screen-only.mdl-layout__header-row {
+    display: flex !important;
+  }
+  .mdl-site .mdl-layout--large-screen-only.mdl-layout__header-row {
+    display: none !important;
+  }
+
+  .mdl-site .mdl-layout__tab-bar,
+  .mdl-site .mdl-layout__tab-bar-container {
+    display: none;
+  }
+
+  .mdl-site .mdl-layout--small-screen-only.mdl-layout__header-row {
+    position: relative;
+    padding-left: 56px;
+    padding-right: 12px;
+  }
+
+  .mobile-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    border-radius: 10px;
+    z-index: 130;
+    cursor: pointer;
+  }
+
+  .mobile-nav-toggle .material-icons {
+    font-size: 32px;
+    line-height: 1;
+  }
+
+  .mobile-nav-panel {
+    display: block;
+    position: fixed;
+    top: 56px;
+    left: 10px;
+    width: min(260px, calc(100vw - 20px));
+    padding: 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(15, 19, 36, 0.92);
+    box-shadow: 0 14px 34px rgba(4, 8, 24, 0.5);
+    backdrop-filter: blur(10px) saturate(130%);
+    -webkit-backdrop-filter: blur(10px) saturate(130%);
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 129;
+  }
+
+  .mobile-nav-link {
+    display: block;
+    padding: 10px 12px;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 500;
+    border-radius: 10px;
+  }
+
+  .mobile-nav-link:active,
+  .mobile-nav-link:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .mobile-nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 6, 18, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 128;
+  }
+
+  body.mobile-menu-open .mobile-nav-panel {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  body.mobile-menu-open .mobile-nav-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
 .mdl-site main > .mdl-layout__tab-panel {
   padding: 8px;
   padding-top: 48px;

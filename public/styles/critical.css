@@ -4,6 +4,7 @@ html, body { margin:0; padding:0; background:linear-gradient(180deg,#0f1323 0%,#
 .mdl-layout__tab-bar { background:#4f2ea0; display:flex; justify-content:center; padding-left:0; }
 .mdl-layout__tab-bar .mdl-layout__tab { color:#fff; }
 .mdl-layout__header-row { justify-content:center; padding-left:0; padding-right:0; }
+.mobile-nav-toggle, .mobile-nav-panel, .mobile-nav-backdrop { display:none; }
 /* Large vs small header logo alignment */
 .mdl-layout--large-screen-only .mdl-layout__header-row img { display:block; margin:0; height:auto; }
 .mdl-layout--small-screen-only .mdl-layout__header-row .h-logo { display:block; margin:0 auto; height:auto; }
@@ -32,6 +33,24 @@ html, body { margin:0; padding:0; background:linear-gradient(180deg,#0f1323 0%,#
   .hero-copy .hero-cta { text-align:center; }
 }
 @media (max-width: 768px) {
+  .mdl-layout--small-screen-only.mdl-layout__header-row { display:flex !important; }
+  .mdl-layout--large-screen-only.mdl-layout__header-row { display:none !important; }
+  .mdl-layout__tab-bar { display:none; }
+  .mobile-nav-toggle {
+    display:inline-flex;
+    position:fixed;
+    top:8px;
+    left:8px;
+    width:40px;
+    height:40px;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    border:0;
+    background:transparent;
+    z-index:130;
+  }
+  .mobile-nav-toggle .material-icons { font-size:32px; line-height:1; }
   /* Allow content to span full width on phones so hero can be largest */
   .mdl-site .mdl-card .mdl-card__supporting-text { width: 100%; }
   /* Tame heading size a bit to ensure hero dominates LCP */
