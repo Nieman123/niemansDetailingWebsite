@@ -192,6 +192,25 @@ function activateTabFromHash(hash) {
   });
 }
 
+// Programmatically open Services tab and jump to a specific service block.
+function navigateToService(serviceId) {
+  const targetId = (serviceId || '').trim();
+  if (!targetId) return false;
+
+  if (window.location.hash !== '#services') {
+    history.pushState(null, '', '#services');
+  }
+  activateTabFromHash('#services');
+
+  requestAnimationFrame(() => {
+    const target = document.getElementById(targetId);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  return false;
+}
+
 // Scheduler auto-hydration without user interaction
 (function(){
   var mounted = false;

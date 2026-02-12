@@ -11,7 +11,9 @@ html {
   color: rgba(255, 255, 255, 0.3);
 }
 .mdl-site .mdl-layout__header-row {
-  padding-left: 40px;
+  padding-left: 0;
+  padding-right: 0;
+  justify-content: center;
 }
 .mdl-site .mdl-layout.is-small-screen .mdl-layout__header-row h3 {
   font-size: inherit;
@@ -31,10 +33,13 @@ html {
 }
 .mdl-site .mdl-layout__tab-bar {
   padding: 0;
-  padding-left: 16px;
+  padding-left: 0;
   box-sizing: border-box;
   height: 100%;
   width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 .mdl-site .mdl-layout__tab-bar .mdl-layout__tab {
   height: 64px;
@@ -119,12 +124,12 @@ html {
   color: inherit;
 }
 .mdl-site .mdl-card__actions a {
-  color: #00bcd4;
+  color: #1f3f9d;
   margin: 0;
 }
 .mdl-site .mdl-card__actions a:active,
 .mdl-site .mdl-card__actions a:hover {
-  color: inherit;
+  color: #162d76;
   background-color: transparent;
 }
 .mdl-site .mdl-card__supporting-text + .mdl-card__actions {
@@ -238,11 +243,15 @@ html {
   margin-top: 0;
 }
 .mdl-site .toc a {
-  color: #4dd0e1;
+  color: #1f3f9d;
   text-decoration: none;
   font-size: 16px;
   line-height: 28px;
   display: block;
+}
+.mdl-site .toc a:hover,
+.mdl-site .toc a:focus-visible {
+  color: #162d76;
 }
 
 /* Reserve space for slideshow images to prevent layout shift */
@@ -629,14 +638,14 @@ body.mdl-site {
 .mdl-site #about .section--center > .mdl-cell--12-col {
   background: linear-gradient(
     145deg,
-    rgba(255, 255, 255, 0.78) 0%,
-    rgba(240, 231, 255, 0.6) 100%
+    rgba(250, 245, 255, 0.66) 0%,
+    rgba(220, 206, 255, 0.44) 100%
   );
-  border: 1px solid rgba(255, 255, 255, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.48);
   border-radius: 20px;
-  box-shadow: 0 22px 46px rgba(8, 10, 26, 0.4), 0 0 0 1px rgba(132, 96, 227, 0.14);
-  backdrop-filter: blur(14px) saturate(135%);
-  -webkit-backdrop-filter: blur(14px) saturate(135%);
+  box-shadow: 0 22px 46px rgba(8, 10, 26, 0.36), 0 0 0 1px rgba(132, 96, 227, 0.16);
+  backdrop-filter: blur(15px) saturate(140%);
+  -webkit-backdrop-filter: blur(15px) saturate(140%);
   color: var(--nd-text-on-surface);
 }
 
@@ -657,15 +666,15 @@ body.mdl-site {
   margin: 0 0 24px;
   padding: 18px 20px;
   border-radius: 16px;
-  border: 1px solid rgba(124, 90, 220, 0.25);
+  border: 1px solid rgba(124, 90, 220, 0.28);
   background: linear-gradient(
     140deg,
-    rgba(255, 255, 255, 0.74) 0%,
-    rgba(246, 240, 255, 0.56) 100%
+    rgba(252, 248, 255, 0.64) 0%,
+    rgba(227, 214, 255, 0.42) 100%
   );
-  box-shadow: 0 12px 30px rgba(18, 12, 42, 0.18);
-  backdrop-filter: blur(12px) saturate(130%);
-  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  box-shadow: 0 12px 30px rgba(18, 12, 42, 0.2);
+  backdrop-filter: blur(13px) saturate(132%);
+  -webkit-backdrop-filter: blur(13px) saturate(132%);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -686,10 +695,51 @@ body.mdl-site {
   color: #2f1f62;
 }
 
-.mdl-site #overview h3.section-title,
 .mdl-site #services h3.section-title {
   text-align: left;
   padding-left: 8px;
+}
+
+.mdl-site #overview .overview-services .section__text .section-title {
+  text-align: center;
+  padding-left: 0;
+}
+
+.mdl-site #overview .overview-services .service-more-wrap {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.mdl-site #overview .overview-services .service-more-btn {
+  color: #1d3788;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 1px solid rgba(94, 68, 172, 0.38);
+  border-radius: 999px;
+  background: linear-gradient(
+    140deg,
+    rgba(252, 247, 255, 0.78) 0%,
+    rgba(230, 221, 255, 0.58) 100%
+  );
+  backdrop-filter: blur(10px) saturate(132%);
+  -webkit-backdrop-filter: blur(10px) saturate(132%);
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  min-height: 0;
+  line-height: 1.2;
+  padding: 8px 14px;
+}
+
+.mdl-site #overview .overview-services .service-more-btn:hover {
+  color: #152d74;
+  background: linear-gradient(
+    140deg,
+    rgba(255, 250, 255, 0.82) 0%,
+    rgba(240, 231, 255, 0.64) 100%
+  );
 }
 
 .card-image__img {

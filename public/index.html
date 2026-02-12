@@ -83,8 +83,9 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   /* Critical CSS (see public/styles/critical.css for source) */
   html, body { margin:0; padding:0; background:linear-gradient(180deg,#0f1323 0%,#171a2e 52%,#0e1220 100%); color:#ece8ff; font-family: Roboto, Helvetica, Arial, sans-serif; }
   .mdl-layout__header { background:#101426; }
-  .mdl-layout__tab-bar { background:#4f2ea0; }
+  .mdl-layout__tab-bar { background:#4f2ea0; display:flex; justify-content:center; padding-left:0; }
   .mdl-layout__tab-bar .mdl-layout__tab { color:#fff; }
+  .mdl-layout__header-row { justify-content:center; padding-left:0; padding-right:0; }
   .mdl-layout--large-screen-only .mdl-layout__header-row img { display:block; margin:0; height:auto; }
   .mdl-layout--small-screen-only .mdl-layout__header-row .h-logo { display:block; margin:0 auto; height:auto; }
   .h-logo { max-width:100%; height:auto; }
@@ -443,7 +444,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <!--Services Card-->
       <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
         <div class="mdl-card mdl-cell mdl-cell--12-col">
-          <div class="mdl-card__supporting-text mdl-grid mdl-grid--no-spacing">
+          <div class="mdl-card__supporting-text mdl-grid mdl-grid--no-spacing overview-services">
             <h2 class="mdl-cell mdl-cell--12-col section-title">Services</h2>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
@@ -461,6 +462,9 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3 class="section-title">The Works</h3>
               This package is a safe and comprehensive cleaning of both the interior and exterior including wheel,
               tire, and engine bay detailing, steam cleaning, a premium wax and more.
+              <div class="service-more-wrap">
+                <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More The Works'); return navigateToService('full-detail');">More &gt;</a>
+              </div>
             </div>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
@@ -475,6 +479,9 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3 class="section-title">Headlight Restoration</h3>
               A dull and yellowed headlight gives your car a dated and dull look while reducing safety at night.
               Return your lights permanently to their original condition and see clearly at night.
+              <div class="service-more-wrap">
+                <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Headlight'); return navigateToService('h-restoration');">More &gt;</a>
+              </div>
             </div>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
@@ -489,6 +496,9 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3 class="section-title">Paint Correction and Polishing</h3>
               This process removes scratches, swirls, holograms and oxidation defects in the clear-coat of your
               vehicle resulting in an extremely glossy, mirror-like finish. The ultimate restoration of your paint.
+              <div class="service-more-wrap">
+                <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Paint Correction'); return navigateToService('p-restoration');">More &gt;</a>
+              </div>
             </div>
 
             <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
@@ -503,12 +513,14 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h3 class="section-title">Trim Restoration</h3>
               Permanently restore the grey UV damaged plastics on your vehicle to the deep rich black finish that
               came from the factory
+              <div class="service-more-wrap">
+                <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Trim'); return navigateToService('t-restoration');">More &gt;</a>
+              </div>
             </div>
 
           </div>
           <div class="mdl-card__actions">
             <a href="https://niemansdetailing.com/#services" class="mdl-button">View All Services & Pricing</a>
-            <a href="https://niemansdetailing.com/schedule" class="mdl-button mdl-button--raised mdl-button--colored" onclick="trackEvent('CTA','click','Get a Quote');">Get a Quote</a>
           </div>
         </div>
       </section>

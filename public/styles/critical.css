@@ -1,8 +1,9 @@
 /* critical.css: only above-the-fold */
 html, body { margin:0; padding:0; background:linear-gradient(180deg,#0f1323 0%,#171a2e 52%,#0e1220 100%); color:#ece8ff; font-family: Roboto, Helvetica, Arial, sans-serif; }
 .mdl-layout__header { background:#101426; }
-.mdl-layout__tab-bar { background:#4f2ea0; }
+.mdl-layout__tab-bar { background:#4f2ea0; display:flex; justify-content:center; padding-left:0; }
 .mdl-layout__tab-bar .mdl-layout__tab { color:#fff; }
+.mdl-layout__header-row { justify-content:center; padding-left:0; padding-right:0; }
 /* Large vs small header logo alignment */
 .mdl-layout--large-screen-only .mdl-layout__header-row img { display:block; margin:0; height:auto; }
 .mdl-layout--small-screen-only .mdl-layout__header-row .h-logo { display:block; margin:0 auto; height:auto; }
