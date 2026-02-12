@@ -16,27 +16,33 @@ will be correctly compiled during `gulp serve` and `gulp`
 
 /* Visual refresh overrides for schedule page */
 :root {
-  --nd-bg-0: #0f1323;
-  --nd-bg-1: #171a2e;
-  --nd-bg-2: #0e1220;
+  --nd-bg-0: #060a18;
+  --nd-bg-1: #0b1330;
+  --nd-bg-2: #050813;
   --nd-surface: #f6f5ff;
   --nd-surface-strong: #ffffff;
   --nd-border: rgba(103, 58, 183, 0.2);
   --nd-shadow: 0 20px 44px rgba(8, 10, 26, 0.44), 0 0 0 1px rgba(132, 96, 227, 0.1);
-  --nd-text-on-dark: #ece8ff;
+  --nd-text-on-dark: #f0ebff;
   --nd-text-on-surface: #2d2b3d;
+  --nd-footer-bg-top: rgba(11, 18, 42, 0.94);
+  --nd-footer-bg-bottom: rgba(6, 10, 24, 0.98);
+  --nd-footer-border: rgba(176, 153, 245, 0.34);
+  --nd-footer-text: #ddd3ff;
+  --nd-footer-link: #b8a6ff;
+  --nd-footer-link-hover: #d8ccff;
 }
 
 html,
 body.mdl-site {
-  background: radial-gradient(1100px circle at 10% -8%, rgba(127, 92, 232, 0.25), transparent 46%),
-    radial-gradient(850px circle at 88% 0%, rgba(87, 63, 167, 0.18), transparent 43%),
+  background: radial-gradient(1100px circle at 10% -8%, rgba(120, 92, 220, 0.32), transparent 46%),
+    radial-gradient(850px circle at 88% 0%, rgba(71, 44, 148, 0.28), transparent 43%),
     linear-gradient(180deg, var(--nd-bg-0) 0%, var(--nd-bg-1) 52%, var(--nd-bg-2) 100%) !important;
   color: var(--nd-text-on-dark);
 }
 
 .mdl-site .mdl-layout__header {
-  background: rgba(16, 20, 38, 0.94) !important;
+  background: rgba(10, 15, 34, 0.94) !important;
   box-shadow: 0 8px 28px rgba(5, 8, 22, 0.45);
 }
 
@@ -85,6 +91,38 @@ body.mdl-site {
 
 .phone-link {
   color: #4a2fb8;
+}
+
+.mdl-site .mdl-mega-footer {
+  background: linear-gradient(
+    180deg,
+    var(--nd-footer-bg-top) 0%,
+    var(--nd-footer-bg-bottom) 100%
+  );
+  border-top: 1px solid var(--nd-footer-border);
+  color: var(--nd-footer-text);
+}
+
+.mdl-site .mdl-mega-footer .mdl-mega-footer--middle-section,
+.mdl-site .mdl-mega-footer .mdl-mega-footer--bottom-section {
+  border-color: rgba(200, 186, 255, 0.18);
+}
+
+.mdl-site .mdl-mega-footer .mdl-mega-footer--heading,
+.mdl-site .mdl-mega-footer .mdl-mega-footer--link-list {
+  color: var(--nd-footer-text);
+}
+
+.mdl-site .mdl-mega-footer .mdl-mega-footer--link-list a,
+.mdl-site .mdl-mega-footer .phone-link {
+  color: var(--nd-footer-link);
+}
+
+.mdl-site .mdl-mega-footer .mdl-mega-footer--link-list a:hover,
+.mdl-site .mdl-mega-footer .mdl-mega-footer--link-list a:focus-visible,
+.mdl-site .mdl-mega-footer .phone-link:hover,
+.mdl-site .mdl-mega-footer .phone-link:focus-visible {
+  color: var(--nd-footer-link-hover);
 }
 
 @media (max-width: 768px) {
