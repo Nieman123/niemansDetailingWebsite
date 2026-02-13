@@ -1,117 +1,675 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17602789326"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
 
-      gtag('config', 'AW-17602789326');
-    </script>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="firebase-api-key" content="AIzaSyBgUntKRCQsi_SyJmNOgJLBI8Yj8gEsmA4" />
-    <meta name="robots" content="noindex,nofollow" />
-    <title>Lead Viewer (Private)</title>
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/images/touch/chrome-touch-icon-192x192.png" />
-    <link rel="apple-touch-icon" href="/images/touch/apple-touch-icon.png" />
-    <style>
-      :root { --bg:#0e0f10; --card:#171a1d; --text:#f2f4f8; --muted:#b8bcc6; --brand:#f59e0b; }
-      html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-      .wrap{max-width:800px;margin:0 auto;padding:16px}
-      .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 2px 12px rgba(0,0,0,.25)}
-      h1{font-size:22px;margin:0 0 12px}
-      .row{display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:start;margin:6px 0}
-      .k{color:var(--muted)} .v{white-space:pre-wrap}
-      a.btn{display:inline-block;background:var(--brand);color:#111;padding:10px 14px;border-radius:10px;font-weight:700;text-decoration:none;margin-right:8px}
-      .pill{display:inline-block;background:#24272e;color:var(--text);padding:6px 10px;border-radius:999px;margin:2px}
-      #warn{color:#ffb4b4}
-    </style>
-  </head>
-  <body>
-    <div class="wrap">
-      <h1>Lead Viewer</h1>
-      <p id="warn">This page is private and unlisted. Do not share.</p>
-      <p><a class="btn" href="/admin/blog.html">Open Blog Admin</a></p>
-      <div id="content" class="card">Loading…</div>
-    </div>
-    <script>
-      (async () => {
-        const params = new URLSearchParams(location.search);
-        const id = params.get('id');
-        if (!id) { document.getElementById('content').textContent = 'Missing id param'; return; }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="firebase-api-key" content="AIzaSyBgUntKRCQsi_SyJmNOgJLBI8Yj8gEsmA4" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Admin Dashboard | Nieman's Detailing</title>
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <style>
+    :root {
+      --bg: #0e0f10;
+      --card: #171a1d;
+      --panel: #0a0b0d;
+      --text: #f2f4f8;
+      --muted: #9ca3af;
+      --border: #2d3342;
+      --brand: #f59e0b;
+      --danger: #ef4444;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --contacted: #38bdf8;
+      --booked: #22c55e;
+      --archived: #9ca3af;
+    }
 
-        // Firestore REST v1 (open read via rules)
-        const PROJECT_ID = 'niemansdetailing'; // adjust if project changes
-        const API_KEY = (document.querySelector('meta[name="firebase-api-key"]')?.getAttribute('content') || '').trim();
-        const baseUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/leads/${encodeURIComponent(id)}`;
-        const url = API_KEY ? `${baseUrl}?key=${encodeURIComponent(API_KEY)}` : baseUrl;
-        try {
-          const res = await fetch(url);
-          if (!res.ok) {
-            let body = '';
-            try { body = await res.text(); } catch {}
-            console.error('Fetch failed', res.status, res.statusText, body);
-            throw new Error('Fetch failed');
-          }
-          const doc = await res.json();
-          const data = fromV1(doc.fields || {});
-          render(id, data);
-        } catch (e) {
-          console.error(e);
-          document.getElementById('content').textContent = 'Failed to load lead';
-        }
+    * {
+      box-sizing: border-box;
+    }
 
-        function fromV1(fields) {
-          const parse = (v) => {
-            if (v == null) return null;
-            if ('stringValue' in v) return v.stringValue;
-            if ('integerValue' in v) return Number(v.integerValue);
-            if ('doubleValue' in v) return Number(v.doubleValue);
-            if ('booleanValue' in v) return !!v.booleanValue;
-            if ('nullValue' in v) return null;
-            if ('timestampValue' in v) return v.timestampValue;
-            if ('arrayValue' in v) return (v.arrayValue.values||[]).map(parse);
-            if ('mapValue' in v) return fromV1(v.mapValue.fields||{});
-            return v;
-          };
-          const out = {};
-          for (const k of Object.keys(fields)) out[k] = parse(fields[k]);
-          return out;
-        }
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: radial-gradient(circle at top left, #151924 0%, var(--bg) 42%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.45;
+    }
 
-        function telDigits(s){ return (s||'').replace(/\D/g,''); }
-        function fmtPhone(s){ const d=telDigits(s); return d.length===10 ? `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}` : s; }
+    .hidden,
+    [hidden] {
+      display: none !important;
+    }
 
-        function render(id, d) {
-          const content = document.getElementById('content');
-          const addons = (d.addons||[]).join(', ') || 'None';
-          const price = d.quoted_total == null ? 'Consult' : `$${d.quoted_total}`;
-          const smsTo = telDigits(d.phone || d.phone_normalized || '');
-          const smsHref = smsTo ? `sms:+1${smsTo.length===10?smsTo:smsTo.startsWith('1')?smsTo.slice(1):smsTo}` : '#';
-          content.innerHTML = `
-            <div class="row"><div class="k">Lead ID</div><div class="v">${id}</div></div>
-            <div class="row"><div class="k">Vehicle</div><div class="v">${d.vehicle}</div></div>
-            <div class="row"><div class="k">Service</div><div class="v">${d.service}${d.quote_note?` (${d.quote_note})`:''}</div></div>
-            <div class="row"><div class="k">Add-ons</div><div class="v">${addons}</div></div>
-            <div class="row"><div class="k">ZIP</div><div class="v">${d.zip||'—'}</div></div>
-            <div class="row"><div class="k">Name</div><div class="v">${d.name||'—'}</div></div>
-            <div class="row"><div class="k">Phone</div><div class="v">${fmtPhone(d.phone||d.phone_normalized||'—')}</div></div>
-            <div class="row"><div class="k">Quoted</div><div class="v">${price}</div></div>
-            <div class="row"><div class="k">Notes</div><div class="v">${(d.notes||'').replace(/</g,'&lt;')}</div></div>
-            <div class="row"><div class="k">UTM</div><div class="v"><code>${JSON.stringify(d.utm||{}, null, 2)}</code></div></div>
-            <div class="row"><div class="k">Created</div><div class="v">${d.ts||'—'}</div></div>
-            <div class="row"><div class="k">User Agent</div><div class="v">${d.user_agent||'—'}</div></div>
-            <div class="row"><div class="k">Referrer</div><div class="v">${d.referrer||'—'}</div></div>
-            <div style="margin-top:12px">
-              <a class="btn" href="${smsHref}">Text Customer</a>
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(340px, 420px) 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .sidebar-head h2 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .filters {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #121419;
+    }
+
+    .filters .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      background: #050505;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.9rem;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: 2px solid var(--brand);
+      border-color: transparent;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .summary-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #121419;
+    }
+
+    .summary-card .label {
+      display: block;
+      font-size: 0.73rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 3px;
+    }
+
+    .summary-card .value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .lead-list-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 260px;
+      flex: 1;
+    }
+
+    .lead-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .lead-item {
+      width: 100%;
+      border: none;
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      padding: 12px;
+      cursor: pointer;
+      display: grid;
+      gap: 6px;
+    }
+
+    .lead-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .lead-item-active {
+      background: rgba(245, 158, 11, 0.12);
+      border-left: 3px solid var(--brand);
+      padding-left: 9px;
+    }
+
+    .lead-item-top,
+    .lead-item-bottom {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .lead-item-name {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 220px;
+    }
+
+    .lead-item-mid {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .lead-item-bottom {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border: 1px solid transparent;
+    }
+
+    .pill-status {
+      background: rgba(251, 191, 36, 0.18);
+      color: var(--warn);
+      border-color: rgba(251, 191, 36, 0.35);
+    }
+
+    .pill-new {
+      background: rgba(251, 191, 36, 0.18);
+      color: var(--warn);
+      border-color: rgba(251, 191, 36, 0.35);
+    }
+
+    .pill-contacted {
+      background: rgba(56, 189, 248, 0.18);
+      color: var(--contacted);
+      border-color: rgba(56, 189, 248, 0.35);
+    }
+
+    .pill-booked {
+      background: rgba(34, 197, 94, 0.18);
+      color: var(--booked);
+      border-color: rgba(34, 197, 94, 0.35);
+    }
+
+    .pill-archived {
+      background: rgba(156, 163, 175, 0.18);
+      color: var(--archived);
+      border-color: rgba(156, 163, 175, 0.35);
+    }
+
+    .pill-spam {
+      background: rgba(239, 68, 68, 0.18);
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      border: none;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: #111;
+    }
+
+    .btn-primary:hover {
+      background: #d97706;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      color: var(--text);
+      border-color: var(--muted);
+    }
+
+    .btn-action {
+      background: #121419;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-action:hover {
+      border-color: var(--brand);
+      color: var(--brand);
+    }
+
+    .sidebar-footer {
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: grid;
+      gap: 8px;
+    }
+
+    .main {
+      padding: 26px;
+      overflow-y: auto;
+      max-height: 100vh;
+    }
+
+    .empty-state {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .detail-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--card);
+      padding: 18px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-header h3 {
+      margin: 0;
+      font-size: 1.3rem;
+    }
+
+    .detail-sub {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .detail-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .detail-section h4 {
+      margin: 0 0 10px;
+      font-size: 0.95rem;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .detail-grid .row {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 8px;
+      padding: 7px 0;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.07);
+    }
+
+    .detail-grid .row:last-child {
+      border-bottom: none;
+    }
+
+    .k {
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .v {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    pre {
+      margin: 0;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #101217;
+      color: #d6dbe7;
+      max-height: 220px;
+      overflow: auto;
+      font-size: 0.8rem;
+    }
+
+    .save-row {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .auth-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 24px;
+    }
+
+    #admin-status {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #111;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 13px;
+      z-index: 1000;
+      font-size: 0.9rem;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    #admin-status[data-type="error"] {
+      color: #fecaca;
+      border-color: rgba(239, 68, 68, 0.7);
+    }
+
+    #lead-list-empty {
+      margin: 0;
+      padding: 16px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 1024px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .main {
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .filters .split,
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-header {
+        flex-direction: column;
+      }
+
+      .detail-actions {
+        justify-content: flex-start;
+      }
+
+      .detail-grid .row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="admin-status">Initializing...</div>
+
+  <div id="auth-view" class="auth-container">
+    <h1>Nieman's Admin Dashboard</h1>
+    <p style="color:var(--muted); margin-bottom:24px; max-width:580px;">Sign in with Google to access both blog management and quote lead tools.</p>
+    <button id="sign-in-btn" class="btn btn-primary">Sign in with Google</button>
+  </div>
+
+  <div id="unauthorized-view" class="auth-container" hidden>
+    <h1 style="color:var(--danger)">Access Denied</h1>
+    <p>You are signed in but do not have administrator permissions.</p>
+    <p id="auth-hint" style="color:var(--muted); margin-bottom:20px"></p>
+    <button id="sign-out-unauthorized-btn" class="btn btn-ghost">Sign Out</button>
+  </div>
+
+  <div id="admin-view" class="layout" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <h2>Lead Dashboard</h2>
+        <button id="refresh-leads-btn" type="button" class="btn btn-ghost">Refresh</button>
+      </div>
+
+      <a class="btn btn-primary" href="/admin/blog.html">Open Blog Admin</a>
+
+      <section class="filters">
+        <div>
+          <label for="lead-search-input">Search</label>
+          <input id="lead-search-input" type="text" placeholder="Name, phone, zip, notes, lead id" />
+        </div>
+
+        <div class="split">
+          <div>
+            <label for="lead-status-filter">Status</label>
+            <select id="lead-status-filter">
+              <option value="all">All statuses</option>
+              <option value="new">New</option>
+              <option value="contacted">Contacted</option>
+              <option value="booked">Booked</option>
+              <option value="archived">Archived</option>
+              <option value="spam">Spam</option>
+            </select>
+          </div>
+          <div>
+            <label for="lead-service-filter">Service</label>
+            <select id="lead-service-filter">
+              <option value="all">All services</option>
+              <option value="quick">Quick Once Over</option>
+              <option value="full">Full Detail</option>
+              <option value="interior">Interior Refresh</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="split">
+          <div>
+            <label for="lead-range-filter">Date Range</label>
+            <select id="lead-range-filter">
+              <option value="all">All time</option>
+              <option value="1d">Last 24 hours</option>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+            </select>
+          </div>
+          <div>
+            <label for="lead-sort-filter">Sort</label>
+            <select id="lead-sort-filter">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="price-high">Quote high to low</option>
+              <option value="price-low">Quote low to high</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="clear-filters-btn" type="button" class="btn btn-ghost">Clear Filters</button>
+      </section>
+
+      <section class="summary-grid" aria-label="Lead summary metrics">
+        <div class="summary-card">
+          <span class="label">Total Loaded</span>
+          <span id="summary-total-count" class="value">0</span>
+        </div>
+        <div class="summary-card">
+          <span class="label">Currently Shown</span>
+          <span id="summary-shown-count" class="value">0</span>
+        </div>
+        <div class="summary-card">
+          <span class="label">New Leads</span>
+          <span id="summary-new-count" class="value">0</span>
+        </div>
+        <div class="summary-card">
+          <span class="label">Need Follow-up</span>
+          <span id="summary-followup-count" class="value">0</span>
+        </div>
+      </section>
+
+      <section class="lead-list-wrap" aria-label="Lead list">
+        <ul id="lead-list" class="lead-list"></ul>
+        <p id="lead-list-empty" hidden>No leads match your current filters.</p>
+      </section>
+
+      <div class="sidebar-footer">
+        <div>
+          User: <span id="admin-user-email">-</span><br />
+          ID: <span id="admin-uid" style="font-family:monospace;opacity:0.75">-</span>
+        </div>
+        <button id="sign-out-btn" type="button" class="btn btn-ghost">Sign Out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div id="lead-detail-placeholder" class="empty-state">
+        Select a lead on the left to view details, contact options, and internal follow-up controls.
+      </div>
+
+      <section id="lead-detail-card" class="detail-card" hidden>
+        <header class="detail-header">
+          <div>
+            <h3 id="detail-name">Lead</h3>
+            <div id="detail-created" class="detail-sub">Created -</div>
+          </div>
+          <div class="detail-actions">
+            <span id="detail-price-pill" class="pill">$0</span>
+            <a id="lead-action-sms" class="btn btn-action" href="#">Text Customer</a>
+            <a id="lead-action-call" class="btn btn-action" href="#">Call Customer</a>
+            <button id="lead-action-copy-link" type="button" class="btn btn-ghost">Copy Link</button>
+          </div>
+        </header>
+
+        <section class="detail-section">
+          <h4>Lead Details</h4>
+          <div id="lead-detail-body" class="detail-grid"></div>
+        </section>
+
+        <section class="detail-section">
+          <h4>Campaign Data (UTM)</h4>
+          <pre id="lead-detail-utm">{}</pre>
+        </section>
+
+        <section class="detail-section">
+          <h4>Request Metadata</h4>
+          <div id="lead-detail-meta" class="detail-grid"></div>
+        </section>
+
+        <section class="detail-section">
+          <h4>Internal Follow-up</h4>
+          <div style="display:grid; gap:10px; max-width:640px;">
+            <div>
+              <label for="lead-status-input">Lead Status</label>
+              <select id="lead-status-input">
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="booked">Booked</option>
+                <option value="archived">Archived</option>
+                <option value="spam">Spam</option>
+              </select>
             </div>
-          `;
-        }
-      })();
-    </script>
-  </body>
-  </html>
+            <div>
+              <label for="lead-admin-note-input">Internal Note</label>
+              <textarea id="lead-admin-note-input" placeholder="Track outreach attempts, pricing notes, scheduling details, etc."></textarea>
+            </div>
+            <div class="save-row">
+              <button id="save-lead-btn" type="button" class="btn btn-primary">Save Lead Updates</button>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="/scripts/admin-dashboard.js"></script>
+</body>
+
+</html>

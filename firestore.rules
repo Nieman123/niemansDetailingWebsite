@@ -19,11 +19,11 @@ service cloud.firestore {
         && request.resource.data.status in ["draft", "published"];
     }
 
-    // Leads: allow public read (for unlisted lead viewer), deny client writes
+    // Quote leads are private. Allow only admin allowlist reads and updates.
     match /leads/{id} {
-      allow read: if true;
-      allow write: if false;
-      allow create, update, delete: if false;
+      allow read: if isBlogAdmin();
+      allow update: if isBlogAdmin();
+      allow create, delete: if false;
     }
 
     // Admin allowlist documents. Add uid as doc ID in Firebase console to grant blog access.
