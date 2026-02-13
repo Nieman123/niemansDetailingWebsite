@@ -1,0 +1,239 @@
+:root {
+  --bg: #080c17;
+  --bg-top: #0f1730;
+  --panel: rgba(23, 31, 55, 0.82);
+  --panel-border: rgba(170, 152, 245, 0.36);
+  --text: #e8ecf8;
+  --muted: #c3c9e6;
+  --heading: #f8f9ff;
+  --accent: #ff9f43;
+  --accent-strong: #ff7b00;
+  --focus: #ffd08f;
+  --shadow: 0 18px 42px rgba(1, 4, 12, 0.42);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.65;
+  color: var(--text);
+  background: radial-gradient(circle at 20% 20%, #1a2550 0%, var(--bg-top) 35%, var(--bg) 100%);
+}
+
+a {
+  color: #f8c27a;
+}
+
+a:hover,
+a:focus-visible {
+  color: #ffd8a8;
+}
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -50px;
+  background: #fff;
+  color: #101217;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  z-index: 999;
+}
+
+.skip-link:focus-visible {
+  top: 8px;
+}
+
+.site-header {
+  padding: 18px 14px 8px;
+}
+
+.logo-wrap {
+  max-width: 1040px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+
+.logo-wrap img {
+  width: 220px;
+  max-width: 72vw;
+  height: auto;
+}
+
+.page-wrap {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 8px 14px 36px;
+}
+
+.breadcrumbs {
+  margin: 0 auto 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(11, 15, 28, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  font-size: 0.92rem;
+}
+
+.breadcrumbs a {
+  text-decoration: none;
+}
+
+.service-shell {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 20px;
+  box-shadow: var(--shadow);
+  padding: 24px 18px;
+}
+
+.service-eyebrow {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+h1 {
+  color: var(--heading);
+  margin: 6px 0 12px;
+  line-height: 1.2;
+  font-size: clamp(1.7rem, 2.8vw, 2.5rem);
+}
+
+.service-meta {
+  margin: 0 0 18px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  font-size: 0.87rem;
+  padding: 6px 12px;
+}
+
+.service-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.service-section {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(7, 11, 23, 0.54);
+  padding: 16px;
+}
+
+.service-section h2 {
+  margin: 0 0 8px;
+  color: #f6e4cb;
+  font-size: 1.18rem;
+}
+
+.service-section p {
+  margin: 0;
+  color: var(--text);
+}
+
+.service-actions {
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-block;
+  text-decoration: none;
+  border-radius: 10px;
+  padding: 11px 15px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #fff;
+}
+
+.btn-primary:hover,
+.btn-primary:focus-visible {
+  filter: brightness(1.06);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: var(--text);
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.related-services {
+  margin-top: 24px;
+}
+
+.related-services h2 {
+  margin: 0 0 8px;
+  color: var(--heading);
+  font-size: 1.1rem;
+}
+
+.related-services ul {
+  margin: 0;
+  padding-left: 18px;
+  columns: 2;
+  column-gap: 28px;
+}
+
+.related-services li {
+  margin: 4px 0;
+  break-inside: avoid;
+}
+
+.site-footer {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 8px 14px 34px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+a:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .service-shell {
+    padding: 18px 14px;
+  }
+
+  .related-services ul {
+    columns: 1;
+    padding-left: 20px;
+  }
+
+  .breadcrumbs {
+    font-size: 0.88rem;
+  }
+}
