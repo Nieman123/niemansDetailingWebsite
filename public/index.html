@@ -103,6 +103,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   .slideshow .slide { aspect-ratio:16/9; margin:0; }
   .slideshow img { width:100%; height:auto; display:block; }
   .mdl-chip-float-contact { position:fixed; right:200px; bottom:40px; z-index:99; opacity:0; transform:translateY(10px); pointer-events:none; }
+  .desktop-book-fab { display:none; }
   .mobile-sticky-cta { display:none; }
   /* prevent any sneaky shifts */
   .hero-img { display:block; width:100%; height:auto; }
@@ -293,6 +294,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <a href="#about" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile About');">About</a>
       <a href="#contact" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile Contact');">Contact</a>
       <a href="https://niemansdetailing.com/schedule" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile Schedule');">Schedule</a>
+      <a href="/faq" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile FAQ');">FAQ</a>
     </nav>
     <div class="mobile-nav-backdrop" aria-hidden="true"></div>
     <div class="mdl-layout__tab-bar mdl-js-ripple-effect mdl-color--primary-dark">
@@ -301,6 +303,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <a href="#about" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','About Tab');">About</a>
       <a href="#contact" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','Contact Tab');">Contact</a>
       <a href="https://niemansdetailing.com/schedule" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','Schedule Tab');">Schedule</a>
+      <a href="/faq" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','FAQ Tab');">FAQ</a>
 
     </div>
   </header>
@@ -318,6 +321,10 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <span class="mdl-chip__text">Questions? Call <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone');">(828) 273-3894</a></strong></span>
       </span>
     </div>
+    <a class="desktop-book-fab" href="https://niemansdetailing.com/schedule" aria-label="Book detailing appointment" onclick="trackEvent('CTA','click','Desktop Book FAB');">
+      <i class="material-icons" aria-hidden="true">event</i>
+      <span>Book Now</span>
+    </a>
     <div class="mobile-sticky-cta" aria-label="Quick contact actions">
       <a class="mobile-cta-btn mobile-cta-call" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Mobile Sticky Call');">
         <i class="material-icons" aria-hidden="true">phone</i>
@@ -1118,6 +1125,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             <p></p>
             <li><a href="/terms">Terms and Conditions</a></li>
             <li><a href="/privacy">Privacy Policy</a></li>
+            <li><a href="/faq">FAQ</a></li>
           </ul>
         </div>
 

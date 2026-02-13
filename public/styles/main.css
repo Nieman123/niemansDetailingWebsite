@@ -522,6 +522,51 @@ html {
   display: none;
 }
 
+.desktop-book-fab {
+  display: none;
+  position: fixed;
+  right: 22px;
+  bottom: 40px;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  border: 1px solid rgba(139, 111, 228, 0.84);
+  background: linear-gradient(
+    140deg,
+    rgba(111, 67, 219, 0.98) 0%,
+    rgba(77, 42, 170, 0.98) 100%
+  );
+  box-shadow: 0 12px 25px rgba(38, 21, 97, 0.42);
+  transition: transform 0.2s ease, filter 0.2s ease;
+  z-index: 100;
+}
+
+.desktop-book-fab .material-icons {
+  font-size: 20px;
+  line-height: 1;
+}
+
+@media (min-width: 769px) {
+  .desktop-book-fab {
+    display: inline-flex;
+  }
+}
+
+@media (hover: hover) {
+  .desktop-book-fab:hover {
+    color: #ffffff;
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+  }
+}
+
 /* Improve floating contact UI on mobile */
 @media (max-width: 768px) {
   .mdl-site main > .mdl-layout__tab-panel {
@@ -529,6 +574,10 @@ html {
   }
 
   .mdl-chip-float-contact {
+    display: none;
+  }
+
+  .desktop-book-fab {
     display: none;
   }
 
