@@ -13,10 +13,31 @@
   }
 })();
 
-// Lightweight GA wrapper
+// GA4 event helper
 function trackEvent(category, action, label) {
-  if (window.ga) {
-    ga('send', 'event', category, action, label);
+  const clean = (value) =>
+    String(value || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 32);
+
+  const eventName = [clean(category), clean(action)].filter(Boolean).join('_') || 'site_event';
+  const params = {};
+  if (category) params.event_category = category;
+  if (action) params.event_action = action;
+  if (label) params.event_label = label;
+
+  if (typeof window.gtag === 'function') {
+    window.gtag('event', eventName, params);
+    return;
+  }
+
+  if (Array.isArray(window.dataLayer)) {
+    window.dataLayer.push({
+      event: eventName,
+      ...params
+    });
   }
 }
 
