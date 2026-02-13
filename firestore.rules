@@ -23,7 +23,8 @@ service cloud.firestore {
     match /leads/{id} {
       allow read: if isBlogAdmin();
       allow update: if isBlogAdmin();
-      allow create, delete: if false;
+      allow delete: if isBlogAdmin();
+      allow create: if false;
     }
 
     // Admin allowlist documents. Add uid as doc ID in Firebase console to grant blog access.

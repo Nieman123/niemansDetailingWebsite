@@ -7,6 +7,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -57,6 +58,7 @@ const els = {
   detailCopyLinkBtn: document.getElementById("lead-action-copy-link"),
   detailStatusInput: document.getElementById("lead-status-input"),
   detailAdminNoteInput: document.getElementById("lead-admin-note-input"),
+  deleteLeadBtn: document.getElementById("delete-lead-btn"),
   saveLeadBtn: document.getElementById("save-lead-btn"),
 };
 
@@ -69,6 +71,7 @@ const state = {
   preferredLeadId: preselectedLeadId,
   loadingLeads: false,
   savingLead: false,
+  deletingLead: false,
 };
 
 function setStatus(message, type = "info") {
@@ -92,6 +95,7 @@ function setControlsDisabled(disabled) {
     els.rangeFilter,
     els.sortFilter,
     els.clearFiltersBtn,
+    els.deleteLeadBtn,
     els.saveLeadBtn,
   ];
   controls.forEach((control) => {
@@ -487,7 +491,7 @@ async function loadLeads() {
 }
 
 async function saveLeadEdits() {
-  if (!state.user || !state.isAdmin || !state.activeLeadId || state.savingLead) return;
+  if (!state.user || !state.isAdmin || !state.activeLeadId || state.savingLead || state.deletingLead) return;
   const lead = state.leads.find((item) => item.id === state.activeLeadId);
   if (!lead) return;
 
@@ -523,6 +527,60 @@ async function saveLeadEdits() {
     setStatus("Could not save lead updates.", "error");
   } finally {
     state.savingLead = false;
+    setControlsDisabled(false);
+  }
+}
+
+function clearLeadIdQueryParam() {
+  const nextUrl = new URL(window.location.href);
+  nextUrl.searchParams.delete("id");
+  history.replaceState(null, "", nextUrl.toString());
+}
+
+async function deleteActiveLead() {
+  if (!state.user || !state.isAdmin || !state.activeLeadId || state.deletingLead || state.savingLead) return;
+
+  const leadId = state.activeLeadId;
+  const lead = state.leads.find((item) => item.id === leadId);
+  if (!lead) return;
+
+  const confirmed = window.confirm(
+    `Delete lead "${lead.name || lead.id}"? This cannot be undone.`
+  );
+  if (!confirmed) return;
+
+  const currentFilteredIds = state.filteredLeads.map((item) => item.id);
+  const currentIndex = currentFilteredIds.indexOf(leadId);
+
+  state.deletingLead = true;
+  setControlsDisabled(true);
+  setStatus("Deleting lead...");
+
+  try {
+    await deleteDoc(doc(db, "leads", leadId));
+
+    state.leads = state.leads.filter((item) => item.id !== leadId);
+    state.activeLeadId = null;
+    applyFilters();
+
+    const nextLeadId =
+      state.filteredLeads[currentIndex]?.id ||
+      state.filteredLeads[currentIndex - 1]?.id ||
+      null;
+
+    if (nextLeadId) {
+      selectLead(nextLeadId);
+    } else {
+      showLeadDetails(null);
+      clearLeadIdQueryParam();
+    }
+
+    setStatus("Lead deleted.");
+  } catch (error) {
+    console.error("Failed to delete lead", error);
+    setStatus("Could not delete lead.", "error");
+  } finally {
+    state.deletingLead = false;
     setControlsDisabled(false);
   }
 }
@@ -594,6 +652,10 @@ function bindEvents() {
 
   if (els.saveLeadBtn) {
     els.saveLeadBtn.addEventListener("click", saveLeadEdits);
+  }
+
+  if (els.deleteLeadBtn) {
+    els.deleteLeadBtn.addEventListener("click", deleteActiveLead);
   }
 
   if (els.detailCopyLinkBtn) {

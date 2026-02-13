@@ -310,6 +310,17 @@
       color: var(--brand);
     }
 
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.14);
+      color: #fecaca;
+      border: 1px solid rgba(239, 68, 68, 0.45);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.24);
+      border-color: rgba(239, 68, 68, 0.7);
+    }
+
     .sidebar-footer {
       border-top: 1px solid var(--border);
       padding-top: 10px;
@@ -418,6 +429,7 @@
     .save-row {
       display: flex;
       justify-content: flex-end;
+      gap: 10px;
     }
 
     .auth-container {
@@ -661,6 +673,7 @@
               <textarea id="lead-admin-note-input" placeholder="Track outreach attempts, pricing notes, scheduling details, etc."></textarea>
             </div>
             <div class="save-row">
+              <button id="delete-lead-btn" type="button" class="btn btn-danger">Delete Lead</button>
               <button id="save-lead-btn" type="button" class="btn btn-primary">Save Lead Updates</button>
             </div>
           </div>
