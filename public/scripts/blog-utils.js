@@ -81,9 +81,91 @@ export function estimateReadingMinutes(content) {
 }
 
 function renderInline(value) {
-  return escapeHtml(value)
-    .replace(/(\*\*|__)(.*?)\1/g, "<strong>$2</strong>")
-    .replace(/`([^`]+)`/g, "<code>$1</code>");
+  let rendered = escapeHtml(value);
+  const tokens = [];
+
+  function putToken(html) {
+    const token = `__INLINE_TOKEN_${tokens.length}__`;
+    tokens.push({ token, html });
+    return token;
+  }
+
+  function restoreTokens(input) {
+    return tokens.reduce((acc, entry) => acc.split(entry.token).join(entry.html), input);
+  }
+
+  function applyBasicFormatting(input) {
+    return input
+      .replace(/(\*\*|__)(.*?)\1/g, "<strong>$2</strong>")
+      .replace(/`([^`]+)`/g, "<code>$1</code>");
+  }
+
+  function parseMarkdownTarget(rawTarget) {
+    const target = String(rawTarget || "").trim();
+    const match = target.match(/^(\S+)(?:\s+["'](.+?)["'])?$/);
+    if (!match) return { url: target, title: "" };
+    return { url: match[1] || "", title: match[2] || "" };
+  }
+
+  function sanitizeUrl(rawUrl) {
+    let url = String(rawUrl || "").trim();
+    if (!url) return "";
+    if (/^www\./i.test(url)) url = `https://${url}`;
+    if (/[\u0000-\u001F\u007F]/.test(url)) return "";
+
+    const normalized = url.replace(/&amp;/g, "&").toLowerCase();
+    if (
+      normalized.startsWith("http://") ||
+      normalized.startsWith("https://") ||
+      normalized.startsWith("mailto:") ||
+      normalized.startsWith("tel:") ||
+      normalized.startsWith("/") ||
+      normalized.startsWith("./") ||
+      normalized.startsWith("../") ||
+      normalized.startsWith("#") ||
+      normalized.startsWith("?")
+    ) {
+      return url;
+    }
+    return "";
+  }
+
+  function isExternalUrl(url) {
+    return /^https?:\/\//i.test(String(url || "").replace(/&amp;/g, "&"));
+  }
+
+  // Protect inline code first so markdown syntax inside code is left untouched.
+  rendered = rendered.replace(/`([^`]+)`/g, (_, code) => putToken(`<code>${code}</code>`));
+
+  rendered = rendered.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, altText, rawTarget) => {
+    const { url, title } = parseMarkdownTarget(rawTarget);
+    const safeUrl = sanitizeUrl(url);
+    if (!safeUrl) return match;
+
+    const safeAlt = String(altText || "").trim();
+    const titleAttr = title ? ` title="${title}"` : "";
+    return putToken(
+      `<img src="${safeUrl}" alt="${safeAlt}" loading="lazy"${titleAttr} />`
+    );
+  });
+
+  rendered = rendered.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, label, rawTarget) => {
+    const { url, title } = parseMarkdownTarget(rawTarget);
+    const safeUrl = sanitizeUrl(url);
+    if (!safeUrl) return match;
+
+    const linkText = applyBasicFormatting(String(label || ""));
+    const titleAttr = title ? ` title="${title}"` : "";
+    if (isExternalUrl(safeUrl)) {
+      return putToken(
+        `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer"${titleAttr}>${linkText}</a>`
+      );
+    }
+    return putToken(`<a href="${safeUrl}"${titleAttr}>${linkText}</a>`);
+  });
+
+  rendered = applyBasicFormatting(rendered);
+  return restoreTokens(rendered);
 }
 
 export function renderRichText(content) {
