@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17602789326"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "AW-17602789326");
+  </script>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="firebase-api-key" content="AIzaSyBgUntKRCQsi_SyJmNOgJLBI8Yj8gEsmA4">
+  <meta name="description" content="Practical car detailing tips from Nieman's Detailing for Asheville drivers. Learn how to protect paint, clean interiors, and keep your vehicle looking sharp year-round.">
+  <meta name="keywords" content="auto detailing blog, car care tips Asheville, paint protection, interior detailing advice, mobile detailing">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://niemansdetailing.com/blog">
+  <meta property="og:title" content="Detailing Blog | Nieman's Detailing">
+  <meta property="og:description" content="Car detailing tips, maintenance guidance, and local vehicle care advice from Nieman's Detailing.">
+  <meta property="og:image" content="https://niemansdetailing.com/images/carpics/facebookogimage.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Detailing Blog | Nieman's Detailing">
+  <meta name="twitter:description" content="Car detailing tips, maintenance guidance, and local vehicle care advice from Nieman's Detailing.">
+  <meta name="twitter:image" content="https://niemansdetailing.com/images/carpics/facebookogimage.png">
+
+  <link rel="canonical" href="https://niemansdetailing.com/blog">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="/images/touch/chrome-touch-icon-192x192.png">
+  <link rel="apple-touch-icon" href="/images/touch/apple-touch-icon.png">
+
+  <title>Detailing Blog | Nieman's Detailing</title>
+
+  <style>
+    :root {
+      --bg-top: #070b1b;
+      --bg-bottom: #141f4d;
+      --surface: rgba(12, 17, 38, 0.9);
+      --surface-2: rgba(18, 25, 54, 0.85);
+      --text: #eff2ff;
+      --muted: #c0caef;
+      --accent: #f59e0b;
+      --line: rgba(143, 167, 255, 0.28);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Roboto", Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(170deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+      min-height: 100vh;
+    }
+
+    a { color: #f6c558; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .shell {
+      width: min(1080px, 92vw);
+      margin: 0 auto;
+      padding: 18px 0 48px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--text);
+    }
+
+    .brand img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      font-size: 0.95rem;
+    }
+
+    .hero {
+      background: radial-gradient(circle at top right, rgba(245, 158, 11, 0.2), transparent 44%), var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 24px 22px;
+      box-shadow: 0 22px 40px rgba(3, 6, 17, 0.45);
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.6rem, 2.8vw, 2.25rem);
+      line-height: 1.2;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      max-width: 70ch;
+    }
+
+    .blog-state {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .blog-state[data-type="error"] {
+      color: #ffd6d6;
+    }
+
+    .blog-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .blog-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--surface-2);
+      transition: transform 160ms ease, box-shadow 160ms ease;
+    }
+
+    .blog-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 14px 24px rgba(3, 5, 15, 0.45);
+    }
+
+    .blog-card-link {
+      color: inherit;
+      display: block;
+      height: 100%;
+    }
+
+    .blog-card-image {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      display: block;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .blog-card-body {
+      padding: 14px 14px 16px;
+    }
+
+    .blog-card h2 {
+      margin: 0 0 8px;
+      font-size: 1.2rem;
+      line-height: 1.3;
+    }
+
+    .blog-card p {
+      margin: 0 0 10px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .blog-card-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: #d4ddff;
+      font-size: 0.86rem;
+      margin-bottom: 10px;
+    }
+
+    .blog-card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .blog-tag {
+      font-size: 0.75rem;
+      border-radius: 999px;
+      border: 1px solid rgba(241, 199, 102, 0.45);
+      color: #ffe2a6;
+      padding: 3px 9px;
+    }
+
+    .blog-empty {
+      margin: 0;
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      color: var(--muted);
+      background: rgba(14, 20, 45, 0.8);
+    }
+
+    @media (max-width: 800px) {
+      .topbar { align-items: flex-start; flex-direction: column; margin-bottom: 18px; }
+      .blog-grid { grid-template-columns: 1fr; }
+      .hero { padding: 18px 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="/">
+        <img src="/images/ND-logo-white-transparentbg.png" alt="Nieman's Detailing logo">
+        <span>Nieman's Detailing</span>
+      </a>
+      <nav class="nav-links" aria-label="Blog navigation">
+        <a href="/">Home</a>
+        <a href="/quote">Quote</a>
+        <a href="/schedule">Schedule</a>
+        <a href="/faq">FAQ</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1>Detailing Tips and Vehicle Care Guides</h1>
+        <p>Explore practical guides for paint protection, interior cleaning, and long-term maintenance in Western North Carolina conditions.</p>
+      </section>
+      <p id="blog-state" class="blog-state">Loading articles...</p>
+      <section id="blog-list" class="blog-grid" aria-live="polite"></section>
+    </main>
+  </div>
+
+  <script type="module" src="/scripts/blog-list.js"></script>
+</body>
+</html>

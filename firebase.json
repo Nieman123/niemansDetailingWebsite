@@ -3,7 +3,8 @@
     "source": "functions"
   },
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
   "hosting": {
     "public": "public",
@@ -33,7 +34,7 @@
       { "source": "**/*.js",   "headers": [ { "key": "Cache-Control", "value": "public, max-age=604800" } ] },
       { "source": "**/*.html", "headers": [ { "key": "Cache-Control", "value": "public, max-age=300" } ] }
     ],
-   "rewrites": [
+    "rewrites": [
       {
         "source": "/api/**",
         "function": {
@@ -52,6 +53,18 @@
       {
         "source": "/quote",
         "destination": "/quote.html"
+      },
+      {
+        "source": "/blog",
+        "destination": "/blog/index.html"
+      },
+      {
+        "source": "/blog/**",
+        "destination": "/blog/post.html"
+      },
+      {
+        "source": "/admin/blog",
+        "destination": "/admin/blog.html"
       },
       {
         "source": "/privacy",

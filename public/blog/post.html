@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-17602789326"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "AW-17602789326");
+  </script>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="firebase-api-key" content="AIzaSyBgUntKRCQsi_SyJmNOgJLBI8Yj8gEsmA4">
+  <meta name="description" content="Detailing insights and vehicle care tips from Nieman's Detailing.">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://niemansdetailing.com/blog">
+  <meta property="og:title" content="Detailing Blog | Nieman's Detailing">
+  <meta property="og:description" content="Detailing insights and vehicle care tips from Nieman's Detailing.">
+  <meta property="og:image" content="https://niemansdetailing.com/images/carpics/facebookogimage.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Detailing Blog | Nieman's Detailing">
+  <meta name="twitter:description" content="Detailing insights and vehicle care tips from Nieman's Detailing.">
+  <meta name="twitter:image" content="https://niemansdetailing.com/images/carpics/facebookogimage.png">
+
+  <link id="canonical-link" rel="canonical" href="https://niemansdetailing.com/blog">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="192x192" href="/images/touch/chrome-touch-icon-192x192.png">
+  <link rel="apple-touch-icon" href="/images/touch/apple-touch-icon.png">
+
+  <title>Detailing Blog | Nieman's Detailing</title>
+
+  <style>
+    :root {
+      --bg-top: #070b1b;
+      --bg-bottom: #111b45;
+      --surface: rgba(10, 15, 35, 0.92);
+      --surface-soft: rgba(16, 24, 53, 0.86);
+      --line: rgba(150, 170, 255, 0.26);
+      --text: #eef2ff;
+      --muted: #c7d2f4;
+      --accent: #f59e0b;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: "Roboto", Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(170deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+    }
+
+    a { color: #ffcd66; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .shell {
+      width: min(900px, 92vw);
+      margin: 0 auto;
+      padding: 18px 0 52px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+
+    .crumbs {
+      display: inline-flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 0.94rem;
+      color: var(--muted);
+    }
+
+    .article-card {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 86% 0%, rgba(245, 158, 11, 0.18), transparent 48%),
+        var(--surface);
+      box-shadow: 0 24px 40px rgba(3, 5, 15, 0.5);
+    }
+
+    .article-inner {
+      padding: 24px 22px;
+    }
+
+    .state {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .state[data-type="error"] {
+      color: #ffd6d6;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.65rem, 3vw, 2.4rem);
+      line-height: 1.15;
+    }
+
+    .excerpt {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 1.04rem;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+      color: #d6e0ff;
+      font-size: 0.9rem;
+    }
+
+    .post-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .post-tag {
+      border-radius: 999px;
+      border: 1px solid rgba(241, 199, 102, 0.45);
+      color: #ffe2a6;
+      padding: 3px 9px;
+      font-size: 0.74rem;
+    }
+
+    .post-cover-wrap {
+      margin: 0 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface-soft);
+    }
+
+    .post-cover-wrap img {
+      display: block;
+      width: 100%;
+      max-height: 430px;
+      object-fit: cover;
+    }
+
+    .content {
+      color: var(--text);
+      line-height: 1.7;
+      font-size: 1.02rem;
+    }
+
+    .content h2,
+    .content h3 {
+      margin: 24px 0 8px;
+      line-height: 1.3;
+    }
+
+    .content p {
+      margin: 0 0 14px;
+      color: #eaf0ff;
+    }
+
+    .content ul,
+    .content ol {
+      margin: 0 0 14px 22px;
+      color: #eaf0ff;
+    }
+
+    .content code {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      padding: 1px 4px;
+      font-size: 0.92em;
+    }
+
+    .related {
+      border-top: 1px solid var(--line);
+      margin-top: 24px;
+      padding-top: 18px;
+    }
+
+    .related h2 {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
+    }
+
+    .related ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 10px;
+    }
+
+    .related li {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--surface-soft);
+      padding: 10px 11px;
+    }
+
+    .related li p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 720px) {
+      .article-inner { padding: 18px 15px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="crumbs">
+        <a href="/">Home</a>
+        <span>/</span>
+        <a href="/blog">Blog</a>
+      </div>
+      <a href="/schedule">Book a Detail</a>
+    </header>
+
+    <article class="article-card">
+      <div class="article-inner">
+        <p id="post-state" class="state">Loading article...</p>
+        <h1 id="post-title">Loading...</h1>
+        <p id="post-excerpt" class="excerpt"></p>
+        <div class="meta">
+          <time id="post-date"></time>
+          <span id="post-reading-time"></span>
+        </div>
+        <div id="post-tags" class="post-tags"></div>
+        <figure id="post-cover-wrap" class="post-cover-wrap" hidden>
+          <img id="post-cover" src="" alt="">
+        </figure>
+        <div id="post-content" class="content"></div>
+        <section id="related-section" class="related" hidden>
+          <h2>More from the blog</h2>
+          <ul id="related-posts"></ul>
+        </section>
+      </div>
+    </article>
+  </div>
+
+  <script type="module" src="/scripts/blog-post.js"></script>
+</body>
+</html>

@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="firebase-api-key" content="AIzaSyBgUntKRCQsi_SyJmNOgJLBI8Yj8gEsmA4">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Blog Admin (Private)</title>
+  <link rel="icon" href="/favicon.ico" sizes="any">
+
+  <style>
+    :root {
+      --bg: #0e0f13;
+      --surface: #181b21;
+      --surface-2: #1f232c;
+      --line: rgba(143, 156, 205, 0.34);
+      --text: #eef2ff;
+      --muted: #b6c0e6;
+      --brand: #f59e0b;
+      --danger: #ef4444;
+      --ok: #22c55e;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(170deg, #0c0f17 0%, #151923 100%);
+      min-height: 100vh;
+    }
+
+    a { color: #f6c761; }
+
+    .shell {
+      width: min(1200px, 95vw);
+      margin: 0 auto;
+      padding: 18px 0 28px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    h1 { margin: 0; font-size: 1.6rem; }
+    .hint { margin: 0; color: var(--muted); font-size: 0.9rem; }
+
+    .status {
+      margin: 0 0 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(20, 24, 35, 0.9);
+      color: var(--muted);
+      padding: 10px 12px;
+      font-size: 0.92rem;
+    }
+
+    .status[data-type="error"] {
+      border-color: rgba(239, 68, 68, 0.5);
+      color: #ffd1d1;
+      background: rgba(49, 18, 21, 0.9);
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+      padding: 14px;
+      box-shadow: 0 16px 28px rgba(0, 0, 0, 0.33);
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button,
+    .btn-link {
+      border: 1px solid rgba(245, 158, 11, 0.5);
+      background: rgba(245, 158, 11, 0.15);
+      color: #ffcf78;
+      border-radius: 9px;
+      padding: 8px 12px;
+      font: inherit;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+    }
+
+    button:hover,
+    .btn-link:hover {
+      background: rgba(245, 158, 11, 0.26);
+      text-decoration: none;
+    }
+
+    button[disabled] {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-danger {
+      border-color: rgba(239, 68, 68, 0.55);
+      background: rgba(239, 68, 68, 0.12);
+      color: #ffc7c7;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .section-title {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+
+    .post-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      max-height: 68vh;
+      overflow: auto;
+    }
+
+    .post-list-item { margin: 0; }
+
+    .post-list-btn {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface-2);
+      color: var(--text);
+      text-align: left;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .post-list-btn:hover {
+      border-color: rgba(245, 158, 11, 0.45);
+    }
+
+    .post-list-title {
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .post-list-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      gap: 8px;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+
+    .pill-draft {
+      color: #cfd8ff;
+      border-color: rgba(160, 174, 225, 0.55);
+    }
+
+    .pill-published {
+      color: #cbffdc;
+      border-color: rgba(34, 197, 94, 0.55);
+      background: rgba(34, 197, 94, 0.12);
+    }
+
+    .empty {
+      margin: 0;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    form {
+      display: grid;
+      gap: 10px;
+    }
+
+    .grid-two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 0.87rem;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border-radius: 9px;
+      border: 1px solid var(--line);
+      background: #0f131d;
+      color: var(--text);
+      padding: 9px 10px;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 230px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .inline-input {
+      display: flex;
+      gap: 8px;
+    }
+
+    .inline-input input {
+      flex: 1;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .preview {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #101521;
+      padding: 12px;
+      color: #ebf0ff;
+      line-height: 1.65;
+    }
+
+    .preview h2,
+    .preview h3 {
+      margin: 18px 0 8px;
+      line-height: 1.3;
+    }
+
+    .preview p { margin: 0 0 10px; }
+    .preview ul,
+    .preview ol { margin: 0 0 10px 22px; }
+    .preview code {
+      border: 1px solid rgba(200, 213, 255, 0.35);
+      background: rgba(178, 194, 255, 0.12);
+      border-radius: 6px;
+      padding: 1px 4px;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.87rem;
+      color: #d6e0ff;
+      word-break: break-all;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .grid-two {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <h1>Blog Admin</h1>
+        <p class="hint">Secure private editor for Firestore-backed blog posts.</p>
+      </div>
+      <div class="row">
+        <a class="btn-link" href="/admin/index.html">Lead Viewer</a>
+        <a class="btn-link" href="/blog" target="_blank" rel="noopener">View Blog</a>
+      </div>
+    </header>
+
+    <p id="admin-status" class="status">Checking sign-in status...</p>
+    <p id="auth-hint" class="hint">You must be listed in <span class="mono">adminUsers/&lt;uid&gt;</span> to edit posts.</p>
+
+    <section id="auth-view" class="card" hidden>
+      <h2 class="section-title">Sign in</h2>
+      <p class="hint">Use Google sign-in so Firestore rules can verify your admin identity.</p>
+      <button id="sign-in-btn" type="button">Sign in with Google</button>
+    </section>
+
+    <section id="unauthorized-view" class="card" hidden>
+      <h2 class="section-title">No blog admin access yet</h2>
+      <p class="hint">Signed in as <strong id="admin-user-email">-</strong></p>
+      <p class="hint">Add this UID as a document ID in <span class="mono">adminUsers</span> to grant access:</p>
+      <p id="admin-uid" class="mono">-</p>
+      <button id="sign-out-unauthorized-btn" type="button">Sign out</button>
+    </section>
+
+    <section id="admin-view" hidden>
+      <div class="layout">
+        <aside class="card">
+          <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+            <h2 class="section-title">Posts</h2>
+            <button id="new-post-btn" type="button">New Post</button>
+          </div>
+          <p id="post-list-empty" class="empty" hidden>No posts found yet.</p>
+          <ul id="post-list" class="post-list"></ul>
+        </aside>
+
+        <section class="card">
+          <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+            <h2 id="editor-heading" class="section-title">Create a new post</h2>
+            <button id="sign-out-btn" type="button">Sign out</button>
+          </div>
+
+          <form id="post-form" novalidate>
+            <label>
+              Title
+              <input id="post-title-input" type="text" maxlength="120" required>
+            </label>
+
+            <label>
+              Slug
+              <div class="inline-input">
+                <input id="post-slug-input" type="text" maxlength="90" required>
+                <button id="slug-from-title-btn" type="button">From title</button>
+              </div>
+            </label>
+
+            <div class="grid-two">
+              <label>
+                Status
+                <select id="post-status-input">
+                  <option value="draft">Draft</option>
+                  <option value="published">Published</option>
+                </select>
+              </label>
+              <label>
+                Tags (comma-separated)
+                <input id="post-tags-input" type="text" maxlength="220" placeholder="paint-care, winter-detailing">
+              </label>
+            </div>
+
+            <label>
+              Excerpt (optional, auto-generated when blank)
+              <input id="post-excerpt-input" type="text" maxlength="220">
+            </label>
+
+            <label>
+              Cover image URL (optional)
+              <input id="post-cover-image-input" type="url" maxlength="500" placeholder="https://...">
+            </label>
+
+            <label>
+              Content
+              <textarea id="post-content-input" placeholder="Use plain text with optional markdown-like lines: ## Heading, - bullet list, 1. numbered list" required></textarea>
+            </label>
+
+            <div class="actions">
+              <button id="save-post-btn" type="submit">Save Post</button>
+              <button id="delete-post-btn" type="button" class="btn-danger" hidden>Delete Post</button>
+              <a id="open-post-link" class="btn-link" href="#" target="_blank" rel="noopener" hidden>Open Public Post</a>
+            </div>
+          </form>
+
+          <h3 class="section-title" style="margin-top: 14px;">Live Preview</h3>
+          <div id="post-preview" class="preview">
+            <p>Write your article content to see a safe, formatted preview.</p>
+          </div>
+        </section>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="/scripts/admin-blog.js"></script>
+</body>
+</html>
