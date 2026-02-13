@@ -51,6 +51,59 @@ html, body { margin:0; padding:0; background:linear-gradient(180deg,#060a18 0%,#
     z-index:130;
   }
   .mobile-nav-toggle .material-icons { font-size:32px; line-height:1; }
+  .mobile-nav-panel{
+    display:flex;
+    position:fixed;
+    inset:0;
+    width:100vw;
+    height:100dvh;
+    padding:78px 16px 24px;
+    box-sizing:border-box;
+    border:0;
+    border-radius:0;
+    background:linear-gradient(170deg,rgba(9,13,30,.98) 0%,rgba(13,19,45,.97) 48%,rgba(20,13,48,.98) 100%);
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:12px;
+    opacity:0;
+    transform:translateY(-10px);
+    pointer-events:none;
+    transition:opacity .2s ease,transform .2s ease;
+    z-index:129;
+  }
+  .mobile-nav-link{
+    display:inline-flex;
+    width:min(360px,calc(100vw - 48px));
+    min-height:48px;
+    box-sizing:border-box;
+    align-items:center;
+    justify-content:center;
+    padding:12px 18px;
+    color:#fff;
+    text-decoration:none;
+    text-align:center;
+    font-weight:600;
+    font-size:1rem;
+    letter-spacing:.01em;
+    border-radius:999px;
+    border:1px solid rgba(188,169,255,.4);
+    background:linear-gradient(145deg,rgba(126,89,221,.24) 0%,rgba(88,55,182,.32) 100%);
+    box-shadow:0 10px 24px rgba(6,8,22,.35);
+  }
+  .mobile-nav-backdrop{
+    display:block;
+    position:fixed;
+    inset:0;
+    background:rgba(4,6,16,.66);
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s ease;
+    z-index:128;
+  }
+  body.mobile-menu-open .mobile-nav-panel{ opacity:1; transform:translateY(0); pointer-events:auto; }
+  body.mobile-menu-open .mobile-nav-backdrop{ opacity:1; pointer-events:auto; }
+  body.mobile-menu-open{ overflow:hidden; }
   /* Allow content to span full width on phones so hero can be largest */
   .mdl-site .mdl-card .mdl-card__supporting-text { width: 100%; }
   /* Tame heading size a bit to ensure hero dominates LCP */

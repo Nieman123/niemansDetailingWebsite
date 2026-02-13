@@ -98,48 +98,82 @@ html {
   }
 
   .mobile-nav-panel {
-    display: block;
     position: fixed;
-    top: 56px;
-    left: 10px;
-    width: min(260px, calc(100vw - 20px));
-    padding: 10px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.35);
-    background: rgba(15, 19, 36, 0.92);
-    box-shadow: 0 14px 34px rgba(4, 8, 24, 0.5);
-    backdrop-filter: blur(10px) saturate(130%);
-    -webkit-backdrop-filter: blur(10px) saturate(130%);
+    inset: 0;
+    width: 100vw;
+    height: 100dvh;
+    padding: 78px 16px 24px;
+    box-sizing: border-box;
+    border: 0;
+    border-radius: 0;
+    background: linear-gradient(
+      170deg,
+      rgba(9, 13, 30, 0.98) 0%,
+      rgba(13, 19, 45, 0.97) 48%,
+      rgba(20, 13, 48, 0.98) 100%
+    );
+    box-shadow: none;
+    backdrop-filter: blur(8px) saturate(118%);
+    -webkit-backdrop-filter: blur(8px) saturate(118%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-10px);
     pointer-events: none;
     transition: opacity 0.2s ease, transform 0.2s ease;
     z-index: 129;
   }
 
   .mobile-nav-link {
-    display: block;
-    padding: 10px 12px;
+    display: inline-flex;
+    width: min(360px, calc(100vw - 48px));
+    min-height: 48px;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 18px;
     color: #fff;
     text-decoration: none;
-    font-weight: 500;
-    border-radius: 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+    border-radius: 999px;
+    border: 1px solid rgba(188, 169, 255, 0.4);
+    background: linear-gradient(
+      145deg,
+      rgba(126, 89, 221, 0.24) 0%,
+      rgba(88, 55, 182, 0.32) 100%
+    );
+    box-shadow: 0 10px 24px rgba(6, 8, 22, 0.35);
   }
 
   .mobile-nav-link:active,
   .mobile-nav-link:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: linear-gradient(
+      145deg,
+      rgba(143, 106, 233, 0.34) 0%,
+      rgba(100, 65, 197, 0.42) 100%
+    );
+    color: #fff;
   }
 
   .mobile-nav-backdrop {
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(3, 6, 18, 0.45);
+    background: rgba(4, 6, 16, 0.66);
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease;
     z-index: 128;
+  }
+
+  body.mobile-menu-open {
+    overflow: hidden;
   }
 
   body.mobile-menu-open .mobile-nav-panel {
