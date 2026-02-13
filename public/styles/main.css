@@ -624,6 +624,9 @@ button:focus-visible {
 
 /* Testimonial adjustments */
 .testimonial-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
   font-size: 0.75rem;
   line-height: 1.5;
 }
@@ -631,9 +634,24 @@ button:focus-visible {
   margin: 0;
   quotes: none;
   border-left: 4px solid #673ab7;
-  padding-left: 1rem;
-  position: relative;  
-  font-size: 1.5rem; 
+  padding: 1rem 1rem 1rem 1.1rem;
+  border-radius: 14px;
+  position: relative;
+  font-size: 1.5rem;
+  background: linear-gradient(
+    145deg,
+    rgba(249, 243, 255, 0.74) 0%,
+    rgba(230, 217, 255, 0.48) 100%
+  );
+  border: 1px solid rgba(140, 113, 214, 0.28);
+  box-shadow: 0 10px 24px rgba(18, 12, 42, 0.16);
+  backdrop-filter: blur(9px) saturate(125%);
+  -webkit-backdrop-filter: blur(9px) saturate(125%);
+}
+
+.testimonial-list blockquote footer {
+  margin-top: 0.7rem;
+  color: #35295f;
 }
 .testimonial-list blockquote::before,
 .testimonial-list blockquote::after {
@@ -643,14 +661,12 @@ button:focus-visible {
 /* Responsive two-column layout for larger screens */
 @media (min-width: 768px) {
   .testimonial-list {
-    flex-direction: row;
-    flex-wrap: wrap;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
   }
   .testimonial-list blockquote {
-    margin-right: 2rem;
-  }
-  .testimonial-list blockquote:last-child {
-    margin-right: 0;
+    margin: 0;
+    width: 100%;
   }
 }
 
@@ -1045,9 +1061,21 @@ body.mdl-site {
 }
 
 @media (max-width: 768px) {
+  .mdl-site #overview .overview-services > .mdl-cell.mdl-cell--12-col-phone {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .mdl-site #overview .overview-services > .mdl-cell.mdl-cell--12-col-phone picture {
+    display: block;
+    margin: 0 auto;
+  }
+
   .mdl-site #overview .overview-services .circle-pic {
     width: 200px;
     height: 200px;
+    margin: 10px auto 12px;
   }
   .mdl-site #services .content-grid {
     padding: 14px 12px;
