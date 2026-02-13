@@ -103,6 +103,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   .slideshow .slide { aspect-ratio:16/9; margin:0; }
   .slideshow img { width:100%; height:auto; display:block; }
   .mdl-chip-float-contact { position:fixed; right:200px; bottom:40px; z-index:99; opacity:0; transform:translateY(10px); pointer-events:none; }
+  .mobile-sticky-cta { display:none; }
   /* prevent any sneaky shifts */
   .hero-img { display:block; width:100%; height:auto; }
   @media (max-width: 900px) {
@@ -314,8 +315,18 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <span class="mdl-chip mdl-chip--contact mdl-chip-bg">
     <span class="mdl-chip__contact mdl-color--primary mdl-color-text--white"><i
       class="phone-icon material-icons md-light" aria-label="Questions? Call">phone</i></span>
-        <span class="mdl-chip__text">Questions? Call <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone');">(828) 273-3894</a></strong></span>
+      <span class="mdl-chip__text">Questions? Call <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone');">(828) 273-3894</a></strong></span>
       </span>
+    </div>
+    <div class="mobile-sticky-cta" aria-label="Quick contact actions">
+      <a class="mobile-cta-btn mobile-cta-call" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Mobile Sticky Call');">
+        <i class="material-icons" aria-hidden="true">phone</i>
+        <span>Call</span>
+      </a>
+      <a class="mobile-cta-btn mobile-cta-book" href="https://niemansdetailing.com/schedule" onclick="trackEvent('CTA','click','Mobile Sticky Book');">
+        <i class="material-icons" aria-hidden="true">event</i>
+        <span>Book</span>
+      </a>
     </div>
 
     <!--Main Panel-->
@@ -331,6 +342,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
                 <h3 class="sub-title">Bringing the shine right to your driveway!</h3>
                 <div class="hero-cta">
                   <a href="https://niemansdetailing.com/schedule" class="mdl-button mdl-button--raised mdl-button--colored" onclick="trackEvent('CTA','click','Book Now');">Book Now</a>
+                </div>
+                <div class="hero-trust-strip" aria-label="Why customers book">
+                  <span class="hero-trust-item"><i class="material-icons" aria-hidden="true">star</i>5-star local service</span>
+                  <span class="hero-trust-item"><i class="material-icons" aria-hidden="true">directions_car</i>Fully mobile</span>
+                  <span class="hero-trust-item"><i class="material-icons" aria-hidden="true">sms</i>Call or text friendly</span>
                 </div>
               </div>
               <!--Slideshow here-->
@@ -1127,6 +1143,6 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 <!--Scriptz-->
 <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
 <!-- removed better-simple-slideshow; minimal slider hydrates on idle -->
-<script defer src="scripts/main.js?v=20260212f"></script>
+<script defer src="scripts/main.js?v=20260212g"></script>
 </body>
 </html>

@@ -426,9 +426,10 @@ function initOverviewActionReveal() {
 function initDelayedCallFab() {
   const callFab = document.querySelector('.mdl-chip-float-contact');
   if (!callFab) return;
+  if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) return;
 
-  const SHOW_DELAY_MS = 5000;
-  const BLURB_DURATION_MS = 10000;
+  const SHOW_DELAY_MS = 7000;
+  const BLURB_DURATION_MS = 4000;
 
   window.setTimeout(() => {
     callFab.classList.add('is-visible', 'show-blurb');
