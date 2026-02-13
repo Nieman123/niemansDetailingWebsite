@@ -85,7 +85,7 @@ function renderInline(value) {
   const tokens = [];
 
   function putToken(html) {
-    const token = `__INLINE_TOKEN_${tokens.length}__`;
+    const token = `%%INLINE_TOKEN_${tokens.length}%%`;
     tokens.push({ token, html });
     return token;
   }
