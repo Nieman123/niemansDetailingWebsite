@@ -1,4 +1,9 @@
-import { auth, db } from "/scripts/firebase-client.js";
+import { auth, db, storage } from "/scripts/firebase-client.js";
+import {
+  ref,
+  uploadBytes,
+  getDownloadURL,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -55,6 +60,10 @@ const els = {
   preview: document.getElementById("post-preview"),
   formHeading: document.getElementById("editor-heading"),
   authHint: document.getElementById("auth-hint"),
+  coverImageFile: document.getElementById("cover-image-file"),
+  uploadCoverBtn: document.getElementById("upload-cover-btn"),
+  contentImageFile: document.getElementById("content-image-file"),
+  uploadContentBtn: document.getElementById("upload-content-image-btn"),
 };
 
 const state = {
@@ -204,6 +213,26 @@ async function loadPostIntoEditor(slug) {
   } catch (error) {
     console.error("Failed to load post", error);
     setStatus("Could not load that post.", "error");
+  }
+
+}
+
+async function uploadImage(file) {
+  if (!file) return null;
+  // Create a unique filename: timestamp-filename
+  const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+  const storageRef = ref(storage, `blog-images/${filename}`);
+
+  setStatus("Uploading image...");
+  try {
+    const snapshot = await uploadBytes(storageRef, file);
+    const url = await getDownloadURL(snapshot.ref);
+    setStatus("Image uploaded successfully.");
+    return url;
+  } catch (error) {
+    console.error("Upload failed", error);
+    setStatus("Image upload failed.", "error");
+    throw error;
   }
 }
 
@@ -378,6 +407,55 @@ function bindEvents() {
 
   if (els.deleteBtn) {
     els.deleteBtn.addEventListener("click", deleteCurrentPost);
+  }
+
+  // Cover Image Upload
+  if (els.uploadCoverBtn && els.coverImageFile) {
+    els.uploadCoverBtn.addEventListener("click", () => els.coverImageFile.click());
+    els.coverImageFile.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const url = await uploadImage(file);
+        if (url && els.postCoverImage) {
+          els.postCoverImage.value = url;
+        }
+      } catch (err) {
+        // Error handled in uploadImage
+      } finally {
+        els.coverImageFile.value = ""; // Reset
+      }
+    });
+  }
+
+  // Content Image Upload
+  if (els.uploadContentBtn && els.contentImageFile) {
+    els.uploadContentBtn.addEventListener("click", () => els.contentImageFile.click());
+    els.contentImageFile.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const url = await uploadImage(file);
+        if (url && els.postContent) {
+          const imageMarkdown = `\n![Image Description](${url})\n`;
+          // Insert at cursor position or append
+          const startPos = els.postContent.selectionStart;
+          const endPos = els.postContent.selectionEnd;
+          const text = els.postContent.value;
+
+          if (typeof startPos === 'number' && typeof endPos === 'number') {
+            els.postContent.value = text.substring(0, startPos) + imageMarkdown + text.substring(endPos);
+          } else {
+            els.postContent.value += imageMarkdown;
+          }
+          renderPreview();
+        }
+      } catch (err) {
+        // Error handled in uploadImage
+      } finally {
+        els.contentImageFile.value = ""; // Reset
+      }
+    });
   }
 }
 

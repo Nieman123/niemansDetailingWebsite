@@ -343,10 +343,22 @@
         <label for="post-excerpt-input">Excerpt (SEO Description)</label>
         <textarea id="post-excerpt-input" rows="2" placeholder="Brief summary for search engines..."></textarea>
 
-        <label for="post-cover-image-input">Cover Image URL</label>
-        <input type="text" id="post-cover-image-input" placeholder="/images/carpics/..." />
+        <label for="post-cover-image-input">Cover Image</label>
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+          <input type="text" id="post-cover-image-input" placeholder="/images/carpics/..." style="margin-bottom:0;" />
+          <input type="file" id="cover-image-file" accept="image/*" hidden />
+          <button type="button" id="upload-cover-btn" class="btn btn-ghost"
+            style="border:1px solid var(--border)">Upload</button>
+        </div>
 
-        <label for="post-content-input">Content (Markdown supported)</label>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label for="post-content-input" style="margin-bottom:0;">Content (Markdown supported)</label>
+          <div>
+            <input type="file" id="content-image-file" accept="image/*" hidden />
+            <button type="button" id="upload-content-image-btn" class="btn btn-ghost"
+              style="font-size:0.8rem; padding:4px 8px;">+ Add Image</button>
+          </div>
+        </div>
         <textarea id="post-content-input" rows="15"
           placeholder="Write your article here... Use # for headers, - for lists." required></textarea>
 
