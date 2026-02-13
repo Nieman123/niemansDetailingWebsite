@@ -132,7 +132,12 @@ function renderPost(slug, post) {
 
   if (coverWrapEl && coverEl) {
     if (coverImage) {
-      coverEl.src = coverImage;
+      // Ensure image path is absolute to root
+      const src = coverImage.startsWith("/") || coverImage.startsWith("http")
+        ? coverImage
+        : "/" + coverImage;
+
+      coverEl.src = src;
       coverEl.alt = title;
       coverWrapEl.hidden = false;
     } else {

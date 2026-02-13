@@ -81,7 +81,9 @@ export function estimateReadingMinutes(content) {
 }
 
 function renderInline(value) {
-  return escapeHtml(value).replace(/`([^`]+)`/g, "<code>$1</code>");
+  return escapeHtml(value)
+    .replace(/(\*\*|__)(.*?)\1/g, "<strong>$2</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
 export function renderRichText(content) {

@@ -48,19 +48,19 @@ function renderList(posts) {
       const coverImage = typeof post.coverImage === "string" ? post.coverImage.trim() : "";
       const tags = Array.isArray(post.tags)
         ? post.tags
-            .slice(0, 4)
-            .map((tag) => `<span class="blog-tag">${escapeHtml(tag)}</span>`)
-            .join("")
+          .slice(0, 4)
+          .map((tag) => `<span class="blog-tag">${escapeHtml(tag)}</span>`)
+          .join("")
         : "";
 
       return `
         <article class="blog-card">
           <a class="blog-card-link" href="${getPostUrl(slug)}">
-            ${
-              coverImage
-                ? `<img class="blog-card-image" src="${escapeHtml(coverImage)}" alt="${title}" loading="lazy" decoding="async">`
-                : ""
-            }
+            ${coverImage
+          ? `<img class="blog-card-image" src="${escapeHtml(coverImage.startsWith("/") || coverImage.startsWith("http") ? coverImage : "/" + coverImage)
+          }" alt="${title}" loading="lazy" decoding="async">`
+          : ""
+        }
             <div class="blog-card-body">
               <h2>${title}</h2>
               <p>${excerpt}</p>
