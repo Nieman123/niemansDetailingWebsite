@@ -15,14 +15,21 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 <html lang="en">
   <head>
     <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-2PM831JLRQ"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+      (function () {
+        if (window.location.origin !== 'https://niemansdetailing.com') return;
 
-      gtag('config', 'AW-17602789326');
-    gtag('config', 'G-2PM831JLRQ');
+        var script = document.createElement('script');
+        script.async = true;
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=G-2PM831JLRQ';
+        document.head.appendChild(script);
+
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = function(){window.dataLayer.push(arguments);};
+        window.gtag('js', new Date());
+        window.gtag('config', 'AW-17602789326');
+        window.gtag('config', 'G-2PM831JLRQ');
+      })();
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
