@@ -27,6 +27,12 @@ service cloud.firestore {
       allow create: if false;
     }
 
+    // Quote page funnel telemetry is private. Admins can read in dashboard.
+    match /quotePageSessions/{id} {
+      allow read: if isBlogAdmin();
+      allow write: if false;
+    }
+
     // Admin allowlist documents. Add uid as doc ID in Firebase console to grant blog access.
     match /adminUsers/{uid} {
       allow read: if isSignedIn() && request.auth.uid == uid;

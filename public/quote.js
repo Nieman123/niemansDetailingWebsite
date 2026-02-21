@@ -53,6 +53,81 @@
 
   let state = loadState();
 
+  const FUNNEL_SESSION_KEY = 'quoteFunnelSessionId';
+  const FUNNEL_TRACKED_STEPS_KEY = 'quoteFunnelTrackedSteps';
+  const FUNNEL_SUBMITTED_KEY = 'quoteFunnelSubmitted';
+  const FUNNEL_STARTED_AT_KEY = 'quoteFunnelStartedAt';
+  const FUNNEL_LAST_EVENT_AT_KEY = 'quoteFunnelLastEventAt';
+  const FUNNEL_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
+  const getSessionStorage = () => {
+    try { return window.sessionStorage; }
+    catch { return null; }
+  };
+
+  const makeSessionId = () => {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+    return `q_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+  };
+
+  const loadTrackedSteps = (storage) => {
+    if (!storage) return new Set();
+    try {
+      const parsed = JSON.parse(storage.getItem(FUNNEL_TRACKED_STEPS_KEY) || '[]');
+      if (!Array.isArray(parsed)) return new Set();
+      return new Set(parsed.map((v) => String(v)).filter((v) => /^[1-5]$/.test(v)));
+    } catch {
+      return new Set();
+    }
+  };
+
+  const persistTrackedSteps = (storage, trackedSteps) => {
+    if (!storage) return;
+    storage.setItem(FUNNEL_TRACKED_STEPS_KEY, JSON.stringify(Array.from(trackedSteps)));
+  };
+
+  const initFunnel = () => {
+    const storage = getSessionStorage();
+    const now = Date.now();
+    if (!storage) {
+      return {
+        storage: null,
+        sessionId: makeSessionId(),
+        startedAt: new Date(now).toISOString(),
+        trackedSteps: new Set(),
+        submitted: false,
+      };
+    }
+
+    const existingSessionId = storage.getItem(FUNNEL_SESSION_KEY);
+    const lastEventAt = Number(storage.getItem(FUNNEL_LAST_EVENT_AT_KEY) || 0);
+    const expired = !existingSessionId || !Number.isFinite(lastEventAt) || (now - lastEventAt > FUNNEL_SESSION_TIMEOUT_MS);
+
+    if (expired) {
+      storage.setItem(FUNNEL_SESSION_KEY, makeSessionId());
+      storage.setItem(FUNNEL_STARTED_AT_KEY, new Date(now).toISOString());
+      storage.removeItem(FUNNEL_TRACKED_STEPS_KEY);
+      storage.removeItem(FUNNEL_SUBMITTED_KEY);
+    }
+
+    storage.setItem(FUNNEL_LAST_EVENT_AT_KEY, String(now));
+
+    return {
+      storage,
+      sessionId: storage.getItem(FUNNEL_SESSION_KEY) || makeSessionId(),
+      startedAt: storage.getItem(FUNNEL_STARTED_AT_KEY) || new Date(now).toISOString(),
+      trackedSteps: loadTrackedSteps(storage),
+      submitted: storage.getItem(FUNNEL_SUBMITTED_KEY) === '1',
+    };
+  };
+
+  const funnel = initFunnel();
+
+  const markFunnelActivity = () => {
+    if (!funnel.storage) return;
+    funnel.storage.setItem(FUNNEL_LAST_EVENT_AT_KEY, String(Date.now()));
+  };
+
   const fireAdsConversion = (value, currency = 'USD', options = {}) => {
     const amount = typeof value === 'number' && isFinite(value) ? value : 1.0;
     const extraParams = options && typeof options.params === 'object' ? options.params : null;
@@ -113,6 +188,7 @@
 
   const setStep = (n) => {
     state.step = n;
+    trackStepView(n);
     $$('.screen').forEach(sec => { sec.hidden = true; });
     $(`#step-${n}`)?.removeAttribute('hidden');
     const pct = ((n - 1) / 4) * 100;
@@ -242,6 +318,42 @@
     utm_content:  (document.getElementById('utm-content')||{}).value || '',
     utm_term:     (document.getElementById('utm-term')||{}).value || '',
   });
+
+  const trackFunnelEvent = (event, extra = {}) => {
+    if (!funnel.sessionId) return;
+    markFunnelActivity();
+    const payload = {
+      session_id: funnel.sessionId,
+      session_started_at: funnel.startedAt,
+      event,
+      page: 'quote',
+      referrer: document.referrer || null,
+      utm: readUTMs(),
+      ts_client: new Date().toISOString(),
+      ...extra,
+    };
+    fetch(`${API_BASE}/api/quoteProgress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify(payload),
+    }).catch(() => {});
+  };
+
+  const trackStepView = (stepNumber) => {
+    const key = String(stepNumber);
+    if (funnel.trackedSteps.has(key)) return;
+    funnel.trackedSteps.add(key);
+    persistTrackedSteps(funnel.storage, funnel.trackedSteps);
+    trackFunnelEvent('step_view', { step: stepNumber });
+  };
+
+  const trackLeadSubmitted = () => {
+    if (funnel.submitted) return;
+    funnel.submitted = true;
+    if (funnel.storage) funnel.storage.setItem(FUNNEL_SUBMITTED_KEY, '1');
+    trackFunnelEvent('lead_submitted', { step: 5 });
+  };
 
   const goNext = (n) => setStep(n);
   const goPrev = (n) => setStep(n);
@@ -494,6 +606,7 @@
       }
       if (!data.ok) throw new Error(data.error || 'Failed to submit');
       showConfirm(payload, data.id);
+      trackLeadSubmitted();
       clearStoredPii();
       if (window.gtag) {
         gtag('event', 'lead_submit', {

@@ -127,6 +127,37 @@ function getClientIP(req) {
     const ip = xf.split(",")[0]?.trim() || req.ip || null;
     return ip || null;
 }
+function coerceQuoteSessionId(input) {
+    const value = String(input || "").trim();
+    if (!/^[a-zA-Z0-9_-]{8,120}$/.test(value))
+        return null;
+    return value;
+}
+function coerceQuoteProgressEvent(input) {
+    const value = String(input || "").toLowerCase().trim();
+    if (value === "step_view")
+        return "step_view";
+    if (value === "lead_submitted")
+        return "lead_submitted";
+    return null;
+}
+function coerceQuoteStep(input) {
+    const num = Number(input);
+    if (!Number.isInteger(num) || num < 1 || num > 5)
+        return null;
+    return num;
+}
+function coerceUtm(input) {
+    const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
+    const source = (typeof input === "object" && input !== null) ? input : {};
+    const utm = {};
+    for (const key of keys) {
+        const value = String(source[key] || "").trim().slice(0, 120);
+        if (value)
+            utm[key] = value;
+    }
+    return utm;
+}
 const HOSTING_ORIGIN_PARAM = (0, params_1.defineString)("HOSTING_ORIGIN", { default: "https://niemansdetailing.com" });
 const TELEGRAM_BOT_TOKEN = (0, params_1.defineString)("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_CHAT_ID = (0, params_1.defineString)("TELEGRAM_CHAT_ID");
@@ -155,15 +186,71 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
         res.status(204).send("");
         return;
     }
-    // Route only /api/createLead
+    // Routes handled here
     const path = (req.path || req.originalUrl || "").toString();
-    if (!path.endsWith("/api/createLead")) {
+    const isCreateLeadRoute = path.endsWith("/api/createLead");
+    const isQuoteProgressRoute = path.endsWith("/api/quoteProgress");
+    if (!isCreateLeadRoute && !isQuoteProgressRoute) {
         res.status(404).json({ ok: false, error: "not_found" });
         return;
     }
     if (req.method !== "POST") {
         res.status(405).json({ ok: false, error: "method_not_allowed" });
         return;
+    }
+    if (isQuoteProgressRoute) {
+        try {
+            const body = (req.body || {});
+            const sessionId = coerceQuoteSessionId(body.session_id);
+            const event = coerceQuoteProgressEvent(body.event);
+            const clientTimestamp = String(body.ts_client || "").trim().slice(0, 80) || null;
+            const sessionStartedAt = String(body.session_started_at || "").trim().slice(0, 80) || null;
+            if (!sessionId || !event) {
+                res.status(400).json({ ok: false, error: "invalid_fields:session_id,event" });
+                return;
+            }
+            const eventPayload = {
+                session_id: sessionId,
+                page: "quote",
+                last_event: event,
+                last_seen_at: firestore_1.FieldValue.serverTimestamp(),
+                event_count: firestore_1.FieldValue.increment(1),
+                referrer_last: String(body.referrer || req.headers["referer"] || "").toString().slice(0, 1024) || null,
+                user_agent_last: String(req.headers["user-agent"] || "").toString().slice(0, 512),
+                ip_last: getClientIP(req),
+                utm: coerceUtm(body.utm),
+            };
+            if (clientTimestamp)
+                eventPayload.ts_last_client = clientTimestamp;
+            if (sessionStartedAt)
+                eventPayload.session_started_at = sessionStartedAt;
+            if (event === "step_view") {
+                const step = coerceQuoteStep(body.step);
+                if (!step) {
+                    res.status(400).json({ ok: false, error: "invalid_fields:step" });
+                    return;
+                }
+                const stepKey = `step_${step}`;
+                eventPayload.last_step = stepKey;
+                eventPayload.last_step_number = step;
+                eventPayload.steps_seen = firestore_1.FieldValue.arrayUnion(stepKey);
+            }
+            if (event === "lead_submitted") {
+                eventPayload.last_step = "submitted";
+                eventPayload.last_step_number = 6;
+                eventPayload.completed = true;
+                eventPayload.completed_at = firestore_1.FieldValue.serverTimestamp();
+                eventPayload.steps_seen = firestore_1.FieldValue.arrayUnion("step_5", "submitted");
+            }
+            await db.collection("quotePageSessions").doc(sessionId).set(eventPayload, { merge: true });
+            res.status(200).json({ ok: true });
+            return;
+        }
+        catch (e) {
+            firebase_functions_1.logger.error("quoteProgress error", e);
+            res.status(500).json({ ok: false, error: "internal" });
+            return;
+        }
     }
     try {
         const body = (req.body || {});

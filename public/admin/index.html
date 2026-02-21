@@ -336,6 +336,11 @@
       max-height: 100vh;
     }
 
+    .main-content {
+      display: grid;
+      gap: 16px;
+    }
+
     .empty-state {
       border: 1px dashed var(--border);
       border-radius: 12px;
@@ -352,6 +357,102 @@
       padding: 18px;
       display: grid;
       gap: 18px;
+    }
+
+    .funnel-card {
+      gap: 14px;
+    }
+
+    .funnel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .funnel-head h3 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+
+    .funnel-metrics {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .funnel-metric {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #121419;
+      padding: 8px 10px;
+    }
+
+    .funnel-metric .label {
+      display: block;
+      font-size: 0.73rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 3px;
+    }
+
+    .funnel-metric .value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .funnel-chart {
+      display: grid;
+      gap: 10px;
+    }
+
+    .funnel-row {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      background: #121419;
+      display: grid;
+      gap: 6px;
+    }
+
+    .funnel-row-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: baseline;
+      font-size: 0.9rem;
+    }
+
+    .funnel-row-meta {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .funnel-bar {
+      height: 10px;
+      border-radius: 999px;
+      background: #08090d;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .funnel-bar-fill {
+      display: block;
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #f59e0b 0%, #f97316 100%);
+    }
+
+    .funnel-empty {
+      margin: 0;
+      padding: 12px;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
     }
 
     .detail-header {
@@ -488,7 +589,8 @@
 
     @media (max-width: 680px) {
       .filters .split,
-      .summary-grid {
+      .summary-grid,
+      .funnel-metrics {
         grid-template-columns: 1fr;
       }
 
@@ -622,63 +724,91 @@
     </aside>
 
     <main class="main">
-      <div id="lead-detail-placeholder" class="empty-state">
-        Select a lead on the left to view details, contact options, and internal follow-up controls.
+      <div class="main-content">
+        <section id="quote-funnel-card" class="detail-card funnel-card">
+          <header class="funnel-head">
+            <div>
+              <h3>Quote Page Funnel</h3>
+              <div id="quote-funnel-range-label" class="detail-sub">Using current date range filter.</div>
+            </div>
+          </header>
+
+          <section class="funnel-metrics" aria-label="Quote funnel summary">
+            <div class="funnel-metric">
+              <span class="label">Visitors</span>
+              <span id="quote-funnel-visitors" class="value">0</span>
+            </div>
+            <div class="funnel-metric">
+              <span class="label">Submissions</span>
+              <span id="quote-funnel-submissions" class="value">0</span>
+            </div>
+            <div class="funnel-metric">
+              <span class="label">Conversion</span>
+              <span id="quote-funnel-conversion" class="value">0%</span>
+            </div>
+          </section>
+
+          <section id="quote-funnel-chart" class="funnel-chart" aria-label="Quote funnel step performance"></section>
+        </section>
+
+        <div id="lead-detail-placeholder" class="empty-state">
+          Select a lead on the left to view details, contact options, and internal follow-up controls.
+        </div>
+
+        <section id="lead-detail-card" class="detail-card" hidden>
+          <header class="detail-header">
+            <div>
+              <h3 id="detail-name">Lead</h3>
+              <div id="detail-created" class="detail-sub">Created -</div>
+            </div>
+            <div class="detail-actions">
+              <span id="detail-price-pill" class="pill">$0</span>
+              <a id="lead-action-sms" class="btn btn-action" href="#">Text Customer</a>
+              <a id="lead-action-call" class="btn btn-action" href="#">Call Customer</a>
+              <button id="lead-action-copy-link" type="button" class="btn btn-ghost">Copy Link</button>
+            </div>
+          </header>
+
+          <section class="detail-section">
+            <h4>Lead Details</h4>
+            <div id="lead-detail-body" class="detail-grid"></div>
+          </section>
+
+          <section class="detail-section">
+            <h4>Campaign Data (UTM)</h4>
+            <pre id="lead-detail-utm">{}</pre>
+          </section>
+
+          <section class="detail-section">
+            <h4>Request Metadata</h4>
+            <div id="lead-detail-meta" class="detail-grid"></div>
+          </section>
+
+          <section class="detail-section">
+            <h4>Internal Follow-up</h4>
+            <div style="display:grid; gap:10px; max-width:640px;">
+              <div>
+                <label for="lead-status-input">Lead Status</label>
+                <select id="lead-status-input">
+                  <option value="new">New</option>
+                  <option value="contacted">Contacted</option>
+                  <option value="booked">Booked</option>
+                  <option value="archived">Archived</option>
+                  <option value="spam">Spam</option>
+                </select>
+              </div>
+              <div>
+                <label for="lead-admin-note-input">Internal Note</label>
+                <textarea id="lead-admin-note-input" placeholder="Track outreach attempts, pricing notes, scheduling details, etc."></textarea>
+              </div>
+              <div class="save-row">
+                <button id="delete-lead-btn" type="button" class="btn btn-danger">Delete Lead</button>
+                <button id="save-lead-btn" type="button" class="btn btn-primary">Save Lead Updates</button>
+              </div>
+            </div>
+          </section>
+        </section>
       </div>
-
-      <section id="lead-detail-card" class="detail-card" hidden>
-        <header class="detail-header">
-          <div>
-            <h3 id="detail-name">Lead</h3>
-            <div id="detail-created" class="detail-sub">Created -</div>
-          </div>
-          <div class="detail-actions">
-            <span id="detail-price-pill" class="pill">$0</span>
-            <a id="lead-action-sms" class="btn btn-action" href="#">Text Customer</a>
-            <a id="lead-action-call" class="btn btn-action" href="#">Call Customer</a>
-            <button id="lead-action-copy-link" type="button" class="btn btn-ghost">Copy Link</button>
-          </div>
-        </header>
-
-        <section class="detail-section">
-          <h4>Lead Details</h4>
-          <div id="lead-detail-body" class="detail-grid"></div>
-        </section>
-
-        <section class="detail-section">
-          <h4>Campaign Data (UTM)</h4>
-          <pre id="lead-detail-utm">{}</pre>
-        </section>
-
-        <section class="detail-section">
-          <h4>Request Metadata</h4>
-          <div id="lead-detail-meta" class="detail-grid"></div>
-        </section>
-
-        <section class="detail-section">
-          <h4>Internal Follow-up</h4>
-          <div style="display:grid; gap:10px; max-width:640px;">
-            <div>
-              <label for="lead-status-input">Lead Status</label>
-              <select id="lead-status-input">
-                <option value="new">New</option>
-                <option value="contacted">Contacted</option>
-                <option value="booked">Booked</option>
-                <option value="archived">Archived</option>
-                <option value="spam">Spam</option>
-              </select>
-            </div>
-            <div>
-              <label for="lead-admin-note-input">Internal Note</label>
-              <textarea id="lead-admin-note-input" placeholder="Track outreach attempts, pricing notes, scheduling details, etc."></textarea>
-            </div>
-            <div class="save-row">
-              <button id="delete-lead-btn" type="button" class="btn btn-danger">Delete Lead</button>
-              <button id="save-lead-btn" type="button" class="btn btn-primary">Save Lead Updates</button>
-            </div>
-          </div>
-        </section>
-      </section>
     </main>
   </div>
 

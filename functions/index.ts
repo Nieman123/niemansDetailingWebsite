@@ -10,6 +10,7 @@ const db = admin.firestore();
 type Vehicle = "sedan" | "suv" | "truck";
 type Service = "quick" | "full" | "interior" | "other";
 type Addon = "wax" | "pethair" | "odor" | "engine" | "soiled" | "ceramic" | "headlights";
+type QuoteProgressEvent = "step_view" | "lead_submitted";
 
 const VEHICLE_LABELS: Record<Vehicle, string> = {
   sedan: "Sedan/Coupe",
@@ -100,6 +101,36 @@ function getClientIP(req: any): string | null {
   return ip || null;
 }
 
+function coerceQuoteSessionId(input: unknown): string | null {
+  const value = String(input || "").trim();
+  if (!/^[a-zA-Z0-9_-]{8,120}$/.test(value)) return null;
+  return value;
+}
+
+function coerceQuoteProgressEvent(input: unknown): QuoteProgressEvent | null {
+  const value = String(input || "").toLowerCase().trim();
+  if (value === "step_view") return "step_view";
+  if (value === "lead_submitted") return "lead_submitted";
+  return null;
+}
+
+function coerceQuoteStep(input: unknown): number | null {
+  const num = Number(input);
+  if (!Number.isInteger(num) || num < 1 || num > 5) return null;
+  return num;
+}
+
+function coerceUtm(input: unknown): Record<string, string> {
+  const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const;
+  const source = (typeof input === "object" && input !== null) ? input as Record<string, unknown> : {};
+  const utm: Record<string, string> = {};
+  for (const key of keys) {
+    const value = String(source[key] || "").trim().slice(0, 120);
+    if (value) utm[key] = value;
+  }
+  return utm;
+}
+
 const HOSTING_ORIGIN_PARAM = defineString("HOSTING_ORIGIN", { default: "https://niemansdetailing.com" });
 const TELEGRAM_BOT_TOKEN = defineString("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_CHAT_ID = defineString("TELEGRAM_CHAT_ID");
@@ -129,11 +160,71 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
 
   if (req.method === "OPTIONS") { res.status(204).send(""); return; }
 
-  // Route only /api/createLead
+  // Routes handled here
   const path = (req.path || req.originalUrl || "").toString();
-  if (!path.endsWith("/api/createLead")) { res.status(404).json({ ok: false, error: "not_found" }); return; }
+  const isCreateLeadRoute = path.endsWith("/api/createLead");
+  const isQuoteProgressRoute = path.endsWith("/api/quoteProgress");
+  if (!isCreateLeadRoute && !isQuoteProgressRoute) { res.status(404).json({ ok: false, error: "not_found" }); return; }
 
   if (req.method !== "POST") { res.status(405).json({ ok: false, error: "method_not_allowed" }); return; }
+
+  if (isQuoteProgressRoute) {
+    try {
+      const body = (req.body || {}) as any;
+      const sessionId = coerceQuoteSessionId(body.session_id);
+      const event = coerceQuoteProgressEvent(body.event);
+      const clientTimestamp = String(body.ts_client || "").trim().slice(0, 80) || null;
+      const sessionStartedAt = String(body.session_started_at || "").trim().slice(0, 80) || null;
+
+      if (!sessionId || !event) {
+        res.status(400).json({ ok: false, error: "invalid_fields:session_id,event" });
+        return;
+      }
+
+      const eventPayload: any = {
+        session_id: sessionId,
+        page: "quote",
+        last_event: event,
+        last_seen_at: FieldValue.serverTimestamp(),
+        event_count: FieldValue.increment(1),
+        referrer_last: String(body.referrer || req.headers["referer"] || "").toString().slice(0, 1024) || null,
+        user_agent_last: String(req.headers["user-agent"] || "").toString().slice(0, 512),
+        ip_last: getClientIP(req),
+        utm: coerceUtm(body.utm),
+      };
+
+      if (clientTimestamp) eventPayload.ts_last_client = clientTimestamp;
+      if (sessionStartedAt) eventPayload.session_started_at = sessionStartedAt;
+
+      if (event === "step_view") {
+        const step = coerceQuoteStep(body.step);
+        if (!step) {
+          res.status(400).json({ ok: false, error: "invalid_fields:step" });
+          return;
+        }
+        const stepKey = `step_${step}`;
+        eventPayload.last_step = stepKey;
+        eventPayload.last_step_number = step;
+        eventPayload.steps_seen = FieldValue.arrayUnion(stepKey);
+      }
+
+      if (event === "lead_submitted") {
+        eventPayload.last_step = "submitted";
+        eventPayload.last_step_number = 6;
+        eventPayload.completed = true;
+        eventPayload.completed_at = FieldValue.serverTimestamp();
+        eventPayload.steps_seen = FieldValue.arrayUnion("step_5", "submitted");
+      }
+
+      await db.collection("quotePageSessions").doc(sessionId).set(eventPayload, { merge: true });
+      res.status(200).json({ ok: true });
+      return;
+    } catch (e) {
+      logger.error("quoteProgress error", e as any);
+      res.status(500).json({ ok: false, error: "internal" });
+      return;
+    }
+  }
 
   try {
     const body = (req.body || {}) as any;

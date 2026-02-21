@@ -43,6 +43,11 @@ const els = {
   shownCount: document.getElementById("summary-shown-count"),
   newCount: document.getElementById("summary-new-count"),
   followupCount: document.getElementById("summary-followup-count"),
+  funnelRangeLabel: document.getElementById("quote-funnel-range-label"),
+  funnelVisitors: document.getElementById("quote-funnel-visitors"),
+  funnelSubmissions: document.getElementById("quote-funnel-submissions"),
+  funnelConversion: document.getElementById("quote-funnel-conversion"),
+  funnelChart: document.getElementById("quote-funnel-chart"),
   leadList: document.getElementById("lead-list"),
   leadListEmpty: document.getElementById("lead-list-empty"),
   leadDetailPlaceholder: document.getElementById("lead-detail-placeholder"),
@@ -66,6 +71,7 @@ const state = {
   user: null,
   isAdmin: false,
   leads: [],
+  quoteSessions: [],
   filteredLeads: [],
   activeLeadId: null,
   preferredLeadId: preselectedLeadId,
@@ -73,6 +79,15 @@ const state = {
   savingLead: false,
   deletingLead: false,
 };
+
+const QUOTE_FUNNEL_STEPS = [
+  { key: "step_1", label: "Step 1: Vehicle" },
+  { key: "step_2", label: "Step 2: Service" },
+  { key: "step_3", label: "Step 3: Add-ons" },
+  { key: "step_4", label: "Step 4: Location" },
+  { key: "step_5", label: "Step 5: Contact" },
+  { key: "submitted", label: "Lead Submitted" },
+];
 
 function setStatus(message, type = "info") {
   if (!els.status) return;
@@ -135,6 +150,47 @@ function leadCreatedDate(lead) {
 
 function leadCreatedMs(lead) {
   return leadCreatedDate(lead)?.getTime() || 0;
+}
+
+function quoteSessionTimestamp(session) {
+  return parseDate(session.last_seen_at)
+    || parseDate(session.completed_at)
+    || parseDate(session.session_started_at);
+}
+
+function quoteSessionMs(session) {
+  return quoteSessionTimestamp(session)?.getTime() || 0;
+}
+
+function quoteSessionInRange(session, rangeFilter) {
+  if (rangeFilter === "all") return true;
+  const cutoff =
+    rangeFilter === "1d" ? daysAgoToMs(1)
+    : rangeFilter === "7d" ? daysAgoToMs(7)
+    : rangeFilter === "30d" ? daysAgoToMs(30)
+    : daysAgoToMs(90);
+  return quoteSessionMs(session) >= cutoff;
+}
+
+function rangeFilterLabel(rangeFilter) {
+  switch (rangeFilter) {
+    case "1d":
+      return "Last 24 hours";
+    case "7d":
+      return "Last 7 days";
+    case "30d":
+      return "Last 30 days";
+    case "90d":
+      return "Last 90 days";
+    default:
+      return "All time";
+  }
+}
+
+function quoteSessionReachedStep(session, stepKey) {
+  if (stepKey === "submitted" && session.completed === true) return true;
+  const steps = Array.isArray(session.steps_seen) ? session.steps_seen : [];
+  return steps.includes(stepKey);
 }
 
 function formatDateTime(value) {
@@ -271,6 +327,7 @@ function applyFilters() {
   state.filteredLeads = leads;
 
   renderSummary();
+  renderQuoteFunnel();
   renderLeadList();
 
   if (state.activeLeadId) {
@@ -294,6 +351,62 @@ function renderSummary() {
   if (els.shownCount) els.shownCount.textContent = String(shown);
   if (els.newCount) els.newCount.textContent = String(newCount);
   if (els.followupCount) els.followupCount.textContent = String(followupCount);
+}
+
+function renderQuoteFunnel() {
+  if (!els.funnelChart) return;
+
+  const rangeFilter = els.rangeFilter?.value || "all";
+  const sessions = state.quoteSessions.filter((session) => quoteSessionInRange(session, rangeFilter));
+  const visitorCount = sessions.length;
+  const stageCounts = QUOTE_FUNNEL_STEPS.map((step) =>
+    sessions.filter((session) => quoteSessionReachedStep(session, step.key)).length
+  );
+  const submittedCount = stageCounts[stageCounts.length - 1] || 0;
+  const conversionPercent = visitorCount ? (submittedCount / visitorCount) * 100 : 0;
+  const maxCount = Math.max(...stageCounts, 1);
+
+  if (els.funnelRangeLabel) {
+    els.funnelRangeLabel.textContent = `Using ${rangeFilterLabel(rangeFilter)} filter.`;
+  }
+  if (els.funnelVisitors) els.funnelVisitors.textContent = String(visitorCount);
+  if (els.funnelSubmissions) els.funnelSubmissions.textContent = String(submittedCount);
+  if (els.funnelConversion) els.funnelConversion.textContent = `${conversionPercent.toFixed(1)}%`;
+
+  if (!visitorCount) {
+    els.funnelChart.innerHTML = `<p class="funnel-empty">No quote-page session data in this date range yet.</p>`;
+    return;
+  }
+
+  const rows = QUOTE_FUNNEL_STEPS.map((step, index) => {
+    const count = stageCounts[index] || 0;
+    const nextCount = stageCounts[index + 1];
+    const reachedPct = visitorCount ? (count / visitorCount) * 100 : 0;
+    const widthPct = Math.max((count / maxCount) * 100, count > 0 ? 3 : 0);
+    let meta = `${reachedPct.toFixed(1)}% of visitors reached this step`;
+    if (typeof nextCount === "number") {
+      const dropCount = Math.max(count - nextCount, 0);
+      const dropPct = count ? (dropCount / count) * 100 : 0;
+      meta += ` • Drop-off to next step: ${dropCount} (${dropPct.toFixed(1)}%)`;
+    } else {
+      meta += " • Final conversion point";
+    }
+
+    return `
+      <article class="funnel-row">
+        <div class="funnel-row-head">
+          <span>${escapeHtml(step.label)}</span>
+          <strong>${count}</strong>
+        </div>
+        <div class="funnel-bar">
+          <span class="funnel-bar-fill" style="width:${widthPct.toFixed(1)}%"></span>
+        </div>
+        <div class="funnel-row-meta">${escapeHtml(meta)}</div>
+      </article>
+    `;
+  }).join("");
+
+  els.funnelChart.innerHTML = rows;
 }
 
 function renderLeadList() {
@@ -457,13 +570,29 @@ async function loadLeads() {
   if (state.loadingLeads) return;
   state.loadingLeads = true;
   setControlsDisabled(true);
-  setStatus("Loading leads...");
+  setStatus("Loading leads and quote sessions...");
 
   try {
     const preferredLeadId = state.activeLeadId || state.preferredLeadId;
     const leadsQuery = query(collection(db, "leads"), orderBy("ts", "desc"), limit(300));
-    const snapshot = await getDocs(leadsQuery);
-    state.leads = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    const quoteSessionsQuery = query(collection(db, "quotePageSessions"), orderBy("last_seen_at", "desc"), limit(2000));
+    const [leadsResult, quoteSessionsResult] = await Promise.allSettled([
+      getDocs(leadsQuery),
+      getDocs(quoteSessionsQuery),
+    ]);
+
+    if (leadsResult.status !== "fulfilled") {
+      throw leadsResult.reason;
+    }
+
+    state.leads = leadsResult.value.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+
+    if (quoteSessionsResult.status === "fulfilled") {
+      state.quoteSessions = quoteSessionsResult.value.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    } else {
+      state.quoteSessions = [];
+      console.error("Failed to load quote sessions", quoteSessionsResult.reason);
+    }
 
     if (preferredLeadId) {
       await ensureLeadPresent(preferredLeadId);
@@ -480,7 +609,11 @@ async function loadLeads() {
     }
     state.preferredLeadId = null;
 
-    setStatus(`Loaded ${state.leads.length} leads.`);
+    if (quoteSessionsResult.status === "fulfilled") {
+      setStatus(`Loaded ${state.leads.length} leads and ${state.quoteSessions.length} quote sessions.`);
+    } else {
+      setStatus(`Loaded ${state.leads.length} leads. Quote funnel data unavailable.`, "error");
+    }
   } catch (error) {
     console.error("Failed to load leads", error);
     setStatus("Could not load leads. Check Firestore rules/indexes.", "error");
