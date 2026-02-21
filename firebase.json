@@ -14,25 +14,116 @@
       "**/node_modules/**"
     ],
     "headers": [
-      { "source": "**", "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" },
-        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains; preload" }
-      ] },
-      { "source": "**/*.avif", "headers": [ { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" } ] },
-      { "source": "**/*.webp", "headers": [ { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" } ] },
-      { "source": "**/*.jpg",  "headers": [ { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" } ] },
-      { "source": "**/*.jpeg", "headers": [ { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" } ] },
-      { "source": "**/*.png",  "headers": [ { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" } ] },
-      { "source": "**/*.vcf",  "headers": [
-        { "key": "Content-Type", "value": "text/vcard; charset=utf-8" },
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ] },
-      { "source": "**/*.css",  "headers": [ { "key": "Cache-Control", "value": "public, max-age=604800" } ] },
-      { "source": "**/*.js",   "headers": [ { "key": "Cache-Control", "value": "public, max-age=604800" } ] },
-      { "source": "**/*.html", "headers": [ { "key": "Cache-Control", "value": "public, max-age=300" } ] }
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "strict-origin-when-cross-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "geolocation=(), microphone=(), camera=()"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=31536000; includeSubDomains; preload"
+          }
+        ]
+      },
+      {
+        "source": "**/*.avif",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.webp",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.jpg",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.jpeg",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.png",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.vcf",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/vcard; charset=utf-8"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.css",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=604800"
+          }
+        ]
+      },
+      {
+        "source": "**/*.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=604800"
+          }
+        ]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=300"
+          }
+        ]
+      }
     ],
     "rewrites": [
       {
@@ -81,9 +172,19 @@
     ]
   },
   "emulators": {
-    "ui": { "enabled": true, "port": 4000 },
-    "functions": { "port": 5001 },
-    "hosting": { "port": 5010 },
-    "firestore": { "port": 8080 }
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "functions": {
+      "port": 5001
+    },
+    "hosting": {
+      "port": 5010
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "singleProjectMode": true
   }
 }
