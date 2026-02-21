@@ -3,12 +3,16 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import * as cheerio from 'cheerio';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
 
 // Define `__dirname` for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.join(__dirname, '..');
+const blogRoot = path.join(projectRoot, 'public', 'blog');
+const blogManifestPath = path.join(blogRoot, '.generated-posts.json');
+const BLOG_INDEX_NAME = 'index.html';
+const BLOG_TEMPLATE_NAME = 'post.html';
 
 // Basic Firebase configuration for reading public posts
 const firebaseConfig = {
@@ -267,8 +271,119 @@ export function renderRichText(content) {
 // --- End Utils ---
 
 
-function getPostUrl(slug) {
-    return `/blog/${encodeURIComponent(slug)}.html`;
+function resolveWithinBlog(relativePath) {
+    const resolved = path.resolve(blogRoot, relativePath);
+    const rootPrefix = blogRoot.endsWith(path.sep) ? blogRoot : `${blogRoot}${path.sep}`;
+    if (resolved !== blogRoot && !resolved.startsWith(rootPrefix)) {
+        throw new Error(`Refusing to access path outside blog root: ${relativePath}`);
+    }
+    return resolved;
+}
+
+function getPostUrl(slugSegment) {
+    return `/blog/${slugSegment}`;
+}
+
+function normalizePosts(posts) {
+    const seenSegments = new Set();
+
+    return posts.map((post) => {
+        const rawSlug = String(post.slug || post.id || "").trim();
+        if (!rawSlug) {
+            throw new Error(`Post ${post.id || "(unknown)"} is missing a slug/id.`);
+        }
+
+        // Encode slug into a single safe URL/path segment (prevents path traversal).
+        const slugSegment = encodeURIComponent(rawSlug);
+        if (!slugSegment) {
+            throw new Error(`Post ${post.id || rawSlug} produced an empty slug segment.`);
+        }
+        if (seenSegments.has(slugSegment)) {
+            throw new Error(`Duplicate post slug segment detected: ${slugSegment}`);
+        }
+
+        seenSegments.add(slugSegment);
+        return { ...post, slugSegment };
+    });
+}
+
+function getExpectedOutputEntries(posts) {
+    return posts.map((post) => path.posix.join(post.slugSegment, BLOG_INDEX_NAME));
+}
+
+function readGeneratedManifest() {
+    if (!fs.existsSync(blogManifestPath)) return [];
+
+    try {
+        const parsed = JSON.parse(fs.readFileSync(blogManifestPath, 'utf-8'));
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter((entry) => typeof entry === "string" && entry.length > 0);
+    } catch {
+        return [];
+    }
+}
+
+function writeGeneratedManifest(entries) {
+    fs.writeFileSync(blogManifestPath, `${JSON.stringify(entries, null, 2)}\n`, 'utf-8');
+}
+
+function pruneEmptyBlogDirectories(startDir) {
+    let current = startDir;
+    while (current !== blogRoot && current.startsWith(blogRoot)) {
+        if (!fs.existsSync(current)) break;
+        const contents = fs.readdirSync(current);
+        if (contents.length > 0) break;
+        fs.rmdirSync(current);
+        current = path.dirname(current);
+    }
+}
+
+function removeGeneratedOutput(relativePath) {
+    const outputPath = resolveWithinBlog(relativePath);
+    if (!fs.existsSync(outputPath)) return;
+    fs.rmSync(outputPath, { force: true });
+    pruneEmptyBlogDirectories(path.dirname(outputPath));
+}
+
+function cleanupStaleOutputs(nextOutputEntries) {
+    const nextEntries = new Set(nextOutputEntries);
+    const previousEntries = new Set(readGeneratedManifest());
+    const expectedPostDirectories = new Set(
+        nextOutputEntries.map((entry) => entry.split('/')[0]).filter(Boolean)
+    );
+
+    for (const entry of previousEntries) {
+        if (!nextEntries.has(entry)) {
+            removeGeneratedOutput(entry);
+            console.log(`Removed stale blog output: ${entry}`);
+        }
+    }
+
+    // Remove legacy one-file-per-post outputs from the old generator.
+    const legacyHtmlFiles = fs.readdirSync(blogRoot, { withFileTypes: true })
+        .filter((entry) => entry.isFile())
+        .map((entry) => entry.name)
+        .filter((name) => name.endsWith('.html') && name !== BLOG_INDEX_NAME && name !== BLOG_TEMPLATE_NAME);
+
+    for (const fileName of legacyHtmlFiles) {
+        fs.rmSync(path.join(blogRoot, fileName), { force: true });
+        console.log(`Removed legacy blog output: ${fileName}`);
+    }
+
+    // Also clean stale extensionless directories, which matters in fresh CI checkouts.
+    const directoryEntries = fs.readdirSync(blogRoot, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name);
+
+    for (const dirName of directoryEntries) {
+        if (expectedPostDirectories.has(dirName)) continue;
+
+        const candidateIndexPath = path.join(blogRoot, dirName, BLOG_INDEX_NAME);
+        if (!fs.existsSync(candidateIndexPath)) continue;
+
+        fs.rmSync(path.join(blogRoot, dirName), { recursive: true, force: true });
+        console.log(`Removed stale blog output directory: ${dirName}`);
+    }
 }
 
 async function fetchPosts() {
@@ -297,19 +412,20 @@ async function fetchPosts() {
 
 // Generate the primary blog index.html page
 function generateIndexPage(posts) {
-    const indexPath = path.join(projectRoot, 'public', 'blog', 'index.html');
+    const indexPath = path.join(blogRoot, BLOG_INDEX_NAME);
     const htmlString = fs.readFileSync(indexPath, 'utf-8');
     const $ = cheerio.load(htmlString);
 
     // Remove client-side JS script tag to prevent double rendering
     $('script[src="/scripts/blog-list.js"]').remove();
+    $('#blog-jsonld').remove();
 
     if (!posts.length) {
         $('#blog-list').html('<p class="blog-empty">No blog posts are published yet. Check back soon for detailing tips.</p>');
         $('#blog-state').text("No published posts yet.");
     } else {
         const listHTML = posts.map(post => {
-            const slug = post.slug || post.id;
+            const slugSegment = post.slugSegment;
             const title = escapeHtml(post.title || "Untitled article");
             const excerpt = escapeHtml(post.excerpt || excerptFromContent(post.content, 165));
             const publishedLabel = escapeHtml(formatDate(post.publishedAt) || "Recent post");
@@ -323,7 +439,7 @@ function generateIndexPage(posts) {
 
             return `
                 <article class="blog-card">
-                    <a class="blog-card-link" href="${getPostUrl(slug)}">
+                    <a class="blog-card-link" href="${getPostUrl(slugSegment)}">
                         ${coverImage
                     ? `<img class="blog-card-image" src="${escapeHtml(coverImage.startsWith("/") || coverImage.startsWith("http") ? coverImage : "/" + coverImage)}" alt="${title}" loading="lazy" decoding="async">`
                     : ""}
@@ -349,7 +465,7 @@ function generateIndexPage(posts) {
             "@type": "ListItem",
             position: index + 1,
             name: post.title || "Detailing article",
-            url: `https://niemansdetailing.com${getPostUrl(post.slug || post.id)}`,
+            url: `https://niemansdetailing.com${getPostUrl(post.slugSegment)}`,
         }));
 
         const schemaPayload = {
@@ -374,17 +490,19 @@ function generateIndexPage(posts) {
 
 // Generate individual static HTML files for each post
 function generatePostPages(posts) {
-    const defaultTemplatePath = path.join(projectRoot, 'public', 'blog', 'post.html');
+    const defaultTemplatePath = path.join(blogRoot, BLOG_TEMPLATE_NAME);
     const defaultHtmlString = fs.readFileSync(defaultTemplatePath, 'utf-8');
+    const generatedOutputs = [];
 
     posts.forEach((post) => {
-        const slug = post.slug || post.id;
-        const outputPath = path.join(projectRoot, 'public', 'blog', `${slug}.html`);
+        const slugSegment = post.slugSegment;
+        const outputDirectory = resolveWithinBlog(slugSegment);
+        const outputPath = path.join(outputDirectory, BLOG_INDEX_NAME);
         const $ = cheerio.load(defaultHtmlString);
 
         const title = post.title || "Detailing article";
         const excerpt = post.excerpt || excerptFromContent(post.content, 165);
-        const canonicalUrl = `https://niemansdetailing.com/blog/${encodeURIComponent(slug)}.html`;
+        const canonicalUrl = `https://niemansdetailing.com${getPostUrl(slugSegment)}`;
         const publishedDateStr = formatDate(post.publishedAt) || "";
         const readTime = Number(post.readingMinutes) > 0 ? `${post.readingMinutes} min read` : "";
         const coverImage = typeof post.coverImage === "string" ? post.coverImage.trim() : "";
@@ -453,16 +571,16 @@ function generatePostPages(posts) {
             image: coverImage ? [coverImage] : undefined,
         };
         const jsonLdTag = `<script id="post-jsonld" type="application/ld+json">\n${JSON.stringify(schemaPayload, null, 2)}\n</script>`;
+        $('#post-jsonld').remove();
         $('head').append(jsonLdTag);
 
         // Related Posts Logic
-        const related = posts.filter((p) => (p.slug || p.id) !== slug).slice(0, 3);
+        const related = posts.filter((p) => p.slugSegment !== slugSegment).slice(0, 3);
         if (related.length > 0) {
             const relatedHTML = related.map((p) => {
-                const pSlug = p.slug || p.id;
                 const pTitle = escapeHtml(p.title || "Detailing article");
                 const pDesc = escapeHtml(p.excerpt || excerptFromContent(p.content, 120));
-                return `<li><a href="/blog/${encodeURIComponent(pSlug)}.html">${pTitle}</a><p>${pDesc}</p></li>`;
+                return `<li><a href="${getPostUrl(p.slugSegment)}">${pTitle}</a><p>${pDesc}</p></li>`;
             }).join("");
             $('#related-posts').html(relatedHTML);
             $('#related-section').removeAttr('hidden');
@@ -470,40 +588,22 @@ function generatePostPages(posts) {
             $('#related-section').attr('hidden', 'true');
         }
 
+        fs.mkdirSync(outputDirectory, { recursive: true });
         fs.writeFileSync(outputPath, $.html(), 'utf-8');
-        console.log(`Generated public/blog/${slug}.html`);
+        const relativeOutput = path.posix.join(slugSegment, BLOG_INDEX_NAME);
+        generatedOutputs.push(relativeOutput);
+        console.log(`Generated public/blog/${relativeOutput}`);
     });
+
+    return generatedOutputs;
 }
 
 // Generate an updated sitemap.xml to include all dynamic posts
 function updateSitemap(posts) {
     const sitemapPath = path.join(projectRoot, 'public', 'sitemap.xml');
-    let xmlString = fs.readFileSync(sitemapPath, 'utf-8');
+    const xmlString = fs.readFileSync(sitemapPath, 'utf-8');
 
-    // Simple string manipulation to dynamically add/replace posts within the sitemap
-    const sitemapUrls = posts.map(post => {
-        const slug = post.slug || post.id;
-        const modifiedDate = toDate(post.updatedAt || post.publishedAt);
-        const dateStr = modifiedDate ? modifiedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-
-        return `  <url>\n    <loc>https://niemansdetailing.com/blog/${encodeURIComponent(slug)}.html</loc>\n    <lastmod>${dateStr}</lastmod>\n    <priority>0.70</priority>\n  </url>`;
-    });
-
-    // Strategy: Remove any existing post URLs, then append the fresh list
-    const basicLines = xmlString.split('\n');
-    const filteredLines = [];
-    let isSkipping = false;
-
-    for (let i = 0; i < basicLines.length; i++) {
-        const line = basicLines[i];
-        if (line.includes('<loc>https://niemansdetailing.com/blog/') && !line.includes('<loc>https://niemansdetailing.com/blog</loc>')) {
-            // We found a specific blog post, so skip the opening url, loc, lastmod, priority, and closing url.
-            // Since we can't easily parse backwards, we identify a block by `<url>` before `<loc>`
-            // Best approach with simple regex:
-        }
-    }
-
-    // Rather than manually parsing, let's use cheerio's xmlMode to manipulate the actual XML safely
+    // Manipulate sitemap via XML parser so repeated runs are idempotent.
     const $ = cheerio.load(xmlString, { xmlMode: true });
 
     // Remove old dynamic posts from sitemap
@@ -517,11 +617,11 @@ function updateSitemap(posts) {
     // Append new entries
     const urlSet = $('urlset');
     posts.forEach(post => {
-        const slug = post.slug || post.id;
         const modifiedDate = toDate(post.updatedAt || post.publishedAt);
         const dateStr = modifiedDate ? modifiedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+        const postUrl = `https://niemansdetailing.com${getPostUrl(post.slugSegment)}`;
 
-        urlSet.append(`\n  <url>\n    <loc>https://niemansdetailing.com/blog/${encodeURIComponent(slug)}.html</loc>\n    <lastmod>${dateStr}</lastmod>\n    <priority>0.70</priority>\n  </url>`);
+        urlSet.append(`\n  <url>\n    <loc>${postUrl}</loc>\n    <lastmod>${dateStr}</lastmod>\n    <priority>0.70</priority>\n  </url>`);
     });
 
     fs.writeFileSync(sitemapPath, $.xml(), 'utf-8');
@@ -532,9 +632,11 @@ function updateSitemap(posts) {
 // --- Execute Build ---
 async function build() {
     try {
-        const posts = await fetchPosts();
+        const posts = normalizePosts(await fetchPosts());
+        cleanupStaleOutputs(getExpectedOutputEntries(posts));
         generateIndexPage(posts);
-        generatePostPages(posts);
+        const generatedOutputs = generatePostPages(posts);
+        writeGeneratedManifest(generatedOutputs);
         updateSitemap(posts);
         console.log("✅ Blog Static Build Complete!");
         process.exit(0);

@@ -11,7 +11,8 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "blog/post.html"
     ],
     "headers": [
       {
@@ -125,6 +126,23 @@
         ]
       }
     ],
+    "redirects": [
+      {
+        "source": "/blog/index.html",
+        "destination": "/blog",
+        "type": 301
+      },
+      {
+        "source": "/blog/post.html",
+        "destination": "/blog",
+        "type": 301
+      },
+      {
+        "source": "/blog/:slug.html",
+        "destination": "/blog/:slug",
+        "type": 301
+      }
+    ],
     "rewrites": [
       {
         "source": "/api/**",
@@ -148,10 +166,6 @@
       {
         "source": "/blog",
         "destination": "/blog/index.html"
-      },
-      {
-        "source": "/blog/**",
-        "destination": "/blog/post.html"
       },
       {
         "source": "/admin/blog",
