@@ -11,6 +11,7 @@
     "img:rewire": "node scripts/rewire-images.mjs",
     "dev:copy": "rsync -a assets/images/ public/images/",
     "dev:copy:win": "xcopy assets\\images public\\images /E /I /Y",
+    "build:blog": "node scripts/build-blog.mjs",
     "dev:serve": "npx http-server public -p 5173 -c-1",
     "dev": "npm run dev:copy && npm run dev:serve",
     "lhci": "lhci autorun --collect.staticDistDir=public --upload.target=filesystem --upload.outputDir=.lighthouseci"
@@ -19,6 +20,7 @@
     "simple-swizzle": "0.2.2"
   },
   "dependencies": {
+    "firebase": "^12.9.0",
     "firebase-admin": "^13.5.0",
     "firebase-functions": "^6.4.0"
   }
