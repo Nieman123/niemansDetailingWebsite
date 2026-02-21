@@ -51,7 +51,8 @@ export function formatDate(value) {
 
 function stripLinePrefix(line) {
   return line
-    .replace(/^#{1,3}\s+/, "")
+    .replace(/^#{1,6}\s+/, "")
+    .replace(/^>\s+/, "")
     .replace(/^[-*]\s+/, "")
     .replace(/^\d+\.\s+/, "")
     .trim();
@@ -97,6 +98,9 @@ function renderInline(value) {
   function applyBasicFormatting(input) {
     return input
       .replace(/(\*\*|__)(.*?)\1/g, "<strong>$2</strong>")
+      .replace(/\*([^\*]+)\*/g, "<em>$1</em>")
+      .replace(/\b_([^_]+)_\b/g, "<em>$1</em>")
+      .replace(/~~(.*?)~~/g, "<del>$1</del>")
       .replace(/`([^`]+)`/g, "<code>$1</code>");
   }
 
@@ -182,15 +186,46 @@ export function renderRichText(content) {
       continue;
     }
 
-    if (/^###\s+/.test(trimmed)) {
-      blocks.push(`<h3>${renderInline(trimmed.replace(/^###\s+/, ""))}</h3>`);
+    if (/^---/.test(trimmed)) {
+      blocks.push("<hr />");
       idx += 1;
       continue;
     }
 
-    if (/^##\s+/.test(trimmed)) {
-      blocks.push(`<h2>${renderInline(trimmed.replace(/^##\s+/, ""))}</h2>`);
+    if (/^```/.test(trimmed)) {
+      const language = trimmed.replace(/^```/, "").trim();
       idx += 1;
+      const codeLines = [];
+      while (idx < lines.length) {
+        if (/^\s*```/.test(lines[idx])) {
+          idx += 1;
+          break;
+        }
+        codeLines.push(escapeHtml(lines[idx]));
+        idx += 1;
+      }
+      const langClass = language ? ` class="language-${escapeHtml(language)}"` : "";
+      blocks.push(`<pre><code${langClass}>${codeLines.join("\n")}</code></pre>`);
+      continue;
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+      const level = headingMatch[1].length;
+      blocks.push(`<h${level}>${renderInline(headingMatch[2])}</h${level}>`);
+      idx += 1;
+      continue;
+    }
+
+    if (/^>\s+/.test(trimmed)) {
+      const items = [];
+      while (idx < lines.length) {
+        const line = lines[idx].trim();
+        if (!line || !/^>\s+/.test(line)) break;
+        items.push(renderInline(line.replace(/^>\s+/, "")));
+        idx += 1;
+      }
+      blocks.push(`<blockquote>${items.join("<br />")}</blockquote>`);
       continue;
     }
 
@@ -222,7 +257,10 @@ export function renderRichText(content) {
     while (idx < lines.length) {
       const line = lines[idx].trim();
       if (!line) break;
-      if (/^#{2,3}\s+/.test(line)) break;
+      if (/^---/.test(line)) break;
+      if (/^```/.test(line)) break;
+      if (/^#{1,6}\s+/.test(line)) break;
+      if (/^>\s+/.test(line)) break;
       if (/^(-|\*)\s+/.test(line)) break;
       if (/^\d+\.\s+/.test(line)) break;
       paragraph.push(renderInline(line));
