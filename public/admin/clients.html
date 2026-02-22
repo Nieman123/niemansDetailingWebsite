@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="firebase-api-key" content="AIzaSyBgUntKRCQsi_SyJmNOgJLBI8Yj8gEsmA4" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Client Manager | Nieman's Detailing</title>
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --panel: #11141b;
+      --card: #191e28;
+      --line: #2e3442;
+      --text: #eef2f7;
+      --muted: #9da7b8;
+      --brand: #f59e0b;
+      --brand-dark: #d97706;
+      --danger: #ef4444;
+      --ok: #34d399;
+      --info: #38bdf8;
+      --warn: #fbbf24;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: radial-gradient(circle at 0% 0%, #1a2236 0%, var(--bg) 42%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.45;
+    }
+
+    .hidden,
+    [hidden] {
+      display: none !important;
+    }
+
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(360px, 440px) 1fr;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: #0d1016;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    p {
+      margin: 0;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      background: #151a22;
+      border: 1px solid var(--line);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn:hover {
+      border-color: #4b5566;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      border-color: transparent;
+      color: #101010;
+    }
+
+    .btn-primary:hover {
+      background: var(--brand-dark);
+    }
+
+    .btn-danger {
+      border-color: rgba(239, 68, 68, 0.6);
+      color: #fecaca;
+      background: rgba(239, 68, 68, 0.16);
+    }
+
+    .btn-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .filters,
+    .summary-grid,
+    .client-list-wrap,
+    .sidebar-footer,
+    .import-help {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #121721;
+    }
+
+    .filters,
+    .sidebar-footer,
+    .import-help {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-grid {
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .summary-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px;
+      background: #0f141d;
+    }
+
+    .summary-card .label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .summary-card .value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 4px;
+      display: block;
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      color: var(--text);
+      background: #07090d;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+      font: inherit;
+      font-size: 0.9rem;
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: 2px solid var(--brand);
+      border-color: transparent;
+    }
+
+    .client-list-wrap {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 260px;
+      flex: 1;
+    }
+
+    .client-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .client-item {
+      width: 100%;
+      border: none;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      padding: 11px;
+      cursor: pointer;
+      display: grid;
+      gap: 5px;
+    }
+
+    .client-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .client-item-active {
+      border-left: 3px solid var(--brand);
+      padding-left: 8px;
+      background: rgba(245, 158, 11, 0.13);
+    }
+
+    .client-item-top,
+    .client-item-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .client-item-name {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+
+    .client-item-sub {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .client-item-empty {
+      margin: 0;
+      padding: 16px;
+      text-align: center;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: 0.9rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 3px 8px;
+      border: 1px solid transparent;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 700;
+    }
+
+    .pill-status-prospect {
+      color: var(--warn);
+      border-color: rgba(251, 191, 36, 0.35);
+      background: rgba(251, 191, 36, 0.16);
+    }
+
+    .pill-status-active {
+      color: var(--ok);
+      border-color: rgba(52, 211, 153, 0.35);
+      background: rgba(52, 211, 153, 0.16);
+    }
+
+    .pill-status-dormant {
+      color: #c4b5fd;
+      border-color: rgba(196, 181, 253, 0.35);
+      background: rgba(196, 181, 253, 0.12);
+    }
+
+    .pill-status-do_not_contact,
+    .pill-status-archived {
+      color: #cbd5e1;
+      border-color: rgba(148, 163, 184, 0.35);
+      background: rgba(148, 163, 184, 0.12);
+    }
+
+    .pill-followup-overdue,
+    .pill-followup-today {
+      color: #fecaca;
+      border-color: rgba(239, 68, 68, 0.4);
+      background: rgba(239, 68, 68, 0.18);
+    }
+
+    .pill-followup-soon {
+      color: #fde68a;
+      border-color: rgba(251, 191, 36, 0.4);
+      background: rgba(251, 191, 36, 0.15);
+    }
+
+    .pill-followup-unscheduled {
+      color: #bfdbfe;
+      border-color: rgba(59, 130, 246, 0.35);
+      background: rgba(59, 130, 246, 0.15);
+    }
+
+    .pill-followup-upcoming {
+      color: #c7d2fe;
+      border-color: rgba(99, 102, 241, 0.35);
+      background: rgba(99, 102, 241, 0.15);
+    }
+
+    .pill-followup-skip {
+      color: #cbd5e1;
+      border-color: rgba(148, 163, 184, 0.3);
+      background: rgba(148, 163, 184, 0.12);
+    }
+
+    .main {
+      max-height: 100vh;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .main-content {
+      display: grid;
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--card);
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .followup-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .followup-stat {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #111723;
+      padding: 10px;
+    }
+
+    .followup-stat .label {
+      color: var(--muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .followup-stat .value {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .followup-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .followup-row {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #101621;
+      display: grid;
+      gap: 6px;
+    }
+
+    .followup-row-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .followup-row-sub {
+      color: var(--muted);
+      font-size: 0.85rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .followup-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .empty-state {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      padding: 22px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+
+    .detail-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .detail-section h4 {
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .form-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .booking-form {
+      display: grid;
+      grid-template-columns: 150px 1fr 120px;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .booking-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .booking-row {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #101621;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .booking-row-top,
+    .booking-row-sub {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .booking-row-sub {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .save-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .auth-container {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 24px;
+      gap: 12px;
+    }
+
+    #admin-status {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #111;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 13px;
+      z-index: 1000;
+      font-size: 0.9rem;
+      box-shadow: 0 5px 14px rgba(0, 0, 0, 0.35);
+      max-width: 420px;
+    }
+
+    #admin-status[data-type="error"] {
+      color: #fecaca;
+      border-color: rgba(239, 68, 68, 0.72);
+    }
+
+    #admin-status[data-type="success"] {
+      color: #bbf7d0;
+      border-color: rgba(34, 197, 94, 0.72);
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .import-summary {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      background: #101621;
+      display: grid;
+      gap: 6px;
+    }
+
+    .import-summary ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      display: grid;
+      gap: 4px;
+      max-height: 160px;
+      overflow: auto;
+    }
+
+    @media (max-width: 1080px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        max-height: none;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .main {
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 780px) {
+      .summary-grid,
+      .split,
+      .form-grid,
+      .form-grid-3,
+      .followup-grid,
+      .booking-form,
+      .btn-group {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-actions {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="admin-status">Initializing...</div>
+
+  <div id="auth-view" class="auth-container">
+    <h1>Nieman's Client Manager</h1>
+    <p class="muted" style="max-width:620px;">Sign in with your Google account to manage client contacts, booking history, and follow-up reminders.</p>
+    <button id="sign-in-btn" class="btn btn-primary" type="button">Sign in with Google</button>
+  </div>
+
+  <div id="unauthorized-view" class="auth-container" hidden>
+    <h1 style="color:var(--danger);">Access Denied</h1>
+    <p>You are signed in but do not have administrator permissions.</p>
+    <p id="auth-hint" class="muted"></p>
+    <button id="sign-out-unauthorized-btn" class="btn" type="button">Sign Out</button>
+  </div>
+
+  <div id="admin-view" class="layout" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <h2>Client Manager</h2>
+        <button id="refresh-clients-btn" class="btn" type="button">Refresh</button>
+      </div>
+
+      <div class="btn-group">
+        <a class="btn btn-primary" href="/admin/index.html">Lead Dashboard</a>
+        <a class="btn" href="/admin/blog.html">Blog Admin</a>
+      </div>
+
+      <div class="btn-group">
+        <button id="new-client-btn" class="btn" type="button">New Client</button>
+        <button id="import-md-btn" class="btn" type="button">Import .md Files</button>
+      </div>
+
+      <input id="import-md-input" type="file" accept=".md,text/markdown,text/plain" multiple hidden />
+
+      <div class="filters">
+        <div>
+          <label for="client-search-input">Search</label>
+          <input id="client-search-input" type="text" placeholder="Name, phone, email, tags, notes" />
+        </div>
+
+        <div class="split">
+          <div>
+            <label for="client-status-filter">Status</label>
+            <select id="client-status-filter">
+              <option value="all">All statuses</option>
+              <option value="prospect">Prospect</option>
+              <option value="active">Active</option>
+              <option value="dormant">Dormant</option>
+              <option value="do_not_contact">Do Not Contact</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+          <div>
+            <label for="client-followup-filter">Follow-up</label>
+            <select id="client-followup-filter">
+              <option value="all">All follow-up states</option>
+              <option value="due">Due now + soon</option>
+              <option value="overdue">Overdue</option>
+              <option value="today">Due today</option>
+              <option value="soon">Due in 7 days</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="unscheduled">Unscheduled</option>
+              <option value="skip">Do not contact / archived</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="split">
+          <div>
+            <label for="client-sort-filter">Sort</label>
+            <select id="client-sort-filter">
+              <option value="followup">Follow-up priority</option>
+              <option value="newest">Recently updated</option>
+              <option value="oldest">Oldest first</option>
+              <option value="name">Name A-Z</option>
+            </select>
+          </div>
+          <div style="display:flex; align-items:flex-end;">
+            <button id="clear-client-filters-btn" class="btn" type="button" style="width:100%;">Clear Filters</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary-grid" aria-label="Client summary">
+        <div class="summary-card">
+          <span class="label">Total Clients</span>
+          <span id="summary-total-clients" class="value">0</span>
+        </div>
+        <div class="summary-card">
+          <span class="label">Follow-up Due</span>
+          <span id="summary-due-clients" class="value">0</span>
+        </div>
+        <div class="summary-card">
+          <span class="label">Due in 7 Days</span>
+          <span id="summary-soon-clients" class="value">0</span>
+        </div>
+        <div class="summary-card">
+          <span class="label">Unscheduled</span>
+          <span id="summary-unscheduled-clients" class="value">0</span>
+        </div>
+      </div>
+
+      <div class="import-help">
+        <button id="export-csv-btn" class="btn btn-primary" type="button">Export Google Ads CSV</button>
+        <p class="muted" style="font-size:0.82rem;">Exports the current filtered list using Google Ads Customer Match headers: <span class="mono">Email, Phone, First Name, Last Name, Country, Zip</span>.</p>
+        <a class="muted" style="font-size:0.82rem;" href="https://support.google.com/google-ads/answer/10589050" target="_blank" rel="noopener">Google Ads formatting reference</a>
+      </div>
+
+      <section class="client-list-wrap" aria-label="Client list">
+        <ul id="client-list" class="client-list"></ul>
+        <p id="client-list-empty" class="client-item-empty" hidden>No clients match your current filters.</p>
+      </section>
+
+      <div class="sidebar-footer">
+        <div>
+          User: <span id="admin-user-email">-</span><br />
+          ID: <span id="admin-uid" class="mono" style="opacity:0.75;">-</span>
+        </div>
+        <button id="sign-out-btn" class="btn" type="button">Sign Out</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-content">
+        <section class="card">
+          <div class="detail-header" style="padding-bottom:0; border-bottom:none;">
+            <div>
+              <h3>Follow-up Dashboard</h3>
+              <p class="muted" style="margin-top:6px;">Clients are prioritized by next follow-up date and status.</p>
+            </div>
+          </div>
+
+          <div class="followup-grid">
+            <article class="followup-stat">
+              <span class="label">Due Now</span>
+              <span id="followup-today-count" class="value">0</span>
+            </article>
+            <article class="followup-stat">
+              <span class="label">Due in 7 Days</span>
+              <span id="followup-soon-count" class="value">0</span>
+            </article>
+          </div>
+
+          <ul id="followup-list" class="followup-list"></ul>
+        </section>
+
+        <section id="import-summary" class="card import-summary" hidden>
+          <h4 style="margin:0;">Import Summary</h4>
+          <p id="import-summary-head" class="muted"></p>
+          <ul id="import-summary-items"></ul>
+        </section>
+
+        <div id="client-detail-placeholder" class="empty-state">
+          Select a client from the left or click <strong>New Client</strong> to create one.
+        </div>
+
+        <section id="client-detail-card" class="card" hidden>
+          <header class="detail-header">
+            <div>
+              <h3 id="client-detail-name">Client</h3>
+              <p id="client-last-updated" class="muted" style="margin-top:6px;">Updated -</p>
+            </div>
+            <div class="detail-actions">
+              <span id="client-id-pill" class="pill">New</span>
+              <a id="client-action-sms" class="btn" href="#">Text</a>
+              <a id="client-action-call" class="btn" href="#">Call</a>
+              <a id="client-action-email" class="btn" href="#">Email</a>
+              <button id="client-action-copy-link" class="btn" type="button">Copy Link</button>
+              <a id="client-action-open-lead" class="btn" href="/admin/index.html" hidden>Open Lead</a>
+            </div>
+          </header>
+
+          <section class="detail-section">
+            <h4>Contact</h4>
+            <div class="form-grid">
+              <div>
+                <label for="client-name-input">Full Name</label>
+                <input id="client-name-input" type="text" maxlength="140" placeholder="Client full name" />
+              </div>
+              <div>
+                <label for="client-phone-input">Phone</label>
+                <input id="client-phone-input" type="tel" maxlength="24" placeholder="(828) 555-1212" />
+              </div>
+              <div>
+                <label for="client-email-input">Email</label>
+                <input id="client-email-input" type="email" maxlength="180" placeholder="name@example.com" />
+              </div>
+              <div>
+                <label for="client-preferred-contact-input">Preferred Contact</label>
+                <select id="client-preferred-contact-input">
+                  <option value="">Not set</option>
+                  <option value="text">Text</option>
+                  <option value="call">Call</option>
+                  <option value="email">Email</option>
+                </select>
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <h4>Profile</h4>
+            <div class="form-grid-3">
+              <div>
+                <label for="client-status-input">Status</label>
+                <select id="client-status-input">
+                  <option value="prospect">Prospect</option>
+                  <option value="active">Active</option>
+                  <option value="dormant">Dormant</option>
+                  <option value="do_not_contact">Do Not Contact</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+              <div>
+                <label for="client-source-input">Source</label>
+                <input id="client-source-input" type="text" maxlength="80" placeholder="quote_page, referral, etc." />
+              </div>
+              <div>
+                <label for="client-neighborhood-input">Neighborhood</label>
+                <input id="client-neighborhood-input" type="text" maxlength="120" placeholder="Neighborhood" />
+              </div>
+            </div>
+
+            <div class="form-grid" style="margin-top:10px;">
+              <div>
+                <label for="client-address-input">Street Address</label>
+                <input id="client-address-input" type="text" maxlength="180" placeholder="Street address" />
+              </div>
+              <div>
+                <label for="client-city-input">City</label>
+                <input id="client-city-input" type="text" maxlength="80" placeholder="City" />
+              </div>
+              <div>
+                <label for="client-state-input">State</label>
+                <input id="client-state-input" type="text" maxlength="40" placeholder="NC" />
+              </div>
+              <div>
+                <label for="client-zip-input">ZIP</label>
+                <input id="client-zip-input" type="text" maxlength="10" placeholder="28801" />
+              </div>
+              <div>
+                <label for="client-country-input">Country</label>
+                <input id="client-country-input" type="text" maxlength="2" placeholder="US" />
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <h4>Follow-up Cadence</h4>
+            <div class="form-grid-3">
+              <div>
+                <label for="client-repeat-months-input">Repeat Interval (Months)</label>
+                <input id="client-repeat-months-input" type="number" min="0" max="36" step="1" placeholder="6" />
+              </div>
+              <div>
+                <label for="client-last-service-input">Last Service Date</label>
+                <input id="client-last-service-input" type="date" />
+              </div>
+              <div>
+                <label for="client-next-followup-input">Next Follow-up Date</label>
+                <input id="client-next-followup-input" type="date" />
+              </div>
+            </div>
+
+            <div class="form-grid" style="margin-top:10px;">
+              <div>
+                <label for="client-last-contacted-input">Last Contacted Date</label>
+                <input id="client-last-contacted-input" type="date" />
+              </div>
+              <div>
+                <label for="client-tags-input">Tags (comma separated)</label>
+                <input id="client-tags-input" type="text" maxlength="240" placeholder="detailing/client, ceramic" />
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <h4>Bookings</h4>
+            <div class="booking-form">
+              <div>
+                <label for="client-booking-date-input">Date</label>
+                <input id="client-booking-date-input" type="date" />
+              </div>
+              <div>
+                <label for="client-booking-service-input">Service</label>
+                <input id="client-booking-service-input" type="text" maxlength="120" placeholder="Full Detail" />
+              </div>
+              <div>
+                <label for="client-booking-amount-input">Amount ($)</label>
+                <input id="client-booking-amount-input" type="number" min="0" step="1" placeholder="300" />
+              </div>
+            </div>
+            <div class="form-grid" style="margin-top:8px;">
+              <div>
+                <label for="client-booking-note-input">Booking Note</label>
+                <input id="client-booking-note-input" type="text" maxlength="280" placeholder="What was done, vehicle details, etc." />
+              </div>
+              <div style="display:flex; align-items:flex-end;">
+                <button id="add-booking-btn" class="btn" type="button" style="width:100%;">Add Booking Entry</button>
+              </div>
+            </div>
+            <ul id="client-bookings-list" class="booking-list" style="margin-top:10px;"></ul>
+          </section>
+
+          <section class="detail-section">
+            <h4>Internal Notes</h4>
+            <div class="form-grid">
+              <div>
+                <label for="client-followup-note-input">Follow-up Note</label>
+                <textarea id="client-followup-note-input" placeholder="Last message sent, call outcome, next action."></textarea>
+              </div>
+              <div>
+                <label for="client-notes-input">General Notes</label>
+                <textarea id="client-notes-input" placeholder="Vehicle details, preferences, access notes."></textarea>
+              </div>
+            </div>
+          </section>
+
+          <div class="save-row">
+            <button id="delete-client-btn" class="btn btn-danger" type="button">Delete Client</button>
+            <button id="save-client-btn" class="btn btn-primary" type="button">Save Client</button>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="/scripts/admin-clients.js"></script>
+</body>
+
+</html>

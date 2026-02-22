@@ -633,7 +633,10 @@
         <button id="refresh-leads-btn" type="button" class="btn btn-ghost">Refresh</button>
       </div>
 
-      <a class="btn btn-primary" href="/admin/blog.html">Open Blog Admin</a>
+      <div style="display:grid; gap:8px;">
+        <a class="btn btn-primary" href="/admin/blog.html">Open Blog Admin</a>
+        <a class="btn btn-ghost" href="/admin/clients.html">Open Client Manager</a>
+      </div>
 
       <section class="filters">
         <div>
@@ -765,6 +768,7 @@
               <span id="detail-price-pill" class="pill">$0</span>
               <a id="lead-action-sms" class="btn btn-action" href="#">Text Customer</a>
               <a id="lead-action-call" class="btn btn-action" href="#">Call Customer</a>
+              <a id="lead-action-open-client" class="btn btn-action" href="/admin/clients.html">Open Client</a>
               <button id="lead-action-copy-link" type="button" class="btn btn-ghost">Copy Link</button>
             </div>
           </header>
@@ -800,6 +804,10 @@
               <div>
                 <label for="lead-admin-note-input">Internal Note</label>
                 <textarea id="lead-admin-note-input" placeholder="Track outreach attempts, pricing notes, scheduling details, etc."></textarea>
+              </div>
+              <div class="save-row" style="justify-content:flex-start;">
+                <button id="lead-action-add-client" type="button" class="btn btn-action">Add/Update Client Record</button>
+                <span id="lead-client-link-status" style="color:var(--muted); font-size:0.82rem; align-self:center;"></span>
               </div>
               <div class="save-row">
                 <button id="delete-lead-btn" type="button" class="btn btn-danger">Delete Lead</button>

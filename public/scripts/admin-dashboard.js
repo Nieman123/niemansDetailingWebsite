@@ -60,7 +60,10 @@ const els = {
   detailMeta: document.getElementById("lead-detail-meta"),
   detailSmsBtn: document.getElementById("lead-action-sms"),
   detailCallBtn: document.getElementById("lead-action-call"),
+  detailOpenClientLink: document.getElementById("lead-action-open-client"),
   detailCopyLinkBtn: document.getElementById("lead-action-copy-link"),
+  detailAddClientBtn: document.getElementById("lead-action-add-client"),
+  detailClientLinkStatus: document.getElementById("lead-client-link-status"),
   detailStatusInput: document.getElementById("lead-status-input"),
   detailAdminNoteInput: document.getElementById("lead-admin-note-input"),
   deleteLeadBtn: document.getElementById("delete-lead-btn"),
@@ -112,6 +115,7 @@ function setControlsDisabled(disabled) {
     els.clearFiltersBtn,
     els.deleteLeadBtn,
     els.saveLeadBtn,
+    els.detailAddClientBtn,
   ];
   controls.forEach((control) => {
     if (control) control.disabled = disabled;
@@ -216,6 +220,66 @@ function formatPhone(input) {
   const digits = normalizePhoneDigits(input);
   if (digits.length !== 10) return input || "N/A";
   return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function leadClientManagerPath(lead) {
+  const clientId = String(lead?.client_id || "").trim();
+  if (clientId) {
+    return `/admin/clients.html?id=${encodeURIComponent(clientId)}`;
+  }
+  const leadId = String(lead?.id || "").trim();
+  return leadId ? `/admin/clients.html?fromLead=${encodeURIComponent(leadId)}` : "/admin/clients.html";
+}
+
+function canLeadBecomeClient(lead) {
+  if (!lead) return false;
+  const hasName = Boolean(String(lead.name || "").trim());
+  const hasPhone = normalizePhoneDigits(lead.phone_normalized || lead.phone).length === 10;
+  return hasName && hasPhone;
+}
+
+function updateLeadClientActions(lead) {
+  if (!lead) {
+    if (els.detailOpenClientLink) {
+      els.detailOpenClientLink.href = "/admin/clients.html";
+      els.detailOpenClientLink.textContent = "Open Client";
+    }
+    if (els.detailAddClientBtn) {
+      els.detailAddClientBtn.disabled = true;
+      els.detailAddClientBtn.textContent = "Add/Update Client Record";
+    }
+    if (els.detailClientLinkStatus) {
+      els.detailClientLinkStatus.textContent = "";
+    }
+    return;
+  }
+
+  const hasClient = Boolean(String(lead.client_id || "").trim());
+  const isBooked = String(els.detailStatusInput?.value || leadStatus(lead)).toLowerCase() === "booked";
+  const eligible = canLeadBecomeClient(lead);
+  const clientPath = leadClientManagerPath(lead);
+
+  if (els.detailOpenClientLink) {
+    els.detailOpenClientLink.href = clientPath;
+    els.detailOpenClientLink.textContent = hasClient ? "Open Client" : "Create Client";
+  }
+
+  if (els.detailAddClientBtn) {
+    els.detailAddClientBtn.disabled = !eligible;
+    els.detailAddClientBtn.textContent = hasClient ? "Update Client Record" : "Add To Client Manager";
+  }
+
+  if (els.detailClientLinkStatus) {
+    if (hasClient) {
+      els.detailClientLinkStatus.textContent = `Linked to client ${lead.client_id}.`;
+    } else if (!eligible) {
+      els.detailClientLinkStatus.textContent = "Needs both a name and valid US phone number before creating a client.";
+    } else if (isBooked) {
+      els.detailClientLinkStatus.textContent = "Booked lead ready to move into Client Manager.";
+    } else {
+      els.detailClientLinkStatus.textContent = "Open Client Manager to save this lead as a client contact.";
+    }
+  }
 }
 
 function smsHrefForLead(lead) {
@@ -474,6 +538,7 @@ function showLeadDetails(lead) {
         node.classList.remove("lead-item-active");
       });
     }
+    updateLeadClientActions(null);
     return;
   }
 
@@ -495,6 +560,7 @@ function showLeadDetails(lead) {
     els.detailBody.innerHTML = detailRowsHtml([
       { label: "Lead ID", value: lead.id || "N/A" },
       { label: "Status", value: leadStatus(lead) },
+      { label: "Client Record", value: lead.client_id || "Not linked" },
       { label: "Vehicle", value: vehicleLabel(lead) },
       { label: "Service", value: serviceLabel(lead) },
       { label: "Add-ons", value: addonText },
@@ -535,6 +601,8 @@ function showLeadDetails(lead) {
   if (els.detailAdminNoteInput) {
     els.detailAdminNoteInput.value = lead.admin_note || "";
   }
+
+  updateLeadClientActions(lead);
 
   const nextUrl = new URL(window.location.href);
   nextUrl.searchParams.set("id", lead.id);
@@ -730,6 +798,20 @@ async function copyCurrentLeadLink() {
   }
 }
 
+function openClientManagerForActiveLead() {
+  if (!state.activeLeadId) return;
+  const lead = state.leads.find((item) => item.id === state.activeLeadId);
+  if (!lead) return;
+
+  if (!canLeadBecomeClient(lead)) {
+    setStatus("Lead needs both a name and valid US phone before creating a client.", "error");
+    return;
+  }
+
+  const nextPath = leadClientManagerPath(lead);
+  window.location.href = nextPath;
+}
+
 function bindEvents() {
   if (els.signInBtn) {
     els.signInBtn.addEventListener("click", async () => {
@@ -793,6 +875,18 @@ function bindEvents() {
 
   if (els.detailCopyLinkBtn) {
     els.detailCopyLinkBtn.addEventListener("click", copyCurrentLeadLink);
+  }
+
+  if (els.detailAddClientBtn) {
+    els.detailAddClientBtn.addEventListener("click", openClientManagerForActiveLead);
+  }
+
+  if (els.detailStatusInput) {
+    els.detailStatusInput.addEventListener("change", () => {
+      if (!state.activeLeadId) return;
+      const lead = state.leads.find((item) => item.id === state.activeLeadId);
+      if (lead) updateLeadClientActions(lead);
+    });
   }
 }
 

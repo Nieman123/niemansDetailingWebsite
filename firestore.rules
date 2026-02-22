@@ -33,6 +33,11 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Client contact database is private. Admins can manage all client records.
+    match /clients/{id} {
+      allow read, create, update, delete: if isBlogAdmin();
+    }
+
     // Admin allowlist documents. Add uid as doc ID in Firebase console to grant blog access.
     match /adminUsers/{uid} {
       allow read: if isSignedIn() && request.auth.uid == uid;
