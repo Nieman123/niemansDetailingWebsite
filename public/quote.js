@@ -18,14 +18,14 @@
   // Pricing model
   const PRICES = {
     base: {
-      sedan: { quick: 150, full: 300, interior: 99 },
-      suv:   { quick: 170, full: 350, interior: 99 },
-      truck: { quick: 180, full: 380, interior: 99 }
+      sedan: { quick: 200, full: 300, interior: 150 },
+      suv: { quick: 250, full: 350, interior: 200 },
+      truck: { quick: 300, full: 500, interior: 250 }
     },
     addons: {
-      wax:        { sedan: 25, suv: 30, truck: 35 },
-      pethair:    { sedan: 30, suv: 40, truck: 50 },
-      soiled:     { sedan: 40, suv: 60, truck: 80 },
+      wax: { sedan: 25, suv: 30, truck: 35 },
+      pethair: { sedan: 30, suv: 40, truck: 50 },
+      soiled: { sedan: 40, suv: 60, truck: 80 },
       headlights: { sedan: 75, suv: 85, truck: 95 }
     }
   };
@@ -278,7 +278,7 @@
 
   const formatPhone = (value) => {
     const digits = getUsPhoneDigits(value);
-    const p1 = digits.slice(0,3), p2 = digits.slice(3,6), p3 = digits.slice(6,10);
+    const p1 = digits.slice(0, 3), p2 = digits.slice(3, 6), p3 = digits.slice(6, 10);
     if (digits.length > 6) return `(${p1}) ${p2}-${p3}`;
     if (digits.length > 3) return `(${p1}) ${p2}`;
     if (digits.length > 0) return `(${p1}`;
@@ -304,19 +304,19 @@
   const captureUTMs = () => {
     const qp = new URLSearchParams(location.search);
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-    set('utm-source',   qp.get('utm_source'));
-    set('utm-medium',   qp.get('utm_medium'));
+    set('utm-source', qp.get('utm_source'));
+    set('utm-medium', qp.get('utm_medium'));
     set('utm-campaign', qp.get('utm_campaign'));
-    set('utm-content',  qp.get('utm_content'));
-    set('utm-term',     qp.get('utm_term'));
+    set('utm-content', qp.get('utm_content'));
+    set('utm-term', qp.get('utm_term'));
   };
 
   const readUTMs = () => ({
-    utm_source:   (document.getElementById('utm-source')||{}).value || '',
-    utm_medium:   (document.getElementById('utm-medium')||{}).value || '',
-    utm_campaign: (document.getElementById('utm-campaign')||{}).value || '',
-    utm_content:  (document.getElementById('utm-content')||{}).value || '',
-    utm_term:     (document.getElementById('utm-term')||{}).value || '',
+    utm_source: (document.getElementById('utm-source') || {}).value || '',
+    utm_medium: (document.getElementById('utm-medium') || {}).value || '',
+    utm_campaign: (document.getElementById('utm-campaign') || {}).value || '',
+    utm_content: (document.getElementById('utm-content') || {}).value || '',
+    utm_term: (document.getElementById('utm-term') || {}).value || '',
   });
 
   const trackFunnelEvent = (event, extra = {}) => {
@@ -337,7 +337,7 @@
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
       body: JSON.stringify(payload),
-    }).catch(() => {});
+    }).catch(() => { });
   };
 
   const trackStepView = (stepNumber) => {
@@ -425,7 +425,7 @@
 
     // Inputs
     $('#zip').addEventListener('input', (e) => {
-      const v = e.target.value.replace(/\D/g, '').slice(0,5);
+      const v = e.target.value.replace(/\D/g, '').slice(0, 5);
       e.target.value = v;
       state.zip = v; saveState(state); recalculate();
     });
@@ -558,7 +558,7 @@
             return;
           }
         }
-      } catch {}
+      } catch { }
       showConfirm(payload, fake.id);
       return;
     }
@@ -594,7 +594,7 @@
       });
       if (!res.ok) {
         const txt = await res.text().catch(() => '');
-        throw new Error(`HTTP ${res.status} ${res.statusText}: ${txt.slice(0,200)}`);
+        throw new Error(`HTTP ${res.status} ${res.statusText}: ${txt.slice(0, 200)}`);
       }
       const ct = res.headers.get('content-type') || '';
       let data;
@@ -602,7 +602,7 @@
         data = await res.json();
       } else {
         const txt = await res.text();
-        throw new Error(`Non-JSON response (${ct}): ${txt.slice(0,200)}`);
+        throw new Error(`Non-JSON response (${ct}): ${txt.slice(0, 200)}`);
       }
       if (!data.ok) throw new Error(data.error || 'Failed to submit');
       showConfirm(payload, data.id);
@@ -634,7 +634,7 @@
     recap.innerHTML = `
       <div class="pill">${VEHICLES[payload.vehicle] || payload.vehicle}</div>
       <div class="pill">${SERVICES[payload.service] || payload.service}</div>
-      <div class="pill">Add-ons: ${(payload.addons||[]).map(a => ADDON_LABELS[a]||a).join(', ') || 'None'}</div>
+      <div class="pill">Add-ons: ${(payload.addons || []).map(a => ADDON_LABELS[a] || a).join(', ') || 'None'}</div>
       <div class="pill">ZIP: ${payload.zip || '—'}</div>
       <div class="pill">Price: ${priceText}</div>
       <div class="pill">Ref: ${id}</div>
@@ -652,7 +652,7 @@
 })();
 
 // Before/After slider wiring (square frame, no visible range)
-(function(){
+(function () {
   const frame = document.querySelector('.ba-frame');
   if (!frame) return;
   const after = frame.querySelector('.ba-after');
@@ -662,7 +662,7 @@
 
   if (!after || !bar || !grip) return;
 
-  function setSplit(pct){
+  function setSplit(pct) {
     pct = Math.max(0, Math.min(100, pct));
     const right = 100 - pct;
     after.style.clipPath = `inset(0 ${right}% 0 0)`;
@@ -684,7 +684,7 @@
 
   // Pointer/touch drag directly on the image area
   let dragging = false;
-  function pctFromEvent(ev){
+  function pctFromEvent(ev) {
     const rect = frame.getBoundingClientRect();
     const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
     const x = clientX - rect.left;
@@ -694,6 +694,6 @@
   window.addEventListener('pointermove', e => { if (dragging) setSplit(pctFromEvent(e)); });
   window.addEventListener('pointerup', () => { dragging = false; });
 
-  frame.addEventListener('touchstart', e => { setSplit(pctFromEvent(e)); }, {passive:true});
-  frame.addEventListener('touchmove', e => { setSplit(pctFromEvent(e)); }, {passive:true});
+  frame.addEventListener('touchstart', e => { setSplit(pctFromEvent(e)); }, { passive: true });
+  frame.addEventListener('touchmove', e => { setSplit(pctFromEvent(e)); }, { passive: true });
 })();
