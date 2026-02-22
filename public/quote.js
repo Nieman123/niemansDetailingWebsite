@@ -68,6 +68,8 @@
   const FUNNEL_SUBMITTED_KEY = 'quoteFunnelSubmitted';
   const FUNNEL_STARTED_AT_KEY = 'quoteFunnelStartedAt';
   const FUNNEL_LAST_EVENT_AT_KEY = 'quoteFunnelLastEventAt';
+  const FUNNEL_STATE_VERSION_KEY = 'quoteFunnelStateVersion';
+  const FUNNEL_STATE_VERSION = '2';
   const FUNNEL_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
   const getSessionStorage = () => {
@@ -109,6 +111,16 @@
       };
     }
 
+    const storedVersion = storage.getItem(FUNNEL_STATE_VERSION_KEY) || '';
+    if (storedVersion !== FUNNEL_STATE_VERSION) {
+      storage.setItem(FUNNEL_STATE_VERSION_KEY, FUNNEL_STATE_VERSION);
+      storage.setItem(FUNNEL_SESSION_KEY, makeSessionId());
+      storage.setItem(FUNNEL_STARTED_AT_KEY, new Date(now).toISOString());
+      storage.removeItem(FUNNEL_TRACKED_STEPS_KEY);
+      storage.removeItem(FUNNEL_SUBMITTED_KEY);
+      storage.removeItem(FUNNEL_LAST_EVENT_AT_KEY);
+    }
+
     const existingSessionId = storage.getItem(FUNNEL_SESSION_KEY);
     const lastEventAt = Number(storage.getItem(FUNNEL_LAST_EVENT_AT_KEY) || 0);
     const expired = !existingSessionId || !Number.isFinite(lastEventAt) || (now - lastEventAt > FUNNEL_SESSION_TIMEOUT_MS);
@@ -132,6 +144,8 @@
   };
 
   const funnel = initFunnel();
+  const pendingStepEvents = new Set();
+  let pendingLeadSubmissionEvent = false;
 
   const markFunnelActivity = () => {
     if (!funnel.storage) return;
@@ -330,8 +344,7 @@
   });
 
   const trackFunnelEvent = (event, extra = {}) => {
-    if (!funnel.sessionId) return;
-    markFunnelActivity();
+    if (!funnel.sessionId) return Promise.resolve(false);
     const payload = {
       session_id: funnel.sessionId,
       session_started_at: funnel.startedAt,
@@ -342,27 +355,41 @@
       ts_client: new Date().toISOString(),
       ...extra,
     };
-    fetch(buildApiUrl('/api/quoteProgress'), {
+    return fetch(buildApiUrl('/api/quoteProgress'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
       body: JSON.stringify(payload),
-    }).catch(() => { });
+    }).then((res) => {
+      if (!res.ok) return false;
+      markFunnelActivity();
+      return true;
+    }).catch(() => false);
   };
 
   const trackStepView = (stepNumber) => {
     const key = String(stepNumber);
-    if (funnel.trackedSteps.has(key)) return;
-    funnel.trackedSteps.add(key);
-    persistTrackedSteps(funnel.storage, funnel.trackedSteps);
-    trackFunnelEvent('step_view', { step: stepNumber });
+    if (funnel.trackedSteps.has(key) || pendingStepEvents.has(key)) return;
+    pendingStepEvents.add(key);
+    trackFunnelEvent('step_view', { step: stepNumber }).then((ok) => {
+      if (!ok) return;
+      funnel.trackedSteps.add(key);
+      persistTrackedSteps(funnel.storage, funnel.trackedSteps);
+    }).finally(() => {
+      pendingStepEvents.delete(key);
+    });
   };
 
   const trackLeadSubmitted = () => {
-    if (funnel.submitted) return;
-    funnel.submitted = true;
-    if (funnel.storage) funnel.storage.setItem(FUNNEL_SUBMITTED_KEY, '1');
-    trackFunnelEvent('lead_submitted', { step: 5 });
+    if (funnel.submitted || pendingLeadSubmissionEvent) return;
+    pendingLeadSubmissionEvent = true;
+    trackFunnelEvent('lead_submitted', { step: 5 }).then((ok) => {
+      if (!ok) return;
+      funnel.submitted = true;
+      if (funnel.storage) funnel.storage.setItem(FUNNEL_SUBMITTED_KEY, '1');
+    }).finally(() => {
+      pendingLeadSubmissionEvent = false;
+    });
   };
 
   const goNext = (n) => setStep(n);
