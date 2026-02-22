@@ -187,9 +187,9 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
         return;
     }
     // Routes handled here
-    const path = (req.path || req.originalUrl || "").toString();
-    const isCreateLeadRoute = path.endsWith("/api/createLead");
-    const isQuoteProgressRoute = path.endsWith("/api/quoteProgress");
+    const path = (req.path || req.originalUrl || "").toString().split("?")[0].replace(/\/+$/, "");
+    const isCreateLeadRoute = path.endsWith("/createLead");
+    const isQuoteProgressRoute = path.endsWith("/quoteProgress");
     if (!isCreateLeadRoute && !isQuoteProgressRoute) {
         res.status(404).json({ ok: false, error: "not_found" });
         return;

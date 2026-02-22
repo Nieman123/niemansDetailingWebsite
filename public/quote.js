@@ -9,6 +9,16 @@
   // If using Hosting emulator, keep relative path so rewrites hit local function.
   // If using generic file server (e.g., 5500), post to production.
   const API_BASE = isHostingEmulator ? '' : (isLocalHost ? HOSTING_ORIGIN : '');
+  const buildApiUrl = (path) => {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    if (!API_BASE) return normalizedPath;
+    const base = API_BASE.replace(/\/+$/, '');
+    // Avoid "/api/api/*" when the base already includes the function name.
+    if (base.endsWith('/api') && normalizedPath.startsWith('/api/')) {
+      return `${base}${normalizedPath.slice(4)}`;
+    }
+    return `${base}${normalizedPath}`;
+  };
 
   // Canonical keys
   const VEHICLES = { sedan: 'Sedan/Coupe', suv: 'SUV/Crossover', truck: 'Truck/Van' };
@@ -332,7 +342,7 @@
       ts_client: new Date().toISOString(),
       ...extra,
     };
-    fetch(`${API_BASE}/api/quoteProgress`, {
+    fetch(buildApiUrl('/api/quoteProgress'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
@@ -545,7 +555,7 @@
       };
       // Try to record spam server-side without triggering Telegram
       try {
-        const res = await fetch(`${API_BASE}/api/createLead`, {
+        const res = await fetch(buildApiUrl('/api/createLead'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
@@ -587,7 +597,7 @@
     const prevText = submitBtn ? submitBtn.textContent : null;
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Confirming…'; }
     try {
-      const res = await fetch(`${API_BASE}/api/createLead`, {
+      const res = await fetch(buildApiUrl('/api/createLead'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
