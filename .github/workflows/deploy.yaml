@@ -26,6 +26,11 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      - name: Clean workspace logs
+        run: |
+          rm -f firepit-log.txt
+          rm -f firebase-debug.log firebase-debug.*.log
+
       - name: Cache generated images
         id: cache-images
         uses: actions/cache@v4
@@ -60,6 +65,33 @@ jobs:
           path: .lighthouseci
           if-no-files-found: ignore
           include-hidden-files: true
+
+      - name: Setup Firebase auth (main)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING }}
+        run: |
+          SA_PATH="$RUNNER_TEMP/firebase-sa.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$SA_PATH"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$SA_PATH" >> "$GITHUB_ENV"
+
+      - name: Install Firebase CLI (main)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: npm install --global firebase-tools
+
+      - name: Build Functions (main)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          npm --prefix functions ci
+          npm --prefix functions run build
+
+      - name: Deploy Functions + Firestore rules/indexes (main)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        run: |
+          firebase deploy \
+            --project niemansdetailing \
+            --only functions:api,firestore:rules,firestore:indexes \
+            --non-interactive
 
       # Live deploy on pushes to main
       - name: Deploy Live (main)

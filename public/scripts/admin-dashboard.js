@@ -14,8 +14,10 @@ import {
   limit,
   orderBy,
   query,
+  Timestamp,
   serverTimestamp,
   updateDoc,
+  where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const params = new URLSearchParams(window.location.search);
@@ -90,6 +92,9 @@ const QUOTE_FUNNEL_STEPS = [
   { key: "step_4", label: "Step 4: Contact" },
   { key: "submitted", label: "Lead Submitted" },
 ];
+const QUOTE_FUNNEL_BASELINE_ISO = "2026-02-23T14:00:00-05:00";
+const QUOTE_FUNNEL_BASELINE_MS = new Date(QUOTE_FUNNEL_BASELINE_ISO).getTime();
+const QUOTE_FUNNEL_BASELINE_LABEL = "Feb 23, 2026 at 2:00 PM ET";
 
 function setStatus(message, type = "info") {
   if (!els.status) return;
@@ -166,13 +171,16 @@ function quoteSessionMs(session) {
 }
 
 function quoteSessionInRange(session, rangeFilter) {
-  if (rangeFilter === "all") return true;
-  const cutoff =
+  const sessionMs = quoteSessionMs(session);
+  if (!sessionMs) return false;
+  const rangeCutoff =
     rangeFilter === "1d" ? daysAgoToMs(1)
     : rangeFilter === "7d" ? daysAgoToMs(7)
     : rangeFilter === "30d" ? daysAgoToMs(30)
-    : daysAgoToMs(90);
-  return quoteSessionMs(session) >= cutoff;
+    : rangeFilter === "90d" ? daysAgoToMs(90)
+    : 0;
+  const cutoff = Math.max(QUOTE_FUNNEL_BASELINE_MS, rangeCutoff);
+  return sessionMs >= cutoff;
 }
 
 function rangeFilterLabel(rangeFilter) {
@@ -431,7 +439,7 @@ function renderQuoteFunnel() {
   const maxCount = Math.max(...stageCounts, 1);
 
   if (els.funnelRangeLabel) {
-    els.funnelRangeLabel.textContent = `Using ${rangeFilterLabel(rangeFilter)} filter.`;
+    els.funnelRangeLabel.textContent = `Using ${rangeFilterLabel(rangeFilter)} filter. Baseline starts ${QUOTE_FUNNEL_BASELINE_LABEL}.`;
   }
   if (els.funnelVisitors) els.funnelVisitors.textContent = String(visitorCount);
   if (els.funnelSubmissions) els.funnelSubmissions.textContent = String(submittedCount);
@@ -643,7 +651,12 @@ async function loadLeads() {
   try {
     const preferredLeadId = state.activeLeadId || state.preferredLeadId;
     const leadsQuery = query(collection(db, "leads"), orderBy("ts", "desc"), limit(300));
-    const quoteSessionsQuery = query(collection(db, "quotePageSessions"), orderBy("last_seen_at", "desc"), limit(2000));
+    const quoteSessionsQuery = query(
+      collection(db, "quotePageSessions"),
+      where("last_seen_at", ">=", Timestamp.fromMillis(QUOTE_FUNNEL_BASELINE_MS)),
+      orderBy("last_seen_at", "desc"),
+      limit(2000)
+    );
     const [leadsResult, quoteSessionsResult] = await Promise.allSettled([
       getDocs(leadsQuery),
       getDocs(quoteSessionsQuery),

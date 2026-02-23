@@ -210,10 +210,10 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
 
       if (event === "lead_submitted") {
         eventPayload.last_step = "submitted";
-        eventPayload.last_step_number = 6;
+        eventPayload.last_step_number = 5;
         eventPayload.completed = true;
         eventPayload.completed_at = FieldValue.serverTimestamp();
-        eventPayload.steps_seen = FieldValue.arrayUnion("step_5", "submitted");
+        eventPayload.steps_seen = FieldValue.arrayUnion("step_4", "submitted");
       }
 
       await db.collection("quotePageSessions").doc(sessionId).set(eventPayload, { merge: true });

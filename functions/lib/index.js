@@ -237,10 +237,10 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             }
             if (event === "lead_submitted") {
                 eventPayload.last_step = "submitted";
-                eventPayload.last_step_number = 6;
+                eventPayload.last_step_number = 5;
                 eventPayload.completed = true;
                 eventPayload.completed_at = firestore_1.FieldValue.serverTimestamp();
-                eventPayload.steps_seen = firestore_1.FieldValue.arrayUnion("step_5", "submitted");
+                eventPayload.steps_seen = firestore_1.FieldValue.arrayUnion("step_4", "submitted");
             }
             await db.collection("quotePageSessions").doc(sessionId).set(eventPayload, { merge: true });
             res.status(200).json({ ok: true });
