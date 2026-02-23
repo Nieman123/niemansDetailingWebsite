@@ -31,6 +31,23 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
         window.gtag('config', 'G-2PM831JLRQ');
       })();
     </script>
+    <!-- Event snippet for Click to call conversion page -->
+    <script>
+      function gtag_report_conversion(url) {
+        var callback = function () {
+          if (typeof(url) != 'undefined') {
+            window.location = url;
+          }
+        };
+        gtag('event', 'conversion', {
+          'send_to': 'AW-17602789326/nt-PCPDinP0bEM7_1MlB',
+          'value': 1.0,
+          'currency': 'USD',
+          'event_callback': callback
+        });
+        return false;
+      }
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Get an instant detailing quote in seconds — Asheville mobile detailing by Nieman’s Detailing." />
@@ -231,6 +248,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <a
       class="call-fab"
       href="tel:+18282733894"
+      onclick="return gtag_report_conversion('tel:+18282733894');"
       aria-label="Tap to call Nieman’s Detailing"
       data-cta="fab-call"
     >
