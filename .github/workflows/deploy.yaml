@@ -26,11 +26,6 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Clean workspace logs
-        run: |
-          rm -f firepit-log.txt
-          rm -f firebase-debug.log firebase-debug.*.log
-
       - name: Cache generated images
         id: cache-images
         uses: actions/cache@v4
