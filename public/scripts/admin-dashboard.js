@@ -87,8 +87,7 @@ const QUOTE_FUNNEL_STEPS = [
   { key: "step_1", label: "Step 1: Vehicle" },
   { key: "step_2", label: "Step 2: Service" },
   { key: "step_3", label: "Step 3: Add-ons" },
-  { key: "step_4", label: "Step 4: Location" },
-  { key: "step_5", label: "Step 5: Contact" },
+  { key: "step_4", label: "Step 4: Contact" },
   { key: "submitted", label: "Lead Submitted" },
 ];
 
@@ -194,6 +193,7 @@ function rangeFilterLabel(rangeFilter) {
 function quoteSessionReachedStep(session, stepKey) {
   if (stepKey === "submitted" && session.completed === true) return true;
   const steps = Array.isArray(session.steps_seen) ? session.steps_seen : [];
+  if (stepKey === "step_4" && steps.includes("step_5")) return true;
   return steps.includes(stepKey);
 }
 

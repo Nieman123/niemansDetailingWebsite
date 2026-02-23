@@ -54,181 +54,229 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="192x192" href="/images/touch/chrome-touch-icon-192x192.png" />
     <link rel="apple-touch-icon" href="/images/touch/apple-touch-icon.png" />
-    <link rel="stylesheet" href="quote.css" />
+    <link rel="stylesheet" href="quote.css?v=20260225" />
   </head>
   <body>
     <main class="wrap" id="app" aria-live="polite">
       <header class="header">
-        <a class="brand" href="/" aria-label="Nieman’s Detailing home">
+        <a class="brand" href="#quote-box" aria-label="Back to quote box">
           <img class="brand-logo" src="images/ND-logo-white-transparentbg-horizontal.png" alt="Nieman’s Detailing" width="600" height="132" />
         </a>
         <h1>Quick Quote</h1>
-        <p class="sub">Five quick taps — get a quote in seconds.</p>
+        <p class="sub">Four quick taps — get a quote in seconds.</p>
       </header>
 
-      <div class="progress-wrap" aria-hidden="true">
-        <div class="progress-bar" id="progress" style="width:0%"></div>
-      </div>
-      <p class="step-count" id="step-count">Step 1 of 5</p>
-      <ul class="trust" aria-label="Reasons to book">
-        <li>Mobile — I come to you</li>
-        <li>No prepayment</li>
-        <li>Text to schedule</li>
-        <li>5★ local service</li>
-      </ul>
+      <section class="funnel-shell">
+        <aside class="funnel-intro" aria-label="Quick quote trust content">
+          <h2 class="funnel-intro-title">Asheville's #1 Mobile Detailer</h2>
+          <p class="funnel-intro-sub">Refresh your ride from the comfort of your home or office</p>
 
-      <input type="hidden" id="utm-source">
-      <input type="hidden" id="utm-medium">
-      <input type="hidden" id="utm-campaign">
-      <input type="hidden" id="utm-content">
-      <input type="hidden" id="utm-term">
-
-      <!-- Step 1: Vehicle -->
-      <section class="screen" id="step-1" aria-labelledby="step1-label">
-        <h2 id="step1-label" tabindex="-1">1. Select Your Vehicle Type</h2>
-        <h4 class="note">Tap or click your vehicle type to get started.</h4>
-        <div class="options vehicle-options" role="listbox" aria-label="Vehicle type">
-          <button class="btn option" data-value="sedan" role="option" aria-checked="false">
-            <img class="btn-icon" aria-hidden="true" src="images/sedan.svg" alt="" loading="lazy" decoding="async" />
-            <span class="btn-label">Sedan/Coupe</span>
-          </button>
-          <button class="btn option" data-value="suv" role="option" aria-checked="false">
-            <img class="btn-icon" aria-hidden="true" src="images/suv.svg" alt="" loading="lazy" decoding="async" />
-            <span class="btn-label">SUV/Crossover</span>
-          </button>
-          <button class="btn option" data-value="truck" role="option" aria-checked="false">
-            <img class="btn-icon" aria-hidden="true" src="images/pickup-truck.svg" alt="" loading="lazy" decoding="async" />
-            <span class="btn-label">Truck/Van</span>
-          </button>
-        </div>
-        <!-- Before/After slider -->
-        <div class="ba-wrap" id="ba-slider" aria-label="Detailing before and after comparison">
-          <figure class="ba-frame">
-            <img
-              src="images/carpics/floor_before_1080.jpg"
-              alt="Before detailing: dirty floorboard"
-              class="ba-img ba-before"
-              loading="lazy"
-              decoding="async"
-            />
-            <img
-              src="images/carpics/floor_after_1080.jpg"
-              alt="After detailing: spotless floorboard"
-              class="ba-img ba-after"
-              loading="lazy"
-              decoding="async"
-              style="clip-path: inset(0 50% 0 0);"
-            />
-            <div class="ba-handle" aria-hidden="true">
-              <span class="ba-bar"></span>
-              <span class="ba-grip" title="Drag to compare"></span>
+          <section class="panel hero-pricing-trust" id="hero-pricing-trust" aria-labelledby="hero-pricing-label">
+            <h2 id="hero-pricing-label">See pricing before you start</h2>
+            <p id="hero-quote-peek" class="quote-line" aria-live="polite">Quick Detail from $150 (select options to see your quote)</p>
+            <div class="hero-pricing-band" role="list" aria-label="Pricing highlights">
+              <p role="listitem"><span class="hero-pill-icon" aria-hidden="true">$</span>Quick Detail starts at $150</p>
+              <p role="listitem"><span class="hero-pill-icon" aria-hidden="true">?</span>Most vehicles: $200-$350</p>
+              <p role="listitem"><span class="hero-pill-icon" aria-hidden="true">&#x1F30E;</span>Mobile service in WNC</p>
+              <p role="listitem"><span class="hero-pill-icon" aria-hidden="true">60</span>Takes ~60 seconds</p>
             </div>
-            <figcaption class="ba-captions">
-              <span class="ba-cap-left">After</span>
-              <span class="ba-cap-right">Before</span>
-            </figcaption>
-          </figure>
+          </section>
+        </aside>
 
-          <!-- Accessible control for keyboard/screen readers -->
-          <label class="sr-only" for="ba-range">Drag to compare before and after</label>
-          <input id="ba-range" class="sr-only ba-range" type="range" min="0" max="100" value="50" aria-valuenow="50" aria-label="Before/after slider (keyboard accessible)" />
-          <noscript>
-            <p class="note">Before and after comparison requires JavaScript. Here are the images:</p>
-          </noscript>
-        </div>
-      </section>
+        <section class="funnel-quote" id="quote-box" aria-label="Quick quote mechanism">
+          <p class="quote-start-note">Select your vehicle type to start your free quote</p>
 
-      <!-- Step 2: Service -->
-      <section class="screen" id="step-2" aria-labelledby="step2-label" hidden>
-        <h2 id="step2-label" tabindex="-1">2. Service</h2>
-        <p id="quote-peek" class="quote-line" aria-live="polite">Select options to see your quote.</p>
-        <div class="options" role="listbox" aria-label="Service">
-          <button class="btn option" data-value="quick" role="option" aria-checked="false">Quick Once Over</button>
-          <button class="btn option" data-value="full" role="option" aria-checked="false">Full Detail</button>
-          <button class="btn option" data-value="interior" role="option" aria-checked="false">Interior Refresh</button>
-          <button class="btn option" data-value="other" role="option" aria-checked="false" aria-describedby="consult-note">Other (consult)</button>
-        </div>
-        <p class="note consult-note" id="consult-note" hidden>Consult only — we’ll confirm pricing by text.</p>
-        <div class="nav">
-          <button class="btn secondary" data-prev="1">Back</button>
-        </div>
-      </section>
-
-      <!-- Step 3: Add-ons -->
-      <section class="screen" id="step-3" aria-labelledby="step3-label" hidden>
-        <h2 id="step3-label" tabindex="-1">3. Add-ons</h2>
-        <!-- quote-peek will be moved here dynamically on step change -->
-        <div class="options options-grid" aria-label="Add-ons">
-          <button class="btn toggle" data-addon="wax" aria-pressed="false">Wax/Sealant<span class="delta" data-delta="wax">+ $25–35</span></button>
-          <button class="btn toggle" data-addon="pethair" aria-pressed="false">Pet Hair <span class="delta" data-delta="pethair">+ $30–50</span></button>
-          <button class="btn toggle" data-addon="soiled" aria-pressed="false">Heavily Soiled <span class="delta" data-delta="soiled">+ $40–80</span></button>
-          <button class="btn toggle" data-addon="headlights" aria-pressed="false">Headlight Restoration <span class="delta" data-delta="headlights">+ $75–95</span></button>
-        </div>
-        <div class="nav">
-          <button class="btn secondary" data-prev="2">Back</button>
-          <button class="btn primary" data-next="4">Next</button>
-        </div>
-      </section>
-
-      <!-- Step 4: Location -->
-      <section class="screen" id="step-4" aria-labelledby="step4-label" hidden>
-        <h2 id="step4-label" tabindex="-1">4. Location</h2>
-        <label class="field">
-          <span>ZIP code</span>
-          <input id="zip" inputmode="numeric" autocomplete="postal-code" pattern="^[0-9]{5}$" maxlength="5" placeholder="5 digits" aria-describedby="zip-help" />
-          <small id="zip-help">We come to you — Asheville area.</small>
-          <small class="error" id="zip-error" aria-live="polite" hidden></small>
-        </label>
-        <label class="field">
-          <span>Notes (optional)</span>
-          <textarea id="notes" rows="3" placeholder="Anything we should know?" ></textarea>
-        </label>
-        <div class="nav">
-          <button class="btn secondary" data-prev="3">Back</button>
-          <button class="btn primary" data-next="5">Next</button>
-        </div>
-      </section>
-
-      <!-- Step 5: Contact + Quote -->
-      <section class="screen" id="step-5" aria-labelledby="step5-label" hidden>
-        <h2 id="step5-label" tabindex="-1">5. Contact + Quote</h2>
-        <div class="step5-layout">
-          <div class="step5-content">
-            <p id="quote-line" class="quote-line" aria-live="polite">We’ll confirm pricing by text.</p>
-            <div class="grid">
-              <label class="field">
-                <span>Name</span>
-                <input id="name" autocomplete="name" placeholder="Full name" maxlength="120" required />
-                <small class="error" id="name-error" aria-live="polite" hidden></small>
-              </label>
-              <label class="field">
-                <span>Phone</span>
-                <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(828) 555-1234" required />
-                <small class="error" id="phone-error" aria-live="polite" hidden></small>
-              </label>
-            </div>
-            <p class="consent">By tapping Confirm my quote, you agree we can text you to schedule.</p>
-            <input type="text" id="company" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
-            <div class="nav">
-              <button class="btn secondary" data-prev="4">Back</button>
-              <button class="btn cta" id="submit" data-mode="quote">Confirm my quote</button>
-            </div>
+          <div class="progress-wrap" aria-hidden="true">
+            <div class="progress-bar" id="progress" style="width:0%"></div>
           </div>
-          <img class="final-image" src="images/carpics/srv_pics/cleaninterior.jpg" alt="Spotless car interior after professional detailing" loading="lazy" />
+          <p class="step-count" id="step-count">Step 1 of 4</p>
+          <ul class="trust" aria-label="Reasons to book">
+            <li>Mobile — I come to you</li>
+            <li>No prepayment</li>
+            <li>Text to schedule</li>
+            <li>5★ local service</li>
+          </ul>
+
+          <input type="hidden" id="utm-source">
+          <input type="hidden" id="utm-medium">
+          <input type="hidden" id="utm-campaign">
+          <input type="hidden" id="utm-content">
+          <input type="hidden" id="utm-term">
+
+          <!-- Step 1: Vehicle -->
+          <section class="screen" id="step-1" aria-labelledby="step1-label">
+            <h2 id="step1-label" tabindex="-1">1. Select Your Vehicle Type</h2>
+            <h4 class="note">Tap or click your vehicle type to get started.</h4>
+            <div class="options vehicle-options" role="listbox" aria-label="Vehicle type">
+              <button class="btn option" data-value="sedan" role="option" aria-checked="false">
+                <img class="btn-icon" aria-hidden="true" src="images/sedan.svg" alt="" loading="lazy" decoding="async" />
+                <span class="btn-label">Sedan/Coupe</span>
+              </button>
+              <button class="btn option" data-value="suv" role="option" aria-checked="false">
+                <img class="btn-icon" aria-hidden="true" src="images/suv.svg" alt="" loading="lazy" decoding="async" />
+                <span class="btn-label">SUV/Crossover</span>
+              </button>
+              <button class="btn option" data-value="truck" role="option" aria-checked="false">
+                <img class="btn-icon" aria-hidden="true" src="images/pickup-truck.svg" alt="" loading="lazy" decoding="async" />
+                <span class="btn-label">Truck/Van</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- Step 2: Service -->
+          <section class="screen" id="step-2" aria-labelledby="step2-label" hidden>
+            <h2 id="step2-label" tabindex="-1">2. Service</h2>
+            <p id="quote-peek" class="quote-line" aria-live="polite">Select options to see your quote.</p>
+            <div class="options" role="listbox" aria-label="Service">
+              <button class="btn option" data-value="quick" role="option" aria-checked="false">Quick Once Over</button>
+              <button class="btn option" data-value="full" role="option" aria-checked="false">Full Detail</button>
+              <button class="btn option" data-value="interior" role="option" aria-checked="false">Interior Refresh</button>
+              <button class="btn option" data-value="other" role="option" aria-checked="false" aria-describedby="consult-note">Other (consult)</button>
+            </div>
+            <p class="note consult-note" id="consult-note" hidden>Consult only — I’ll confirm pricing by text.</p>
+            <div class="nav">
+              <button class="btn secondary" data-prev="1">Back</button>
+            </div>
+          </section>
+
+          <!-- Step 3: Add-ons -->
+          <section class="screen" id="step-3" aria-labelledby="step3-label" hidden>
+            <h2 id="step3-label" tabindex="-1">3. Add-ons <span class="heading-inline-note">(No add-ons? Just click next)</span></h2>
+            <!-- quote-peek will be moved here dynamically on step change -->
+            <div class="options options-grid" aria-label="Add-ons">
+              <button class="btn toggle" data-addon="wax" aria-pressed="false">Wax/Sealant<span class="delta" data-delta="wax">+ $25–35</span></button>
+              <button class="btn toggle" data-addon="pethair" aria-pressed="false">Pet Hair <span class="delta" data-delta="pethair">+ $30–50</span></button>
+              <button class="btn toggle" data-addon="soiled" aria-pressed="false">Heavily Soiled <span class="delta" data-delta="soiled">+ $40–80</span></button>
+              <button class="btn toggle" data-addon="headlights" aria-pressed="false">Headlight Restoration <span class="delta" data-delta="headlights">+ $75–95</span></button>
+            </div>
+            <div class="nav">
+              <button class="btn secondary" data-prev="2">Back</button>
+              <button class="btn primary" data-next="4">Next</button>
+            </div>
+          </section>
+
+          <!-- Step 4: Contact + Quote -->
+          <section class="screen" id="step-4" aria-labelledby="step4-label" hidden>
+            <h2 id="step4-label" tabindex="-1">4. Contact + Quote</h2>
+            <div class="step5-layout">
+              <div class="step5-content">
+                <p id="quote-line" class="quote-line" aria-live="polite">I’ll confirm pricing by text.</p>
+                <div class="grid">
+                  <label class="field">
+                    <span>Name (optional)</span>
+                    <input id="name" autocomplete="name" placeholder="Full name" maxlength="120" />
+                    <small class="error" id="name-error" aria-live="polite" hidden></small>
+                  </label>
+                  <label class="field">
+                    <span>Phone</span>
+                    <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(828) 555-1234" required />
+                    <small class="error" id="phone-error" aria-live="polite" hidden></small>
+                  </label>
+                </div>
+                <label class="field">
+                  <span>Notes (optional)</span>
+                  <textarea id="notes" rows="3" placeholder="Anything I should know?" ></textarea>
+                </label>
+                <p class="consent">By tapping Text me my quote, you agree I can text you to schedule. No spam.</p>
+                <input type="text" id="company" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
+                <div class="nav">
+                  <button class="btn secondary" data-prev="3">Back</button>
+                  <button class="btn cta" id="submit" data-mode="quote">Text me my quote</button>
+                </div>
+              </div>
+              <img class="final-image" src="images/carpics/srv_pics/cleaninterior.jpg" alt="Spotless car interior after professional detailing" loading="lazy" />
+            </div>
+          </section>
+
+          <!-- Confirmation -->
+          <section class="screen" id="confirm" hidden>
+            <h2>Got it! Your quote request is on its way to me!</h2>
+            <p>I’ll personally text you soon to confirm details and get you scheduled.</p>
+            <div id="recap"></div>
+            <p>If you don’t want to wait, you can:</p>
+            <ul>
+              <li><a href="sms:+18282733894">📱 Shoot me a text</a> I’ll reply as fast as I can! or...</li>
+              <li><a href="/schedule">📅 Book instantly online</a> if you already know what works best for you.</li>
+            </ul>
+          </section>
+        </section>
+      </section>
+
+      <section class="panel trust-story" id="why-mobile" aria-labelledby="why-mobile-label">
+        <div class="trust-story-layout">
+          <div class="trust-story-copy">
+            <h2 id="why-mobile-label">Why mobile detailing works</h2>
+            <p>Mobile detailing saves you from drop-offs, waiting rooms, and wasted time. I come directly to your driveway, office, or apartment parking area and bring the tools needed to do the job right.</p>
+            <p>That means no rushed tunnel wash, no juggling rides, and no hidden upsells at pickup. Just a cleaner vehicle and a simpler day.</p>
+            <a class="jump-to-quote" href="#quote-box">Back to the quote box</a>
+          </div>
+
+          <div class="ba-wrap" id="ba-slider" aria-label="Detailing before and after comparison">
+            <figure class="ba-frame">
+              <img
+                src="images/carpics/floor_before_1080.jpg"
+                alt="Before detailing: dirty floorboard"
+                class="ba-img ba-before"
+                loading="lazy"
+                decoding="async"
+              />
+              <img
+                src="images/carpics/floor_after_1080.jpg"
+                alt="After detailing: spotless floorboard"
+                class="ba-img ba-after"
+                loading="lazy"
+                decoding="async"
+                style="clip-path: inset(0 50% 0 0);"
+              />
+              <div class="ba-handle" aria-hidden="true">
+                <span class="ba-bar"></span>
+                <span class="ba-grip" title="Drag to compare"></span>
+              </div>
+              <figcaption class="ba-captions">
+                <span class="ba-cap-left">After</span>
+                <span class="ba-cap-right">Before</span>
+              </figcaption>
+            </figure>
+
+            <label class="sr-only" for="ba-range">Drag to compare before and after</label>
+            <input id="ba-range" class="sr-only ba-range" type="range" min="0" max="100" value="50" aria-valuenow="50" aria-label="Before/after slider (keyboard accessible)" />
+            <noscript>
+              <p class="note">Before and after comparison requires JavaScript. Here are the images:</p>
+            </noscript>
+          </div>
         </div>
       </section>
 
-      <!-- Confirmation -->
-      <section class="screen" id="confirm" hidden>
-        <h2>Got it! Your quote request is on its way to me!</h2>
-        <p>I’ll personally text you soon to confirm details and get you scheduled.</p>
-        <div id="recap"></div>
-        <p>If you don’t want to wait, you can:</p>
-        <ul>
-          <li><a href="sms:+18282733894">📱 Shoot me a text</a> I’ll reply as fast as I can! or...</li>
-          <li><a href="/schedule">📅 Book instantly online</a> if you already know what works best for you.</li>
-          <!-- <li><a href="/gallery">🚘 See before & after photos</a> from recent details.</li> -->
-        </ul>
+      <section class="panel trust-gallery" id="results-gallery" aria-labelledby="results-gallery-label">
+        <h2 id="results-gallery-label">Recent mobile detail results</h2>
+        <div class="trust-gallery-grid">
+          <img src="images/carpics/srv_pics/cleaninterior.jpg" alt="Clean interior after a full mobile detail" loading="lazy" decoding="async" />
+          <img src="images/carpics/srv_pics/red-truck.jpg" alt="Red truck exterior after detailing service" loading="lazy" decoding="async" />
+          <img src="images/carpics/srv_pics/headlight.jpg" alt="Headlight restoration results" loading="lazy" decoding="async" />
+        </div>
+        <p class="note">Ready to see your price? <a class="jump-to-quote-inline" href="#quote-box">Jump back to the quote box.</a></p>
+      </section>
+
+      <section class="panel trust-testimonials" id="local-reviews" aria-labelledby="local-reviews-label">
+        <h2 id="local-reviews-label">What local customers say</h2>
+        <div class="trust-testimonial-grid" aria-label="Customer testimonials">
+          <article class="trust-testimonial-card">
+            <p class="trust-stars" aria-label="5 out of 5 stars">★★★★★</p>
+            <p>"Nieman runs a serious business when it comes to car care. His meticulous eye for detail made my appointment easy and the results top notch."</p>
+            <p class="trust-author">Mindy, Asheville</p>
+          </article>
+          <article class="trust-testimonial-card">
+            <p class="trust-stars" aria-label="5 out of 5 stars">★★★★★</p>
+            <p>"At an affordable price, he brings the punctuality and elbow grease needed to make your car shine. Mine looked as good as new."</p>
+            <p class="trust-author">Beverly, Weaverville</p>
+          </article>
+          <article class="trust-testimonial-card">
+            <p class="trust-stars" aria-label="5 out of 5 stars">★★★★★</p>
+            <p>"Very responsive, easy to schedule, and did a great job inside and out. He's on my calendar for regular detailing now."</p>
+            <p class="trust-author">Emily, North Asheville</p>
+          </article>
+        </div>
+        <p class="note">Like what you see? <a class="jump-to-quote-inline" href="#quote-box">Continue your free quote above.</a></p>
       </section>
 
     </main>
@@ -271,6 +319,6 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       })();
     </script>
 
-    <script src="quote.js?v=20260222" defer></script>
+    <script src="quote.js?v=20260225" defer></script>
   </body>
   </html>

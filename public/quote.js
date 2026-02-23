@@ -6,6 +6,7 @@
   const HOSTING_ORIGIN = 'https://niemansdetailing.com';
   const isLocalHost = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const isHostingEmulator = isLocalHost && (location.port === '5000' || location.port === '5010');
+  const shouldTrackFunnelSteps = !isLocalHost;
   // If using Hosting emulator, keep relative path so rewrites hit local function.
   // If using generic file server (e.g., 5500), post to production.
   const API_BASE = isHostingEmulator ? '' : (isLocalHost ? HOSTING_ORIGIN : '');
@@ -23,6 +24,7 @@
   // Canonical keys
   const VEHICLES = { sedan: 'Sedan/Coupe', suv: 'SUV/Crossover', truck: 'Truck/Van' };
   const SERVICES = { quick: 'Quick Once Over', full: 'Full Detail', interior: 'Interior Refresh', other: 'Other' };
+  const HERO_SERVICE_LABELS = { quick: 'Quick Detail', full: 'Full Detail', interior: 'Interior Refresh' };
   const ADDON_LABELS = { wax: 'Wax/Sealant', pethair: 'Pet Hair', soiled: 'Heavily Soiled', headlights: 'Headlight Restoration' };
 
   // Pricing model
@@ -69,7 +71,7 @@
   const FUNNEL_STARTED_AT_KEY = 'quoteFunnelStartedAt';
   const FUNNEL_LAST_EVENT_AT_KEY = 'quoteFunnelLastEventAt';
   const FUNNEL_STATE_VERSION_KEY = 'quoteFunnelStateVersion';
-  const FUNNEL_STATE_VERSION = '2';
+  const FUNNEL_STATE_VERSION = '3';
   const FUNNEL_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
   const getSessionStorage = () => {
@@ -87,7 +89,7 @@
     try {
       const parsed = JSON.parse(storage.getItem(FUNNEL_TRACKED_STEPS_KEY) || '[]');
       if (!Array.isArray(parsed)) return new Set();
-      return new Set(parsed.map((v) => String(v)).filter((v) => /^[1-5]$/.test(v)));
+      return new Set(parsed.map((v) => String(v)).filter((v) => /^[1-4]$/.test(v)));
     } catch {
       return new Set();
     }
@@ -193,6 +195,11 @@
   };
 
   const formatUSD = (n) => `$${n.toFixed(0)}`;
+  const reduceMotion = (() => {
+    try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch { return false; }
+  })();
+  let hasRenderedStep = false;
 
   const placeQuotePeek = (n) => {
     const peek = $('#quote-peek');
@@ -211,13 +218,25 @@
   };
 
   const setStep = (n) => {
+    const prevStep = state.step;
     state.step = n;
     trackStepView(n);
-    $$('.screen').forEach(sec => { sec.hidden = true; });
-    $(`#step-${n}`)?.removeAttribute('hidden');
-    const pct = ((n - 1) / 4) * 100;
+    const nextScreen = $(`#step-${n}`);
+    $$('.screen').forEach(sec => {
+      sec.hidden = true;
+      sec.classList.remove('step-enter');
+    });
+    nextScreen?.removeAttribute('hidden');
+    if (nextScreen && hasRenderedStep && n !== prevStep && !reduceMotion) {
+      nextScreen.classList.add('step-enter');
+      nextScreen.addEventListener('animationend', () => {
+        nextScreen.classList.remove('step-enter');
+      }, { once: true });
+    }
+    hasRenderedStep = true;
+    const pct = ((n - 1) / 3) * 100;
     const bar = $('#progress'); if (bar) bar.style.width = pct + '%';
-    const stepCount = $('#step-count'); if (stepCount) stepCount.textContent = `Step ${n} of 5`;
+    const stepCount = $('#step-count'); if (stepCount) stepCount.textContent = `Step ${n} of 4`;
     placeQuotePeek(n);
     if (n >= 3) updateAddonDeltas();
     recalculate();
@@ -257,7 +276,7 @@
     const peek = $('#quote-peek');
     if (peek) {
       if (consult) {
-        peek.textContent = 'We’ll confirm pricing by text.';
+        peek.textContent = 'I’ll confirm pricing by text.';
       } else if (typeof total === 'number') {
         peek.textContent = `Your quote: ${formatUSD(total)}`;
       } else {
@@ -265,15 +284,27 @@
       }
     }
 
-    // Update main quote line on step 5
+    // Update main quote line on step 4
     const line = $('#quote-line');
     if (line) {
       if (consult) {
-        line.textContent = 'We’ll confirm pricing by text.';
+        line.textContent = 'I’ll confirm pricing by text.';
       } else if (typeof total === 'number') {
         line.textContent = `Your quote: ${formatUSD(total)}`;
       } else {
         line.textContent = 'Select options to see your quote.';
+      }
+    }
+
+    const heroPeek = $('#hero-quote-peek');
+    if (heroPeek) {
+      if (consult) {
+        heroPeek.textContent = 'I’ll confirm pricing by text.';
+      } else if (typeof total === 'number') {
+        const serviceLabel = HERO_SERVICE_LABELS[state.service] || SERVICES[state.service] || 'Detail';
+        heroPeek.textContent = `${serviceLabel} estimate: ${formatUSD(total)}`;
+      } else {
+        heroPeek.textContent = 'Quick Detail from $150 (select options to see your quote)';
       }
     }
 
@@ -284,7 +315,7 @@
         submitBtn.textContent = 'Request consult';
         submitBtn.dataset.mode = 'consult';
       } else {
-        submitBtn.textContent = 'Confirm my quote';
+        submitBtn.textContent = 'Text me my quote';
         submitBtn.dataset.mode = 'quote';
       }
     }
@@ -344,6 +375,7 @@
   });
 
   const trackFunnelEvent = (event, extra = {}) => {
+    if (!shouldTrackFunnelSteps) return Promise.resolve(false);
     if (!funnel.sessionId) return Promise.resolve(false);
     const payload = {
       session_id: funnel.sessionId,
@@ -368,6 +400,7 @@
   };
 
   const trackStepView = (stepNumber) => {
+    if (!shouldTrackFunnelSteps) return;
     const key = String(stepNumber);
     if (funnel.trackedSteps.has(key) || pendingStepEvents.has(key)) return;
     pendingStepEvents.add(key);
@@ -381,9 +414,10 @@
   };
 
   const trackLeadSubmitted = () => {
+    if (!shouldTrackFunnelSteps) return;
     if (funnel.submitted || pendingLeadSubmissionEvent) return;
     pendingLeadSubmissionEvent = true;
-    trackFunnelEvent('lead_submitted', { step: 5 }).then((ok) => {
+    trackFunnelEvent('lead_submitted', { step: 4 }).then((ok) => {
       if (!ok) return;
       funnel.submitted = true;
       if (funnel.storage) funnel.storage.setItem(FUNNEL_SUBMITTED_KEY, '1');
@@ -410,7 +444,6 @@
       const on = state.addons.includes(k);
       btn.setAttribute('aria-pressed', String(on));
     });
-    $('#zip').value = state.zip || '';
     $('#notes').value = state.notes || '';
     $('#name').value = state.name || '';
     $('#phone').value = state.phone || '';
@@ -457,15 +490,8 @@
     $$('#step-3 .nav .primary').forEach(b => b.addEventListener('click', () => goNext(4)));
     $$('#step-2 .nav .secondary').forEach(b => b.addEventListener('click', () => goPrev(1)));
     $$('#step-4 .nav .secondary').forEach(b => b.addEventListener('click', () => goPrev(3)));
-    $$('#step-4 .nav .primary').forEach(b => b.addEventListener('click', () => goNext(5)));
-    $$('#step-5 .nav .secondary').forEach(b => b.addEventListener('click', () => goPrev(4)));
 
     // Inputs
-    $('#zip').addEventListener('input', (e) => {
-      const v = e.target.value.replace(/\D/g, '').slice(0, 5);
-      e.target.value = v;
-      state.zip = v; saveState(state); recalculate();
-    });
     $('#notes').addEventListener('input', (e) => { state.notes = e.target.value.slice(0, 1000); saveState(state); });
     $('#name').addEventListener('input', (e) => { state.name = e.target.value.slice(0, 120); saveState(state); });
     $('#phone').addEventListener('input', (e) => {
@@ -485,6 +511,7 @@
     fab.addEventListener('click', (event) => {
       const href = fab.getAttribute('href') || '';
       const shouldIntercept = /^tel:/i.test(href);
+      if (!shouldIntercept) return;
       let navigationHandled = false;
       const resumeNavigation = () => {
         if (navigationHandled) return;
@@ -532,7 +559,6 @@
       showPhoneError('Enter a valid US phone');
       errors.push('Enter a valid US phone');
     }
-    if (state.zip && !/^\d{5}$/.test(state.zip)) errors.push('ZIP must be 5 digits');
     return errors;
   };
 
@@ -659,7 +685,7 @@
     } catch (err) {
       console.error(err);
       alert('Submission failed. If testing locally, use Firebase emulators or set API_BASE to your domain.');
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = prevText || 'Confirm my quote'; }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = prevText || 'Text me my quote'; }
     }
   };
 
@@ -672,7 +698,6 @@
       <div class="pill">${VEHICLES[payload.vehicle] || payload.vehicle}</div>
       <div class="pill">${SERVICES[payload.service] || payload.service}</div>
       <div class="pill">Add-ons: ${(payload.addons || []).map(a => ADDON_LABELS[a] || a).join(', ') || 'None'}</div>
-      <div class="pill">ZIP: ${payload.zip || '—'}</div>
       <div class="pill">Price: ${priceText}</div>
       <div class="pill">Ref: ${id}</div>
     `;
@@ -684,7 +709,7 @@
   hydrateSelections();
   wire();
   wireCallFab();
-  setStep(state.vehicle ? (state.service ? (state.zip || state.name || state.phone ? 5 : 3) : 2) : 1);
+  setStep(state.vehicle ? (state.service ? (state.zip || state.notes || state.name || state.phone ? 4 : 3) : 2) : 1);
   recalculate();
 })();
 
