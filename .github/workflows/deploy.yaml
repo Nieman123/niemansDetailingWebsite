@@ -74,6 +74,24 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: npm install --global firebase-tools
 
+      - name: Write Functions env file (main)
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        env:
+          HOSTING_ORIGIN: ${{ secrets.HOSTING_ORIGIN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          HOSTING_ORIGIN="${HOSTING_ORIGIN:-https://niemansdetailing.com}"
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Missing required GitHub secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID"
+            exit 1
+          fi
+          {
+            printf 'HOSTING_ORIGIN=%s\n' "$HOSTING_ORIGIN"
+            printf 'TELEGRAM_BOT_TOKEN=%s\n' "$TELEGRAM_BOT_TOKEN"
+            printf 'TELEGRAM_CHAT_ID=%s\n' "$TELEGRAM_CHAT_ID"
+          } > functions/.env
+
       - name: Build Functions (main)
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
