@@ -70,3 +70,4 @@ node_modules/
 .DS_Store
 .lighthouseci
 functions/.env.local
+firepit-log.txt
