@@ -38,9 +38,54 @@ h2 { font-size: 18px; margin: 0 0 12px; }
   font-size: clamp(26px, 3.2vw, 38px);
   line-height: 1.1;
 }
+.funnel-intro-kicker {
+  margin: 2px 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f4f7ff;
+}
+.funnel-intro-kicker strong {
+  color: #ef4444;
+  font-weight: 800;
+}
 .funnel-intro-sub {
   margin: 0 0 12px;
   color: #d3dcf6;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.funnel-google-rating {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.03);
+}
+.funnel-google-label {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #f1f5ff;
+}
+.funnel-google-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #1a73e8;
+  font-size: 12px;
+  font-weight: 800;
+}
+.funnel-google-stars {
+  margin: 6px 0 0;
+  color: #f5c451;
+  letter-spacing: 2px;
   font-size: 16px;
 }
 .funnel-quote {
@@ -62,19 +107,48 @@ h2 { font-size: 18px; margin: 0 0 12px; }
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  align-items: center;
+  align-items: stretch;
+}
+.trust-story-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+.trust-story-copy h1 {
+  margin: 0 0 10px;
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
+  line-height: 1.08;
 }
 .trust-story-layout .ba-wrap {
   margin: 0;
   width: 100%;
+  display: flex;
+  align-items: stretch;
+  height: 100%;
 }
 .trust-story-layout .ba-wrap,
 .trust-story-layout .ba-frame {
   max-width: none;
 }
+.trust-story-layout .ba-frame {
+  height: 100%;
+  min-height: 420px;
+  aspect-ratio: auto;
+}
 .trust-story-copy p {
   margin: 0 0 10px;
   color: #d2daf2;
+  font-size: 18px;
+  line-height: 1.45;
+}
+.trust-story-stars {
+  margin: 0 0 12px !important;
+  font-size: 22px;
+}
+.trust-story-actions {
+  margin-top: 14px;
+  max-width: 360px;
 }
 .jump-to-quote,
 .jump-to-quote-inline {
@@ -128,6 +202,87 @@ h2 { font-size: 18px; margin: 0 0 12px; }
   margin-top: 10px !important;
   color: #f5f8ff !important;
   font-weight: 700;
+}
+
+.what-i-do-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+.what-i-do-image {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  aspect-ratio: auto;
+  object-fit: cover;
+  border-radius: 14px;
+  display: block;
+  box-shadow: 0 8px 22px rgba(0,0,0,.28);
+}
+.what-i-do-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
+}
+.what-i-do-content h2 {
+  margin: 0 0 10px;
+  font-size: clamp(2rem, 3vw, 2.7rem);
+  line-height: 1.1;
+}
+.what-i-do-content p {
+  margin: 0 0 12px;
+  color: #d2daf2;
+  font-size: 18px;
+  line-height: 1.45;
+}
+.what-i-do-checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.what-i-do-checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #eef3ff;
+  font-size: 15px;
+}
+.what-i-do-check {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.55);
+  color: #8cffb7;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: 1px;
+}
+.what-i-do-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+.what-i-do-actions .btn {
+  width: auto;
+  flex: 1 1 0;
+}
+.btn-inline-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+  font-size: 20px;
+  line-height: 1;
 }
 
 .options { display: grid; gap: 12px; }
@@ -386,8 +541,23 @@ button { touch-action: manipulation; }
   }
   .funnel-intro-title { font-size: 30px; }
   .trust-story-layout { grid-template-columns: 1fr; }
+  .trust-story-copy,
+  .what-i-do-content { height: auto; }
+  .trust-story-layout .ba-wrap { height: auto; }
+  .trust-story-layout .ba-frame {
+    min-height: 0;
+    aspect-ratio: 1 / 1;
+  }
   .trust-gallery-grid,
   .trust-testimonial-grid { grid-template-columns: 1fr; }
+  .what-i-do-layout { grid-template-columns: 1fr; }
+  .what-i-do-image {
+    min-height: 0;
+    aspect-ratio: 1 / 1;
+    height: auto;
+  }
+  .what-i-do-actions { flex-direction: column; }
+  .trust-story-actions { max-width: none; }
 
   .step5-layout {
     flex-direction: column;
