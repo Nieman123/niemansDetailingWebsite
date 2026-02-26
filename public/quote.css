@@ -736,9 +736,44 @@ button { touch-action: manipulation; }
 @media (max-width: 720px) {
   .funnel-shell {
     grid-template-columns: 1fr;
-    gap: 6px;
+    gap: 4px;
   }
-  .funnel-intro-title { font-size: 30px; }
+  .funnel-intro-kicker {
+    margin: 0 0 6px;
+    font-size: 14px;
+  }
+  .funnel-intro-title {
+    margin: 0 0 6px;
+    font-size: 26px;
+  }
+  .funnel-intro-sub {
+    margin: 0 0 8px;
+    font-size: 14px;
+    line-height: 1.35;
+  }
+  .funnel-google-rating {
+    margin: 0 0 8px;
+    padding: 8px 10px;
+  }
+  .funnel-google-label { font-size: 14px; }
+  .funnel-google-stars {
+    margin-top: 4px;
+    font-size: 14px;
+  }
+  #hero-pricing-trust {
+    margin: 8px 0 0;
+    padding: 12px;
+  }
+  #hero-pricing-trust h2 {
+    margin-bottom: 6px;
+    font-size: 17px;
+  }
+  #hero-pricing-trust .quote-line {
+    margin: 4px 0 8px;
+    font-size: 13px;
+  }
+  #hero-pricing-trust .hero-pricing-band { margin: 6px 0 0; }
+  #hero-pricing-trust .hero-pill-mobile-hide { display: none; }
   .trust-story-layout { grid-template-columns: 1fr; }
   .trust-story-copy,
   .what-i-do-content { height: auto; }
