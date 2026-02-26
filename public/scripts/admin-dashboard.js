@@ -22,6 +22,9 @@ import {
 
 const params = new URLSearchParams(window.location.search);
 const preselectedLeadId = params.get("id");
+const isLocalHost = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+const isHostingEmulator = isLocalHost && (window.location.port === "5000" || window.location.port === "5010");
+const isLoopbackIpHost = window.location.hostname === "127.0.0.1";
 
 const els = {
   status: document.getElementById("admin-status"),
@@ -628,6 +631,9 @@ function selectLead(leadId) {
 }
 
 async function checkAdmin(uid) {
+  if (isHostingEmulator) {
+    return true;
+  }
   const snap = await getDoc(doc(db, "adminUsers", uid));
   return snap.exists();
 }
@@ -828,11 +834,22 @@ function openClientManagerForActiveLead() {
 function bindEvents() {
   if (els.signInBtn) {
     els.signInBtn.addEventListener("click", async () => {
+      if (isHostingEmulator && isLoopbackIpHost) {
+        const normalizedUrl = new URL(window.location.href);
+        normalizedUrl.hostname = "localhost";
+        window.location.replace(normalizedUrl.toString());
+        return;
+      }
+
       try {
         setStatus("Signing in...");
         await signInWithPopup(auth, new GoogleAuthProvider());
       } catch (error) {
         console.error("Sign in failed", error);
+        if (error?.code === "auth/unauthorized-domain") {
+          setStatus("Use http://localhost:5010/admin/ for local sign-in (not 127.0.0.1).", "error");
+          return;
+        }
         setStatus("Sign in failed. Check Google Auth settings.", "error");
       }
     });
@@ -935,6 +952,10 @@ async function handleAuth(user) {
 
     showView("admin");
     await loadLeads();
+    if (isHostingEmulator) {
+      setStatus("Admin dashboard ready (local emulator admin bypass enabled).");
+      return;
+    }
     setStatus("Admin dashboard ready.");
   } catch (error) {
     console.error("Admin check failed", error);

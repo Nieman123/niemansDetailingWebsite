@@ -12,6 +12,7 @@
     "dev:copy": "rsync -a assets/images/ public/images/",
     "dev:copy:win": "xcopy assets\\images public\\images /E /I /Y",
     "build:blog": "node scripts/build-blog.mjs",
+    "seed:emulator": "node scripts/seed-emulator-from-prod.mjs",
     "dev:serve": "npx http-server public -p 5173 -c-1",
     "dev": "npm run dev:copy && npm run dev:serve",
     "lhci": "lhci autorun --collect.staticDistDir=public --upload.target=filesystem --upload.outputDir=.lighthouseci"

@@ -200,6 +200,9 @@
     "hosting": {
       "port": 5010
     },
+    "auth": {
+      "port": 9099
+    },
     "firestore": {
       "port": 8080
     },
