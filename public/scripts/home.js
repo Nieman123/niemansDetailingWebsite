@@ -504,6 +504,8 @@ function initMobileMenu() {
 
 function initDesktopHeaderCollapse() {
   const brandRow = document.querySelector('.desktop-header-brand-row');
+  const stackedLogo = document.querySelector('.desktop-header-logo-stack');
+  const horizontalLogo = document.querySelector('.desktop-header-logo-horizontal');
   if (!brandRow || !window.matchMedia) return;
 
   const desktopQuery = window.matchMedia('(min-width: 769px)');
@@ -511,10 +513,17 @@ function initDesktopHeaderCollapse() {
 
   const getThreshold = () => Math.max(24, Math.round((brandRow.offsetHeight || 0) * 0.35));
 
+  const syncLogoVisibility = (shouldCompact) => {
+    if (!stackedLogo || !horizontalLogo) return;
+    stackedLogo.hidden = shouldCompact;
+    horizontalLogo.hidden = !shouldCompact;
+  };
+
   const syncState = () => {
     ticking = false;
     const shouldCompact = desktopQuery.matches && window.scrollY > getThreshold();
     document.body.classList.toggle('desktop-header-compact', shouldCompact);
+    syncLogoVisibility(shouldCompact);
   };
 
   const requestSync = () => {

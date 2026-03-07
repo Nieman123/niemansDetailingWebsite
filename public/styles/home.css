@@ -303,6 +303,11 @@ html {
   transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
+.mdl-site .desktop-header-logo-stack[hidden],
+.mdl-site .desktop-header-logo-horizontal[hidden] {
+  display: none !important;
+}
+
 .mdl-site .desktop-header-logo-stack {
   width: clamp(112px, 11vw, 150px);
   opacity: 1;
