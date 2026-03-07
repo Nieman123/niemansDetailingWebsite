@@ -8,6 +8,9 @@
   },
   "hosting": {
     "public": "public",
+    "predeploy": [
+      "npm run images:sync"
+    ],
     "ignore": [
       "firebase.json",
       "**/.*",

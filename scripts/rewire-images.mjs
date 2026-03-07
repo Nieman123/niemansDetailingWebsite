@@ -25,30 +25,26 @@ let filesSkipped = 0;
 function normalizeSrc(src) {
   if (!src) return '';
   const clean = src.split(/[?#]/)[0];
+  if (/^(?:[a-z]+:)?\/\//i.test(clean) || clean.startsWith('data:')) return clean;
   let s = clean.startsWith('/') ? clean : '/' + clean;
   // Tolerate accidental /public/ prefixes and normalize to root-relative
   s = s.replace(/^\/public\//, '/');
   return s;
 }
 
-async function getVariants(base) {
-  const pattern = `${base}-*.{avif,webp,jpg,jpeg}`;
-  const files = await fg(pattern, {posix: true});
-  const variants = {};
-  for (const file of files) {
-    const m = file.match(/-(\d+)\.(avif|webp|jpe?g)$/);
-    if (!m) continue;
-    const width = Number(m[1]);
-    const ext = m[2] === 'jpeg' ? 'jpg' : m[2];
-    const rel = file.replace(/^public/, '');
-    const url = rel.startsWith('/') ? rel : '/' + rel;
-    if (!variants[ext]) variants[ext] = [];
-    variants[ext].push({width, url});
-  }
-  for (const ext of Object.keys(variants)) {
-    variants[ext].sort((a,b) => a.width - b.width);
-  }
-  return variants;
+function toBasePath(url) {
+  const rel = normalizeSrc(url)
+    .replace(/^\//, '')
+    .replace(/-\d+(?=\.[^.]+$)/, '');
+  return path.posix.join('public', rel).replace(/\.[^.]+$/, '');
+}
+
+function isSizedVariantUrl(url) {
+  return /-\d+\.(?:avif|webp|jpe?g|png)$/i.test(normalizeSrc(url));
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function buildSrcset(list) {
@@ -69,6 +65,116 @@ function chooseFallback(list) {
   return selected;
 }
 
+function buildImg($, attrs, {src, srcset, sizes}) {
+  const img = $('<img>');
+  for (const [key, value] of Object.entries(attrs)) {
+    if (['src', 'srcset', 'sizes'].includes(key)) continue;
+    img.attr(key, value);
+  }
+  img.attr('src', src);
+  if (srcset) img.attr('srcset', srcset);
+  if (sizes) img.attr('sizes', sizes);
+  return img;
+}
+
+function buildResponsivePicture($, attrs, variants) {
+  const picture = $('<picture>');
+  if (variants.avif?.length) {
+    picture.append(
+      `<source type="image/avif" srcset="${buildSrcset(variants.avif)}" sizes="${SIZE_ATTR}">`
+    );
+  }
+  if (variants.webp?.length) {
+    picture.append(
+      `<source type="image/webp" srcset="${buildSrcset(variants.webp)}" sizes="${SIZE_ATTR}">`
+    );
+  }
+  const jpgSrcset = buildSrcset(variants.jpg);
+  const fallback = chooseFallback(variants.jpg);
+  picture.append(buildImg($, attrs, {
+    src: fallback.url,
+    srcset: jpgSrcset,
+    sizes: SIZE_ATTR
+  }));
+  return picture;
+}
+
+function pictureLooksResponsive($, pictureEl) {
+  const img = $(pictureEl).children('img').first();
+  if (img.length) {
+    if (isSizedVariantUrl(img.attr('src'))) return true;
+    if ((img.attr('srcset') || '').includes('w')) return true;
+  }
+  return $(pictureEl).children('source').toArray().some((sourceEl) => {
+    const srcset = $(sourceEl).attr('srcset') || '';
+    if (!srcset) return false;
+    return srcset.includes('w') || srcset.split(',').some((entry) => isSizedVariantUrl(entry.trim().split(/\s+/)[0]));
+  });
+}
+
+function getPictureBase($, pictureEl) {
+  const img = $(pictureEl).children('img').first();
+  const imgSrc = normalizeSrc(img.attr('src'));
+  if (imgSrc.startsWith('/images/')) return toBasePath(imgSrc);
+
+  const sources = $(pictureEl).children('source').toArray();
+  for (const sourceEl of sources) {
+    const srcset = $(sourceEl).attr('srcset') || '';
+    const firstUrl = srcset.split(',')[0]?.trim().split(/\s+/)[0];
+    const normalized = normalizeSrc(firstUrl);
+    if (normalized.startsWith('/images/')) return toBasePath(normalized);
+  }
+
+  return null;
+}
+
+const variantCache = new Map();
+
+async function getVariants(base) {
+  if (variantCache.has(base)) return variantCache.get(base);
+
+  const pattern = `${base}-*.{avif,webp,jpg,jpeg}`;
+  const variantsPromise = (async () => {
+    const files = await fg(pattern, {posix: true});
+    const variantPattern = new RegExp(`^${escapeRegex(base)}-(\\d+)\\.(avif|webp|jpe?g)$`);
+    const variants = {};
+    for (const file of files) {
+      const m = file.match(variantPattern);
+      if (!m) continue;
+      const width = Number(m[1]);
+      const ext = m[2] === 'jpeg' ? 'jpg' : m[2];
+      const rel = file.replace(/^public/, '');
+      const url = rel.startsWith('/') ? rel : '/' + rel;
+      if (!variants[ext]) variants[ext] = [];
+      variants[ext].push({width, url});
+    }
+    for (const ext of Object.keys(variants)) {
+      variants[ext].sort((a, b) => a.width - b.width);
+    }
+    return variants;
+  })();
+
+  variantCache.set(base, variantsPromise);
+  return variantsPromise;
+}
+
+const originalCache = new Map();
+
+async function getOriginal(base) {
+  if (originalCache.has(base)) return originalCache.get(base);
+
+  const originalPromise = (async () => {
+    const matches = await fg(`${base}.{png,jpg,jpeg,webp,avif}`, {posix: true});
+    const file = matches[0];
+    if (!file) return null;
+    const rel = file.replace(/^public/, '');
+    return rel.startsWith('/') ? rel : '/' + rel;
+  })();
+
+  originalCache.set(base, originalPromise);
+  return originalPromise;
+}
+
 async function processFile(file) {
   filesScanned++;
 
@@ -86,36 +192,13 @@ async function processFile(file) {
     const srcAttr = $(el).attr('src');
     const src = normalizeSrc(srcAttr);
     if (!src.startsWith('/images/')) continue;
-    const rel = src.replace(/^\//, '');
-    const base = path.posix.join('public', rel).replace(/\.[^.]+$/, '');
+    const base = toBasePath(src);
     const variants = await getVariants(base);
     if (!variants.jpg) {
       missingVariantsInFile = true;
       continue;
     }
-    const avifSrcset = variants.avif ? buildSrcset(variants.avif) : null;
-    const webpSrcset = variants.webp ? buildSrcset(variants.webp) : null;
-    const jpgSrcset = buildSrcset(variants.jpg);
-    const fallback = chooseFallback(variants.jpg);
-
-    const attrs = $(el).attr();
-    const imgTag = $('<img>');
-    for (const [key, value] of Object.entries(attrs)) {
-      if (['src', 'srcset', 'sizes'].includes(key)) continue;
-      imgTag.attr(key, value);
-    }
-    imgTag.attr('src', fallback.url);
-    imgTag.attr('srcset', jpgSrcset);
-    imgTag.attr('sizes', SIZE_ATTR);
-
-    const picture = $('<picture>');
-    if (avifSrcset) {
-      picture.append(`<source type="image/avif" srcset="${avifSrcset}" sizes="${SIZE_ATTR}">`);
-    }
-    if (webpSrcset) {
-      picture.append(`<source type="image/webp" srcset="${webpSrcset}" sizes="${SIZE_ATTR}">`);
-    }
-    picture.append(imgTag);
+    const picture = buildResponsivePicture($, $(el).attr(), variants);
     $(el).replaceWith(picture);
     imagesConverted++;
     changed = true;
@@ -123,22 +206,40 @@ async function processFile(file) {
 
   const pictureEls = $('picture').toArray();
   for (const el of pictureEls) {
-    if ($(el).children('source[type="image/avif"]').length > 0) continue;
     const img = $(el).children('img').first();
     if (!img.length) continue;
-    const src = normalizeSrc(img.attr('src'));
-    if (!src.startsWith('/images/')) continue;
-    const rel = src.replace(/^\//, '').replace(/-\d+(?:\.[^.]+)$/, '');
-    const base = path.posix.join('public', rel).replace(/\.[^.]+$/, '');
+    if (!pictureLooksResponsive($, el)) continue;
+
+    const base = getPictureBase($, el);
+    if (!base) continue;
+
     const variants = await getVariants(base);
-    if (!variants.avif) {
+    if (variants.jpg?.length) {
+      const rebuilt = buildResponsivePicture($, img.attr(), variants);
+      const prevHtml = $.html(el);
+      const nextHtml = $.html(rebuilt);
+      if (prevHtml !== nextHtml) {
+        $(el).replaceWith(rebuilt);
+        picturesPatched++;
+        changed = true;
+      }
+      continue;
+    }
+
+    const original = await getOriginal(base);
+    if (!original) {
       missingVariantsInFile = true;
       continue;
     }
-    const avifSrcset = buildSrcset(variants.avif);
-    $(el).prepend(`<source type="image/avif" srcset="${avifSrcset}" sizes="${SIZE_ATTR}">`);
-    picturesPatched++;
-    changed = true;
+
+    const restoredImg = buildImg($, img.attr(), {src: original});
+    const prevHtml = $.html(el);
+    const nextHtml = $.html(restoredImg);
+    if (prevHtml !== nextHtml) {
+      $(el).replaceWith(restoredImg);
+      picturesPatched++;
+      changed = true;
+    }
   }
 
   const preloadEls = $('link[rel="preload"][as="image"]').toArray();
@@ -146,10 +247,27 @@ async function processFile(file) {
     const hrefAttr = $(el).attr('href');
     const href = normalizeSrc(hrefAttr);
     if (!href.startsWith('/images/')) continue;
-    const rel = href.replace(/^\//, '').replace(/\.[^.]+$/, '');
-    const base = path.posix.join('public', rel);
+    const base = toBasePath(href);
     const variants = await getVariants(base);
-    if (!variants.avif) {
+    if (!variants.avif?.length) {
+      const original = await getOriginal(base);
+      if (!original) {
+        missingVariantsInFile = true;
+        continue;
+      }
+      const prevHref = normalizeSrc($(el).attr('href'));
+      const prevSet = $(el).attr('imagesrcset');
+      const prevSizes = $(el).attr('imagesizes');
+      if (prevHref !== original || prevSet != null || prevSizes != null) {
+        $(el).attr('href', original);
+        $(el).removeAttr('imagesrcset');
+        $(el).removeAttr('imagesizes');
+        preloadsUpdated++;
+        changed = true;
+      }
+      continue;
+    }
+    if (!variants.jpg?.length) {
       missingVariantsInFile = true;
       continue;
     }
@@ -178,14 +296,14 @@ async function processFile(file) {
 
 async function main() {
   try {
-    const files = await fg(['**/*.html', '!node_modules/**'], {posix: true});
+    const files = await fg(['public/**/*.html'], {posix: true});
     for (const file of files) {
       await processFile(file);
     }
     console.log(pc.bold('rewire-images summary'));
     console.log('  files scanned:', filesScanned);
     console.log('  images converted to <picture>:', imagesConverted);
-    console.log('  pictures patched with AVIF:', picturesPatched);
+    console.log('  pictures rebuilt/restored:', picturesPatched);
     console.log('  preloads updated:', preloadsUpdated);
     console.log('  files skipped due to missing variants:', filesSkipped);
   } catch (err) {

@@ -71,3 +71,6 @@ node_modules/
 .lighthouseci
 functions/.env.local
 firepit-log.txt
+
+# Image build output generated from assets/images
+public/images/
