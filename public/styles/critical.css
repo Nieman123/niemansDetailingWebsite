@@ -8,7 +8,7 @@ html, body { margin:0; padding:0; background:linear-gradient(180deg,#060a18 0%,#
 /* Large vs small header logo alignment */
 .mdl-layout--large-screen-only.mdl-layout__header-row img { display:block; margin:0; height:auto; }
 .mdl-layout--small-screen-only.mdl-layout__header-row picture { display:block; width:100%; max-width:320px; min-width:0; margin:0 auto; }
-.mdl-layout--small-screen-only.mdl-layout__header-row .h-logo { display:block; width:100%; margin:0 auto; height:auto; }
+.mdl-layout--small-screen-only.mdl-layout__header-row .h-logo { display:block; width:min(240px,calc(100vw - 156px)); max-width:100%; margin:0 auto; height:auto; transform:translateX(-28px); }
 .h-logo { max-width:100%; height:auto; }
 .main-title { font-weight:500; margin:0.5rem 0 0; text-align:center; }
 .sub-title { margin:0 0 1rem; text-align:center; }

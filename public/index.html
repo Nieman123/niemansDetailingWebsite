@@ -142,9 +142,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
     .mdl-layout--small-screen-only.mdl-layout__header-row .h-logo {
       display: block;
-      width: 100%;
+      width: min(240px, calc(100vw - 156px));
+      max-width: 100%;
       margin: 0 auto;
       height: auto;
+      transform: translateX(-28px);
     }
 
     .h-logo {
@@ -606,7 +608,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
       <!--Small Screen Header and Logo-->
       <div class="mdl-layout--small-screen-only mdl-layout__header-row">
-        <picture><source type="image/avif" srcset="/images/ND-logo-white-transparentbg-horizontal-150.avif 150w, /images/ND-logo-white-transparentbg-horizontal-300.avif 300w, /images/ND-logo-white-transparentbg-horizontal-512.avif 512w, /images/ND-logo-white-transparentbg-horizontal-640.avif 640w, /images/ND-logo-white-transparentbg-horizontal-800.avif 800w, /images/ND-logo-white-transparentbg-horizontal-1024.avif 1024w, /images/ND-logo-white-transparentbg-horizontal-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/ND-logo-white-transparentbg-horizontal-150.webp 150w, /images/ND-logo-white-transparentbg-horizontal-300.webp 300w, /images/ND-logo-white-transparentbg-horizontal-512.webp 512w, /images/ND-logo-white-transparentbg-horizontal-640.webp 640w, /images/ND-logo-white-transparentbg-horizontal-800.webp 800w, /images/ND-logo-white-transparentbg-horizontal-1024.webp 1024w, /images/ND-logo-white-transparentbg-horizontal-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="h-logo" alt="Nieman's Detailing horizontal logo" title="Nieman's Detailing" width="500" height="50" decoding="async" src="/images/ND-logo-white-transparentbg-horizontal-800.jpg" srcset="/images/ND-logo-white-transparentbg-horizontal-150.jpg 150w, /images/ND-logo-white-transparentbg-horizontal-300.jpg 300w, /images/ND-logo-white-transparentbg-horizontal-512.jpg 512w, /images/ND-logo-white-transparentbg-horizontal-640.jpg 640w, /images/ND-logo-white-transparentbg-horizontal-800.jpg 800w, /images/ND-logo-white-transparentbg-horizontal-1024.jpg 1024w, /images/ND-logo-white-transparentbg-horizontal-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
+        <img class="h-logo" alt="Nieman's Detailing horizontal logo" title="Nieman's Detailing" width="500" height="50" decoding="async" src="/images/ND-logo-white-transparentbg-horizontal.png">
       </div>
       <button class="mobile-nav-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobileNav">
         <svg class="material-icons" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-menu"></use></svg>
