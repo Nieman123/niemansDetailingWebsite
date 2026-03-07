@@ -4,6 +4,13 @@ html {
   margin: 0;
   padding: 0;
 }
+.material-icons {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}
 .material-icons.md-light {
   color: rgba(255, 255, 255, 1);
 }
@@ -54,6 +61,25 @@ html {
 .mobile-nav-panel,
 .mobile-nav-backdrop {
   display: none;
+}
+
+.mdl-site .mdl-layout--large-screen-only.mdl-layout__header-row img {
+  display: block;
+  margin: 0;
+  height: auto;
+}
+
+.mdl-site .mdl-layout--small-screen-only.mdl-layout__header-row picture {
+  display: block;
+  width: min(100%, 320px);
+  margin: 0 auto;
+}
+
+.mdl-site .mdl-layout--small-screen-only.mdl-layout__header-row .h-logo {
+  display: block;
+  width: 100%;
+  margin: 0 auto;
+  height: auto;
 }
 
 @media (max-width: 768px) {
@@ -526,6 +552,10 @@ html {
   vertical-align: middle;
   line-height: 64px;
   width: 64px;
+  height: 64px;
+  padding: 8px;
+  box-sizing: border-box;
+  display: block;
   font-size: 3rem;
 }
 .mdl-chip {
@@ -725,7 +755,8 @@ html {
   object-fit: cover;
 }
 .dollar-icon {
-  padding-top: 3px;
+  padding-top: 0;
+  transform: translateY(2px);
 }
 .h-logo {
   max-width: 100%;
@@ -758,7 +789,8 @@ h5 {
   color: #00f;
 }
 .phone-icon {
-  padding-top: 4px;
+  padding-top: 0;
+  transform: translateY(3px);
 }
 
 .section-title {
