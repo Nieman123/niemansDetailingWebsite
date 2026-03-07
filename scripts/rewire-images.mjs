@@ -77,24 +77,41 @@ function buildImg($, attrs, {src, srcset, sizes}) {
   return img;
 }
 
-function buildResponsivePicture($, attrs, variants) {
+function resolveSizes($, pictureEl, imgAttrs = {}) {
+  if (imgAttrs.sizes) return imgAttrs.sizes;
+  if (pictureEl) {
+    const sourceWithSizes = $(pictureEl)
+      .children('source')
+      .toArray()
+      .find((sourceEl) => Boolean($(sourceEl).attr('sizes')));
+    if (sourceWithSizes) {
+      return $(sourceWithSizes).attr('sizes');
+    }
+  }
+  return SIZE_ATTR;
+}
+
+function buildResponsivePicture($, imgAttrs, variants, pictureAttrs = {}, sizes = SIZE_ATTR) {
   const picture = $('<picture>');
+  for (const [key, value] of Object.entries(pictureAttrs)) {
+    picture.attr(key, value);
+  }
   if (variants.avif?.length) {
     picture.append(
-      `<source type="image/avif" srcset="${buildSrcset(variants.avif)}" sizes="${SIZE_ATTR}">`
+      `<source type="image/avif" srcset="${buildSrcset(variants.avif)}" sizes="${sizes}">`
     );
   }
   if (variants.webp?.length) {
     picture.append(
-      `<source type="image/webp" srcset="${buildSrcset(variants.webp)}" sizes="${SIZE_ATTR}">`
+      `<source type="image/webp" srcset="${buildSrcset(variants.webp)}" sizes="${sizes}">`
     );
   }
   const jpgSrcset = buildSrcset(variants.jpg);
   const fallback = chooseFallback(variants.jpg);
-  picture.append(buildImg($, attrs, {
+  picture.append(buildImg($, imgAttrs, {
     src: fallback.url,
     srcset: jpgSrcset,
-    sizes: SIZE_ATTR
+    sizes
   }));
   return picture;
 }
@@ -182,6 +199,7 @@ async function processFile(file) {
   if (DRY) console.log(pc.dim(`[dry] scanning ${path.relative(process.cwd(), file)}`));
 
   const html = await readFile(file, 'utf8');
+  const isFullDocument = /^\s*(?:<!doctype|<html[\s>])/i.test(html);
   const $ = load(html, {decodeEntities: false});
   let changed = false;
   let missingVariantsInFile = false;
@@ -198,7 +216,8 @@ async function processFile(file) {
       missingVariantsInFile = true;
       continue;
     }
-    const picture = buildResponsivePicture($, $(el).attr(), variants);
+    const imgAttrs = $(el).attr();
+    const picture = buildResponsivePicture($, imgAttrs, variants, {}, resolveSizes($, null, imgAttrs));
     $(el).replaceWith(picture);
     imagesConverted++;
     changed = true;
@@ -215,7 +234,8 @@ async function processFile(file) {
 
     const variants = await getVariants(base);
     if (variants.jpg?.length) {
-      const rebuilt = buildResponsivePicture($, img.attr(), variants);
+      const imgAttrs = img.attr();
+      const rebuilt = buildResponsivePicture($, imgAttrs, variants, $(el).attr(), resolveSizes($, el, imgAttrs));
       const prevHtml = $.html(el);
       const nextHtml = $.html(rebuilt);
       if (prevHtml !== nextHtml) {
@@ -276,19 +296,20 @@ async function processFile(file) {
     const avifSrcset = buildSrcset(avifList);
     const prevHref = normalizeSrc($(el).attr('href'));
     const prevSet = $(el).attr('imagesrcset') || '';
+    const preloadSizes = $(el).attr('imagesizes') || SIZE_ATTR;
     const prevSizes = $(el).attr('imagesizes') || '';
-    if (prevHref !== largest || prevSet !== avifSrcset || prevSizes !== SIZE_ATTR) {
+    if (prevHref !== largest || prevSet !== avifSrcset || prevSizes !== preloadSizes) {
       $(el).attr('href', largest);
       $(el).attr('imagesrcset', avifSrcset);
-      $(el).attr('imagesizes', SIZE_ATTR);
+      $(el).attr('imagesizes', preloadSizes);
       preloadsUpdated++;
       changed = true;
     }
   }
 
   if (changed) {
-    // this is the whole point: respect --dry
-    await safeWriteFile(file, $.html());
+    const output = isFullDocument ? $.html() : ($('body').html() ?? $.html());
+    await safeWriteFile(file, output);
   } else if (missingVariantsInFile) {
     filesSkipped++;
   }
