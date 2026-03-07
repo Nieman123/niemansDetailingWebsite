@@ -65,19 +65,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   <link rel="canonical" href="https://niemansdetailing.com/">
   <meta name="robots" content="index,follow">
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin="">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&amp;display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&amp;display=swap" media="print" onload="this.media='all'">
-  <noscript>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap">
-  </noscript>
-  <link rel="preconnect" href="https://www.instagram.com" crossorigin="">
-  <link rel="preconnect" href="https://instafeed.assets.pixlee.com" crossorigin="">
-  <link rel="preconnect" href="https://maps.googleapis.com" crossorigin="">
-
   <!-- Preload the exact hero candidate needed by layout (1024w cap) -->
-  <link rel="preload" as="image" href="/images/carpics/srv_pics/series-grey-1375.avif" imagesrcset="/images/carpics/srv_pics/series-grey-150.avif 150w, /images/carpics/srv_pics/series-grey-300.avif 300w, /images/carpics/srv_pics/series-grey-512.avif 512w, /images/carpics/srv_pics/series-grey-640.avif 640w, /images/carpics/srv_pics/series-grey-800.avif 800w, /images/carpics/srv_pics/series-grey-1024.avif 1024w, /images/carpics/srv_pics/series-grey-1375.avif 1375w" imagesizes="(max-width: 900px) 100vw, 900px" fetchpriority="high">
+  <link rel="preload" as="image" href="/images/carpics/srv_pics/series-grey-1375.avif" imagesrcset="/images/carpics/srv_pics/series-grey-150.avif 150w, /images/carpics/srv_pics/series-grey-300.avif 300w, /images/carpics/srv_pics/series-grey-512.avif 512w, /images/carpics/srv_pics/series-grey-640.avif 640w, /images/carpics/srv_pics/series-grey-800.avif 800w, /images/carpics/srv_pics/series-grey-1024.avif 1024w, /images/carpics/srv_pics/series-grey-1375.avif 1375w" imagesizes="(max-width: 768px) calc(100vw - 32px), 608px" fetchpriority="high">
 
   <!-- Inline critical CSS -->
   <style>
@@ -88,7 +77,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       padding: 0;
       background: linear-gradient(180deg, #060a18 0%, #0b1330 52%, #050813 100%);
       color: #f0ebff;
-      font-family: Roboto, Helvetica, Arial, sans-serif;
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
     }
 
     .material-icons {
@@ -101,23 +90,56 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
     .mdl-layout__header {
       background: #0a0f22;
+      position: sticky;
+      top: 0;
+      z-index: 110;
     }
 
     .mdl-layout__tab-bar {
       background: #341f67;
       display: flex;
       justify-content: center;
+      min-height: 56px;
       padding-left: 0;
     }
 
     .mdl-layout__tab-bar .mdl-layout__tab {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 72px;
+      padding: 0 18px;
       color: #fff;
+      text-decoration: none;
+    }
+
+    .mdl-layout__tab-bar .mdl-layout__tab.is-active::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 0;
+      height: 4px;
+      border-radius: 999px;
+      background-color: #fff;
     }
 
     .mdl-layout__header-row {
+      display: flex;
+      align-items: center;
+      min-height: 64px;
       justify-content: center;
       padding-left: 0;
       padding-right: 0;
+    }
+
+    .mdl-layout--large-screen-only {
+      display: flex;
+    }
+
+    .mdl-layout--small-screen-only {
+      display: none;
     }
 
     .mobile-nav-toggle,
@@ -126,10 +148,71 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       display: none;
     }
 
+    .mdl-layout__content {
+      width: 100%;
+    }
+
     .mdl-layout--large-screen-only.mdl-layout__header-row img {
       display: block;
       margin: 0;
       height: auto;
+    }
+
+    .desktop-header-brand-row {
+      min-height: auto;
+      padding: 14px 24px 10px;
+      box-sizing: border-box;
+    }
+
+    .desktop-header-brand {
+      position: relative;
+      width: min(100%, 320px);
+      height: clamp(88px, 9vw, 120px);
+      transition: height .22s ease;
+    }
+
+    .desktop-header-logo-stack,
+    .desktop-header-logo-horizontal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      display: block;
+      transform-origin: center;
+      transition: opacity .22s ease, transform .22s ease;
+    }
+
+    .desktop-header-logo-stack {
+      width: clamp(112px, 11vw, 150px);
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .desktop-header-logo-stack img,
+    .desktop-header-logo-horizontal img,
+    .desktop-header-logo-horizontal {
+      width: 100%;
+      height: auto;
+    }
+
+    .desktop-header-logo-horizontal {
+      width: clamp(200px, 22vw, 300px);
+      max-width: calc(100vw - 48px);
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(.94);
+    }
+
+    body.desktop-header-compact .desktop-header-brand {
+      height: 48px;
+    }
+
+    body.desktop-header-compact .desktop-header-logo-stack {
+      opacity: 0;
+      transform: translate(-50%, -58%) scale(.8);
+    }
+
+    body.desktop-header-compact .desktop-header-logo-horizontal {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
     }
 
     .mdl-layout--small-screen-only.mdl-layout__header-row picture {
@@ -196,6 +279,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     .slideshow {
       max-width: 950px;
       margin: 0 auto;
+    }
+
+    .section--center {
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .slideshow .slide {
@@ -384,18 +472,12 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   </style>
 
   <!-- Preload non-critical CSS -->
-  <link rel="preload" as="style" href="styles/vendor/material.deep_purple-orange.min.css">
-  <link rel="preload" as="style" href="styles/main.css">
-  <link rel="preload" as="style" href="styles/simple-slideshow-styles.css">
+  <link rel="preload" as="style" href="styles/home.css">
 
   <!-- Load CSS without render-blocking -->
-  <link rel="stylesheet" href="styles/vendor/material.deep_purple-orange.min.css" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="styles/main.css" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="styles/simple-slideshow-styles.css" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="styles/home.css" media="print" onload="this.media='all'">
   <noscript>
-    <link rel="stylesheet" href="styles/vendor/material.deep_purple-orange.min.css">
-    <link rel="stylesheet" href="styles/main.css">
-    <link rel="stylesheet" href="styles/simple-slideshow-styles.css">
+    <link rel="stylesheet" href="styles/home.css">
   </noscript>
 
   <!-- Recommended: enable long-term caching and Brotli/gzip compression for static assets (css/js/webp/jpeg/png). -->
@@ -594,16 +676,15 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       <path d="M16.5 8.5H18a4 4 0 0 1 0 8h-3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
     </symbol>
   </svg>
-  <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+  <div class="mdl-layout mdl-layout--fixed-header">
     <header class="mdl-layout__header mdl-layout__header--scroll">
 
       <!--Large Screen Header and Logo-->
-      <div class="mdl-layout--large-screen-only mdl-layout__header-row">
-      </div>
-      <div class="mdl-layout--large-screen-only mdl-layout__header-row">
-        <picture><source type="image/avif" srcset="/images/ND-logo-white-transparentbg-150.avif 150w, /images/ND-logo-white-transparentbg-300.avif 300w, /images/ND-logo-white-transparentbg-512.avif 512w, /images/ND-logo-white-transparentbg-640.avif 640w, /images/ND-logo-white-transparentbg-800.avif 800w, /images/ND-logo-white-transparentbg-1024.avif 1024w, /images/ND-logo-white-transparentbg-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/ND-logo-white-transparentbg-150.webp 150w, /images/ND-logo-white-transparentbg-300.webp 300w, /images/ND-logo-white-transparentbg-512.webp 512w, /images/ND-logo-white-transparentbg-640.webp 640w, /images/ND-logo-white-transparentbg-800.webp 800w, /images/ND-logo-white-transparentbg-1024.webp 1024w, /images/ND-logo-white-transparentbg-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="Nieman's Detailing logo" title="Nieman's Detailing" width="200" height="200" decoding="async" src="/images/ND-logo-white-transparentbg-800.jpg" srcset="/images/ND-logo-white-transparentbg-150.jpg 150w, /images/ND-logo-white-transparentbg-300.jpg 300w, /images/ND-logo-white-transparentbg-512.jpg 512w, /images/ND-logo-white-transparentbg-640.jpg 640w, /images/ND-logo-white-transparentbg-800.jpg 800w, /images/ND-logo-white-transparentbg-1024.jpg 1024w, /images/ND-logo-white-transparentbg-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-      </div>
-      <div class="mdl-layout--large-screen-only mdl-layout__header-row">
+      <div class="mdl-layout--large-screen-only mdl-layout__header-row desktop-header-brand-row">
+        <div class="desktop-header-brand">
+          <picture class="desktop-header-logo-stack"><source type="image/avif" srcset="/images/ND-logo-white-transparentbg-150.avif 150w, /images/ND-logo-white-transparentbg-300.avif 300w, /images/ND-logo-white-transparentbg-512.avif 512w, /images/ND-logo-white-transparentbg-640.avif 640w, /images/ND-logo-white-transparentbg-800.avif 800w, /images/ND-logo-white-transparentbg-1024.avif 1024w, /images/ND-logo-white-transparentbg-1375.avif 1375w" sizes="150px"><source type="image/webp" srcset="/images/ND-logo-white-transparentbg-150.webp 150w, /images/ND-logo-white-transparentbg-300.webp 300w, /images/ND-logo-white-transparentbg-512.webp 512w, /images/ND-logo-white-transparentbg-640.webp 640w, /images/ND-logo-white-transparentbg-800.webp 800w, /images/ND-logo-white-transparentbg-1024.webp 1024w, /images/ND-logo-white-transparentbg-1375.webp 1375w" sizes="150px"><img alt="Nieman's Detailing logo" title="Nieman's Detailing" width="150" height="150" decoding="async" src="/images/ND-logo-white-transparentbg-800.jpg" srcset="/images/ND-logo-white-transparentbg-150.jpg 150w, /images/ND-logo-white-transparentbg-300.jpg 300w, /images/ND-logo-white-transparentbg-512.jpg 512w, /images/ND-logo-white-transparentbg-640.jpg 640w, /images/ND-logo-white-transparentbg-800.jpg 800w, /images/ND-logo-white-transparentbg-1024.jpg 1024w, /images/ND-logo-white-transparentbg-1375.jpg 1375w" sizes="150px"></picture>
+          <picture class="desktop-header-logo-horizontal"><source type="image/avif" srcset="/images/ND-logo-white-transparentbg-horizontal-150.avif 150w, /images/ND-logo-white-transparentbg-horizontal-300.avif 300w, /images/ND-logo-white-transparentbg-horizontal-512.avif 512w, /images/ND-logo-white-transparentbg-horizontal-640.avif 640w, /images/ND-logo-white-transparentbg-horizontal-800.avif 800w, /images/ND-logo-white-transparentbg-horizontal-1024.avif 1024w, /images/ND-logo-white-transparentbg-horizontal-1375.avif 1375w" sizes="300px"><source type="image/webp" srcset="/images/ND-logo-white-transparentbg-horizontal-150.webp 150w, /images/ND-logo-white-transparentbg-horizontal-300.webp 300w, /images/ND-logo-white-transparentbg-horizontal-512.webp 512w, /images/ND-logo-white-transparentbg-horizontal-640.webp 640w, /images/ND-logo-white-transparentbg-horizontal-800.webp 800w, /images/ND-logo-white-transparentbg-horizontal-1024.webp 1024w, /images/ND-logo-white-transparentbg-horizontal-1375.webp 1375w" sizes="300px"><img alt="" aria-hidden="true" width="500" height="50" decoding="async" src="/images/ND-logo-white-transparentbg-horizontal-800.jpg" srcset="/images/ND-logo-white-transparentbg-horizontal-150.jpg 150w, /images/ND-logo-white-transparentbg-horizontal-300.jpg 300w, /images/ND-logo-white-transparentbg-horizontal-512.jpg 512w, /images/ND-logo-white-transparentbg-horizontal-640.jpg 640w, /images/ND-logo-white-transparentbg-horizontal-800.jpg 800w, /images/ND-logo-white-transparentbg-horizontal-1024.jpg 1024w, /images/ND-logo-white-transparentbg-horizontal-1375.jpg 1375w" sizes="300px"></picture>
+        </div>
       </div>
 
       <!--Small Screen Header and Logo-->
@@ -623,7 +704,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
         <a href="/blog" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile Blog');">Blog</a>
       </nav>
       <div class="mobile-nav-backdrop" aria-hidden="true"></div>
-      <div class="mdl-layout__tab-bar mdl-js-ripple-effect mdl-color--primary-dark">
+      <div class="mdl-layout__tab-bar">
         <a href="#overview" class="mdl-layout__tab is-active" onclick="trackEvent('Navigation','click','Overview Tab');">Overview</a>
         <a href="#services" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','Services Tab');">Services</a>
         <a href="#about" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','About Tab');">About</a>
@@ -690,7 +771,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
                 <div class="slides-viewport" aria-live="polite">
                   <div class="slides-track">
                     <figure class="slide is-active">
-                      <picture><source type="image/avif" srcset="/images/carpics/srv_pics/series-grey-150.avif 150w, /images/carpics/srv_pics/series-grey-300.avif 300w, /images/carpics/srv_pics/series-grey-512.avif 512w, /images/carpics/srv_pics/series-grey-640.avif 640w, /images/carpics/srv_pics/series-grey-800.avif 800w, /images/carpics/srv_pics/series-grey-1024.avif 1024w, /images/carpics/srv_pics/series-grey-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/series-grey-150.webp 150w, /images/carpics/srv_pics/series-grey-300.webp 300w, /images/carpics/srv_pics/series-grey-512.webp 512w, /images/carpics/srv_pics/series-grey-640.webp 640w, /images/carpics/srv_pics/series-grey-800.webp 800w, /images/carpics/srv_pics/series-grey-1024.webp 1024w, /images/carpics/srv_pics/series-grey-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="hero-img" alt="Subaru WRX full-mobile-detailing Asheville NC" title="Detailed WRX" width="968" height="969" decoding="async" loading="eager" fetchpriority="high" src="/images/carpics/srv_pics/series-grey-800.jpg" srcset="/images/carpics/srv_pics/series-grey-150.jpg 150w, /images/carpics/srv_pics/series-grey-300.jpg 300w, /images/carpics/srv_pics/series-grey-512.jpg 512w, /images/carpics/srv_pics/series-grey-640.jpg 640w, /images/carpics/srv_pics/series-grey-800.jpg 800w, /images/carpics/srv_pics/series-grey-1024.jpg 1024w, /images/carpics/srv_pics/series-grey-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
+                      <picture><source type="image/avif" srcset="/images/carpics/srv_pics/series-grey-150.avif 150w, /images/carpics/srv_pics/series-grey-300.avif 300w, /images/carpics/srv_pics/series-grey-512.avif 512w, /images/carpics/srv_pics/series-grey-640.avif 640w, /images/carpics/srv_pics/series-grey-800.avif 800w, /images/carpics/srv_pics/series-grey-1024.avif 1024w, /images/carpics/srv_pics/series-grey-1375.avif 1375w" sizes="(max-width: 768px) calc(100vw - 32px), 608px"><source type="image/webp" srcset="/images/carpics/srv_pics/series-grey-150.webp 150w, /images/carpics/srv_pics/series-grey-300.webp 300w, /images/carpics/srv_pics/series-grey-512.webp 512w, /images/carpics/srv_pics/series-grey-640.webp 640w, /images/carpics/srv_pics/series-grey-800.webp 800w, /images/carpics/srv_pics/series-grey-1024.webp 1024w, /images/carpics/srv_pics/series-grey-1375.webp 1375w" sizes="(max-width: 768px) calc(100vw - 32px), 608px"><img class="hero-img" alt="Subaru WRX full-mobile-detailing Asheville NC" title="Detailed WRX" width="968" height="969" decoding="async" loading="eager" fetchpriority="high" src="/images/carpics/srv_pics/series-grey-800.jpg" srcset="/images/carpics/srv_pics/series-grey-150.jpg 150w, /images/carpics/srv_pics/series-grey-300.jpg 300w, /images/carpics/srv_pics/series-grey-512.jpg 512w, /images/carpics/srv_pics/series-grey-640.jpg 640w, /images/carpics/srv_pics/series-grey-800.jpg 800w, /images/carpics/srv_pics/series-grey-1024.jpg 1024w, /images/carpics/srv_pics/series-grey-1375.jpg 1375w" sizes="(max-width: 768px) calc(100vw - 32px), 608px"></picture>
                     </figure>
                   </div>
                 </div>
@@ -750,7 +831,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               <h2 class="mdl-cell mdl-cell--12-col section-title">Services</h2>
 
               <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-                <picture><source type="image/avif" srcset="/images/carpics/bmw-150.avif 150w, /images/carpics/bmw-300.avif 300w, /images/carpics/bmw-512.avif 512w, /images/carpics/bmw-640.avif 640w, /images/carpics/bmw-800.avif 800w, /images/carpics/bmw-1024.avif 1024w, /images/carpics/bmw-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/bmw-150.webp 150w, /images/carpics/bmw-300.webp 300w, /images/carpics/bmw-512.webp 512w, /images/carpics/bmw-640.webp 640w, /images/carpics/bmw-800.webp 800w, /images/carpics/bmw-1024.webp 1024w, /images/carpics/bmw-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img loading="lazy" decoding="async" alt="BMW 3-Series Mobile Auto Detailing Asheville" title="BMW 3-Series after The Works" class="circle-pic" width="180" height="180" src="/images/carpics/bmw-800.jpg" srcset="/images/carpics/bmw-150.jpg 150w, /images/carpics/bmw-300.jpg 300w, /images/carpics/bmw-512.jpg 512w, /images/carpics/bmw-640.jpg 640w, /images/carpics/bmw-800.jpg 800w, /images/carpics/bmw-1024.jpg 1024w, /images/carpics/bmw-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
+                <picture><source type="image/avif" srcset="/images/carpics/bmw-150.avif 150w, /images/carpics/bmw-300.avif 300w, /images/carpics/bmw-512.avif 512w, /images/carpics/bmw-640.avif 640w, /images/carpics/bmw-800.avif 800w, /images/carpics/bmw-1024.avif 1024w, /images/carpics/bmw-1375.avif 1375w" sizes="(max-width: 768px) 200px, 180px"><source type="image/webp" srcset="/images/carpics/bmw-150.webp 150w, /images/carpics/bmw-300.webp 300w, /images/carpics/bmw-512.webp 512w, /images/carpics/bmw-640.webp 640w, /images/carpics/bmw-800.webp 800w, /images/carpics/bmw-1024.webp 1024w, /images/carpics/bmw-1375.webp 1375w" sizes="(max-width: 768px) 200px, 180px"><img loading="lazy" decoding="async" alt="BMW 3-Series Mobile Auto Detailing Asheville" title="BMW 3-Series after The Works" class="circle-pic" width="180" height="180" src="/images/carpics/bmw-800.jpg" srcset="/images/carpics/bmw-150.jpg 150w, /images/carpics/bmw-300.jpg 300w, /images/carpics/bmw-512.jpg 512w, /images/carpics/bmw-640.jpg 640w, /images/carpics/bmw-800.jpg 800w, /images/carpics/bmw-1024.jpg 1024w, /images/carpics/bmw-1375.jpg 1375w" sizes="(max-width: 768px) 200px, 180px"></picture>
               </div>
               <!--<div class="section__circle-container mdl-cell mdl-cell&#45;&#45;2-col mdl-cell&#45;&#45;1-col-phone">-->
               <!--<div class="section__circle-container__circle mdl-color&#45;&#45;primary"></div>-->
@@ -783,7 +864,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               </div>
 
               <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-                <picture><source type="image/avif" srcset="/images/carpics/srv_pics/headlight-150.avif 150w, /images/carpics/srv_pics/headlight-300.avif 300w, /images/carpics/srv_pics/headlight-512.avif 512w, /images/carpics/srv_pics/headlight-640.avif 640w, /images/carpics/srv_pics/headlight-800.avif 800w, /images/carpics/srv_pics/headlight-1024.avif 1024w, /images/carpics/srv_pics/headlight-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/headlight-150.webp 150w, /images/carpics/srv_pics/headlight-300.webp 300w, /images/carpics/srv_pics/headlight-512.webp 512w, /images/carpics/srv_pics/headlight-640.webp 640w, /images/carpics/srv_pics/headlight-800.webp 800w, /images/carpics/srv_pics/headlight-1024.webp 1024w, /images/carpics/srv_pics/headlight-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img loading="lazy" decoding="async" alt="fifty-fifty-headlight-restoration-subaru-outback" title="Headlight before and after restoration" class="circle-pic" width="180" height="180" src="/images/carpics/srv_pics/headlight-800.jpg" srcset="/images/carpics/srv_pics/headlight-150.jpg 150w, /images/carpics/srv_pics/headlight-300.jpg 300w, /images/carpics/srv_pics/headlight-512.jpg 512w, /images/carpics/srv_pics/headlight-640.jpg 640w, /images/carpics/srv_pics/headlight-800.jpg 800w, /images/carpics/srv_pics/headlight-1024.jpg 1024w, /images/carpics/srv_pics/headlight-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
+                <picture><source type="image/avif" srcset="/images/carpics/srv_pics/headlight-150.avif 150w, /images/carpics/srv_pics/headlight-300.avif 300w, /images/carpics/srv_pics/headlight-512.avif 512w, /images/carpics/srv_pics/headlight-640.avif 640w, /images/carpics/srv_pics/headlight-800.avif 800w, /images/carpics/srv_pics/headlight-1024.avif 1024w, /images/carpics/srv_pics/headlight-1375.avif 1375w" sizes="(max-width: 768px) 200px, 180px"><source type="image/webp" srcset="/images/carpics/srv_pics/headlight-150.webp 150w, /images/carpics/srv_pics/headlight-300.webp 300w, /images/carpics/srv_pics/headlight-512.webp 512w, /images/carpics/srv_pics/headlight-640.webp 640w, /images/carpics/srv_pics/headlight-800.webp 800w, /images/carpics/srv_pics/headlight-1024.webp 1024w, /images/carpics/srv_pics/headlight-1375.webp 1375w" sizes="(max-width: 768px) 200px, 180px"><img loading="lazy" decoding="async" alt="fifty-fifty-headlight-restoration-subaru-outback" title="Headlight before and after restoration" class="circle-pic" width="180" height="180" src="/images/carpics/srv_pics/headlight-800.jpg" srcset="/images/carpics/srv_pics/headlight-150.jpg 150w, /images/carpics/srv_pics/headlight-300.jpg 300w, /images/carpics/srv_pics/headlight-512.jpg 512w, /images/carpics/srv_pics/headlight-640.jpg 640w, /images/carpics/srv_pics/headlight-800.jpg 800w, /images/carpics/srv_pics/headlight-1024.jpg 1024w, /images/carpics/srv_pics/headlight-1375.jpg 1375w" sizes="(max-width: 768px) 200px, 180px"></picture>
               </div>
 
               <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
@@ -807,7 +888,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               </div>
 
               <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-                <picture><source type="image/avif" srcset="/images/carpics/srv_pics/correction-150.avif 150w, /images/carpics/srv_pics/correction-300.avif 300w, /images/carpics/srv_pics/correction-512.avif 512w, /images/carpics/srv_pics/correction-640.avif 640w, /images/carpics/srv_pics/correction-800.avif 800w, /images/carpics/srv_pics/correction-1024.avif 1024w, /images/carpics/srv_pics/correction-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/correction-150.webp 150w, /images/carpics/srv_pics/correction-300.webp 300w, /images/carpics/srv_pics/correction-512.webp 512w, /images/carpics/srv_pics/correction-640.webp 640w, /images/carpics/srv_pics/correction-800.webp 800w, /images/carpics/srv_pics/correction-1024.webp 1024w, /images/carpics/srv_pics/correction-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img loading="lazy" decoding="async" alt="blue-auto-paint-corrected-polishing-polished" title="Car paint after correction" class="circle-pic" width="180" height="180" src="/images/carpics/srv_pics/correction-800.jpg" srcset="/images/carpics/srv_pics/correction-150.jpg 150w, /images/carpics/srv_pics/correction-300.jpg 300w, /images/carpics/srv_pics/correction-512.jpg 512w, /images/carpics/srv_pics/correction-640.jpg 640w, /images/carpics/srv_pics/correction-800.jpg 800w, /images/carpics/srv_pics/correction-1024.jpg 1024w, /images/carpics/srv_pics/correction-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
+                <picture><source type="image/avif" srcset="/images/carpics/srv_pics/correction-150.avif 150w, /images/carpics/srv_pics/correction-300.avif 300w, /images/carpics/srv_pics/correction-512.avif 512w, /images/carpics/srv_pics/correction-640.avif 640w, /images/carpics/srv_pics/correction-800.avif 800w, /images/carpics/srv_pics/correction-1024.avif 1024w, /images/carpics/srv_pics/correction-1375.avif 1375w" sizes="(max-width: 768px) 200px, 180px"><source type="image/webp" srcset="/images/carpics/srv_pics/correction-150.webp 150w, /images/carpics/srv_pics/correction-300.webp 300w, /images/carpics/srv_pics/correction-512.webp 512w, /images/carpics/srv_pics/correction-640.webp 640w, /images/carpics/srv_pics/correction-800.webp 800w, /images/carpics/srv_pics/correction-1024.webp 1024w, /images/carpics/srv_pics/correction-1375.webp 1375w" sizes="(max-width: 768px) 200px, 180px"><img loading="lazy" decoding="async" alt="blue-auto-paint-corrected-polishing-polished" title="Car paint after correction" class="circle-pic" width="180" height="180" src="/images/carpics/srv_pics/correction-800.jpg" srcset="/images/carpics/srv_pics/correction-150.jpg 150w, /images/carpics/srv_pics/correction-300.jpg 300w, /images/carpics/srv_pics/correction-512.jpg 512w, /images/carpics/srv_pics/correction-640.jpg 640w, /images/carpics/srv_pics/correction-800.jpg 800w, /images/carpics/srv_pics/correction-1024.jpg 1024w, /images/carpics/srv_pics/correction-1375.jpg 1375w" sizes="(max-width: 768px) 200px, 180px"></picture>
               </div>
 
               <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
@@ -831,7 +912,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
               </div>
 
               <div class="mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-                <picture><source type="image/avif" srcset="/images/carpics/srv_pics/trim-150.avif 150w, /images/carpics/srv_pics/trim-300.avif 300w, /images/carpics/srv_pics/trim-512.avif 512w, /images/carpics/srv_pics/trim-640.avif 640w, /images/carpics/srv_pics/trim-800.avif 800w, /images/carpics/srv_pics/trim-1024.avif 1024w, /images/carpics/srv_pics/trim-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/trim-150.webp 150w, /images/carpics/srv_pics/trim-300.webp 300w, /images/carpics/srv_pics/trim-512.webp 512w, /images/carpics/srv_pics/trim-640.webp 640w, /images/carpics/srv_pics/trim-800.webp 800w, /images/carpics/srv_pics/trim-1024.webp 1024w, /images/carpics/srv_pics/trim-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img loading="lazy" decoding="async" alt="fifty-fifty-trim-restoration-white-black" title="Trim before and after restoration" class="circle-pic" width="180" height="180" src="/images/carpics/srv_pics/trim-800.jpg" srcset="/images/carpics/srv_pics/trim-150.jpg 150w, /images/carpics/srv_pics/trim-300.jpg 300w, /images/carpics/srv_pics/trim-512.jpg 512w, /images/carpics/srv_pics/trim-640.jpg 640w, /images/carpics/srv_pics/trim-800.jpg 800w, /images/carpics/srv_pics/trim-1024.jpg 1024w, /images/carpics/srv_pics/trim-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
+                <picture><source type="image/avif" srcset="/images/carpics/srv_pics/trim-150.avif 150w, /images/carpics/srv_pics/trim-300.avif 300w, /images/carpics/srv_pics/trim-512.avif 512w, /images/carpics/srv_pics/trim-640.avif 640w, /images/carpics/srv_pics/trim-800.avif 800w, /images/carpics/srv_pics/trim-1024.avif 1024w, /images/carpics/srv_pics/trim-1375.avif 1375w" sizes="(max-width: 768px) 200px, 180px"><source type="image/webp" srcset="/images/carpics/srv_pics/trim-150.webp 150w, /images/carpics/srv_pics/trim-300.webp 300w, /images/carpics/srv_pics/trim-512.webp 512w, /images/carpics/srv_pics/trim-640.webp 640w, /images/carpics/srv_pics/trim-800.webp 800w, /images/carpics/srv_pics/trim-1024.webp 1024w, /images/carpics/srv_pics/trim-1375.webp 1375w" sizes="(max-width: 768px) 200px, 180px"><img loading="lazy" decoding="async" alt="fifty-fifty-trim-restoration-white-black" title="Trim before and after restoration" class="circle-pic" width="180" height="180" src="/images/carpics/srv_pics/trim-800.jpg" srcset="/images/carpics/srv_pics/trim-150.jpg 150w, /images/carpics/srv_pics/trim-300.jpg 300w, /images/carpics/srv_pics/trim-512.jpg 512w, /images/carpics/srv_pics/trim-640.jpg 640w, /images/carpics/srv_pics/trim-800.jpg 800w, /images/carpics/srv_pics/trim-1024.jpg 1024w, /images/carpics/srv_pics/trim-1375.jpg 1375w" sizes="(max-width: 768px) 200px, 180px"></picture>
               </div>
 
               <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
@@ -894,6 +975,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             <div class="mdl-card__supporting-text srv-area-img">
               <h2 class="mdl-cell mdl-cell--12-col section-title">Service Area</h2>
               <div id="map" class="map-container" data-api-key="AIzaSyCeB-CBTkpxYcQXyzL5_DcFNPqJACTVebI" data-zip-codes="28801,28803,28804,28805,28806,28787,28711,28732,28704,28715,28701,28748,28753,28754,28759,28716,28730,28778">
+                <div class="map-fallback">
+                  <strong>Service area map loads when this section nears view.</strong>
+                  <span>Call or text to confirm your exact address before booking.</span>
+                  <a class="mdl-button service-more-btn" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Map Placeholder Call');">Call to Confirm</a>
+                </div>
               </div>
             </div>
             <div class="mdl-card__supporting-text srv-area-txt">
@@ -914,7 +1000,12 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <div class="mdl-card mdl-cell mdl-cell--12-col">
             <div class="mdl-card__supporting-text srv-area-img">
               <h2 class="main-title">Find me on Instagram</h2>
-              <div id="pixlee_container"></div>
+              <div id="pixlee_container">
+                <div class="instagram-fallback">
+                  <strong>Latest detailing work loads as you scroll.</strong>
+                  <a class="mdl-button service-more-btn" href="https://www.instagram.com/niemansdetailing/" onclick="trackEvent('Social','click','Instagram Placeholder');">Open Instagram</a>
+                </div>
+              </div>
               <!-- Instagram Profile Preview -->
               <div class="instagram-profile-embed">
                 <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/niemansdetailing/?utm_source=ig_embed&amp;utm_campaign=loading" data-instgrm-version="14" style="background:#FFF;border:0;border-radius:3px;box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15);margin:1px;max-width:540px;min-width:326px;padding:0;width:99.375%;">
@@ -964,401 +1055,24 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       </div>
 
       <!--Services panel-->
-      <div class="mdl-layout__tab-panel" id="services">
-        <section class="section--center mdl-grid mdl-grid--no-spacing">
-          <div class="mdl-cell mdl-cell--12-col">
-            <h2 class="section-title">Services</h2>
-            <ul class="toc">
-              <h3 class="section-title">Contents</h3>
-              <a href="services/the-works.html">The Works</a>
-              <a href="services/quick-once-over.html">Quick Once Over</a>
-              <a href="services/monthly-mini.html">Monthly Mini</a>
-              <a href="services/headlight-restoration.html">Headlight Restoration</a>
-              <a href="services/paint-correction-polishing.html">Paint Correction and Polishing</a>
-              <a href="services/metal-polishing.html">Metal Polishing</a>
-              <a href="services/trim-restoration.html">Trim Restoration</a>
-              <a href="services/new-car-decontamination-protection.html">New Car Decontamination and Protection</a>
-              <a href="services/overspray-removal.html">Overspray Removal</a>
-              <a href="services/hard-water-spot-removal.html">Hard Water Spot Removal</a>
-              <a href="services/odor-removal.html">Odor Removal</a>
-            </ul>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="works-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/works-150.avif 150w, /images/carpics/srv_pics/works-300.avif 300w, /images/carpics/srv_pics/works-512.avif 512w, /images/carpics/srv_pics/works-640.avif 640w, /images/carpics/srv_pics/works-800.avif 800w, /images/carpics/srv_pics/works-1024.avif 1024w, /images/carpics/srv_pics/works-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/works-150.webp 150w, /images/carpics/srv_pics/works-300.webp 300w, /images/carpics/srv_pics/works-512.webp 512w, /images/carpics/srv_pics/works-640.webp 640w, /images/carpics/srv_pics/works-800.webp 800w, /images/carpics/srv_pics/works-1024.webp 1024w, /images/carpics/srv_pics/works-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="The Works service example" src="/images/carpics/srv_pics/works-800.jpg" srcset="/images/carpics/srv_pics/works-150.jpg 150w, /images/carpics/srv_pics/works-300.jpg 300w, /images/carpics/srv_pics/works-512.jpg 512w, /images/carpics/srv_pics/works-640.jpg 640w, /images/carpics/srv_pics/works-800.jpg 800w, /images/carpics/srv_pics/works-1024.jpg 1024w, /images/carpics/srv_pics/works-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="full-detail" class="section-title">The Works</h3>
-                <p class="sec-text">This package is a safe and comprehensive cleaning of both the interior and exterior
-                  including wheel, tire, and engine bay detailing, steam cleaning, a premium wax and more.</p>
-                <p class="sec-text">Best for first-time clients or vehicles that have gone a while between details. Most
-                  appointments run 3-4 hours depending on vehicle size and overall condition.</p>
-                <p class="sec-text"><strong>Why it may cost more:</strong> pricing varies by vehicle size and condition.
-                  Large SUVs/trucks, heavy soil, pet hair, excessive sap/bug buildup, and add-ons like clay/iron
-                  decontamination or paint correction increase labor and materials. We’ll quote it up front so there are
-                  no surprises.</p>
-                <p class="sec-text"><a href="services/the-works.html" class="mdl-button service-more-btn" aria-label="Read full details about The Works service">Service Details &gt;</a></p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">$300 sedan / $350 SUV</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="quick-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/honda-150.avif 150w, /images/carpics/srv_pics/honda-300.avif 300w, /images/carpics/srv_pics/honda-512.avif 512w, /images/carpics/srv_pics/honda-640.avif 640w, /images/carpics/srv_pics/honda-800.avif 800w, /images/carpics/srv_pics/honda-1024.avif 1024w, /images/carpics/srv_pics/honda-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/honda-150.webp 150w, /images/carpics/srv_pics/honda-300.webp 300w, /images/carpics/srv_pics/honda-512.webp 512w, /images/carpics/srv_pics/honda-640.webp 640w, /images/carpics/srv_pics/honda-800.webp 800w, /images/carpics/srv_pics/honda-1024.webp 1024w, /images/carpics/srv_pics/honda-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Quick Once Over example" src="/images/carpics/srv_pics/honda-800.jpg" srcset="/images/carpics/srv_pics/honda-150.jpg 150w, /images/carpics/srv_pics/honda-300.jpg 300w, /images/carpics/srv_pics/honda-512.jpg 512w, /images/carpics/srv_pics/honda-640.jpg 640w, /images/carpics/srv_pics/honda-800.jpg 800w, /images/carpics/srv_pics/honda-1024.jpg 1024w, /images/carpics/srv_pics/honda-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="o-over" class="section-title">Quick Once Over</h3>
-                <p class="sec-text">A quicker, less intensive detail that removes the majority of the dirt and
-                  contaminants on the interior and exterior. Wheels and glass are cleaned and the interior is vacuumed
-                  and wiped down. Finished with a sun-safe SiO₂ spray sealant for slickness and water beading.</p>
-                <p class="sec-text">Great for regular upkeep between full details and ideal every 4-8 weeks to keep your
-                  vehicle looking clean without committing to a full restoration each visit.</p>
-                <p class="sec-text"><a href="services/quick-once-over.html" class="mdl-button service-more-btn" aria-label="Read full details about Quick Once Over service">Service Details &gt;</a></p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">$200 sedan / $250 SUV</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="monthly-mini-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/series-grey-150.avif 150w, /images/carpics/srv_pics/series-grey-300.avif 300w, /images/carpics/srv_pics/series-grey-512.avif 512w, /images/carpics/srv_pics/series-grey-640.avif 640w, /images/carpics/srv_pics/series-grey-800.avif 800w, /images/carpics/srv_pics/series-grey-1024.avif 1024w, /images/carpics/srv_pics/series-grey-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/series-grey-150.webp 150w, /images/carpics/srv_pics/series-grey-300.webp 300w, /images/carpics/srv_pics/series-grey-512.webp 512w, /images/carpics/srv_pics/series-grey-640.webp 640w, /images/carpics/srv_pics/series-grey-800.webp 800w, /images/carpics/srv_pics/series-grey-1024.webp 1024w, /images/carpics/srv_pics/series-grey-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Monthly Mini example" src="/images/carpics/srv_pics/series-grey-800.jpg" srcset="/images/carpics/srv_pics/series-grey-150.jpg 150w, /images/carpics/srv_pics/series-grey-300.jpg 300w, /images/carpics/srv_pics/series-grey-512.jpg 512w, /images/carpics/srv_pics/series-grey-640.jpg 640w, /images/carpics/srv_pics/series-grey-800.jpg 800w, /images/carpics/srv_pics/series-grey-1024.jpg 1024w, /images/carpics/srv_pics/series-grey-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="monthly-mini" class="section-title">Monthly Mini</h3>
-                <p class="sec-text">A 60–75 minute maintenance service for existing clients: exterior wash,
-                  wheels/tires, glass, light interior vacuum and wipe-down, finished with a SiO₂ spray sealant for fresh
-                  gloss and hydrophobics.</p>
-                <p class="sec-text">Designed as a maintenance plan after an initial detail so buildup never gets out of
-                  hand and your protection stays topped up month to month.</p>
-                <p class="sec-text"><a href="services/monthly-mini.html" class="mdl-button service-more-btn" aria-label="Read full details about Monthly Mini service">Service Details &gt;</a></p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">$85 sedan / $100 SUV</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="headlight-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/headlight-150.avif 150w, /images/carpics/srv_pics/headlight-300.avif 300w, /images/carpics/srv_pics/headlight-512.avif 512w, /images/carpics/srv_pics/headlight-640.avif 640w, /images/carpics/srv_pics/headlight-800.avif 800w, /images/carpics/srv_pics/headlight-1024.avif 1024w, /images/carpics/srv_pics/headlight-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/headlight-150.webp 150w, /images/carpics/srv_pics/headlight-300.webp 300w, /images/carpics/srv_pics/headlight-512.webp 512w, /images/carpics/srv_pics/headlight-640.webp 640w, /images/carpics/srv_pics/headlight-800.webp 800w, /images/carpics/srv_pics/headlight-1024.webp 1024w, /images/carpics/srv_pics/headlight-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Headlight restoration example" src="/images/carpics/srv_pics/headlight-800.jpg" srcset="/images/carpics/srv_pics/headlight-150.jpg 150w, /images/carpics/srv_pics/headlight-300.jpg 300w, /images/carpics/srv_pics/headlight-512.jpg 512w, /images/carpics/srv_pics/headlight-640.jpg 640w, /images/carpics/srv_pics/headlight-800.jpg 800w, /images/carpics/srv_pics/headlight-1024.jpg 1024w, /images/carpics/srv_pics/headlight-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="h-restoration" class="section-title">Headlight Restoration</h3>
-                <p class="sec-text">A dull and yellowed headlight gives your car a dated and dull look while reducing
-                  safety at night.
-                  Return your lights permanently to their original condition and see clearly at night.</p>
-                <p class="sec-text">Service includes sanding and polishing stages, then a UV-resistant finish to help
-                  slow
-                  future yellowing and keep nighttime visibility clear.</p>
-                <p class="sec-text"><a href="services/headlight-restoration.html" class="mdl-button service-more-btn" aria-label="Read full details about Headlight Restoration service">Service Details &gt;</a></p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">$75</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="paint-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/correction-150.avif 150w, /images/carpics/srv_pics/correction-300.avif 300w, /images/carpics/srv_pics/correction-512.avif 512w, /images/carpics/srv_pics/correction-640.avif 640w, /images/carpics/srv_pics/correction-800.avif 800w, /images/carpics/srv_pics/correction-1024.avif 1024w, /images/carpics/srv_pics/correction-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/correction-150.webp 150w, /images/carpics/srv_pics/correction-300.webp 300w, /images/carpics/srv_pics/correction-512.webp 512w, /images/carpics/srv_pics/correction-640.webp 640w, /images/carpics/srv_pics/correction-800.webp 800w, /images/carpics/srv_pics/correction-1024.webp 1024w, /images/carpics/srv_pics/correction-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Paint correction example" src="/images/carpics/srv_pics/correction-800.jpg" srcset="/images/carpics/srv_pics/correction-150.jpg 150w, /images/carpics/srv_pics/correction-300.jpg 300w, /images/carpics/srv_pics/correction-512.jpg 512w, /images/carpics/srv_pics/correction-640.jpg 640w, /images/carpics/srv_pics/correction-800.jpg 800w, /images/carpics/srv_pics/correction-1024.jpg 1024w, /images/carpics/srv_pics/correction-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="p-restoration" class="section-title">Paint Correction and Polishing</h3>
-                <p class="sec-text">This process removes scratches, swirls, holograms and oxidation defects in the
-                  clear-coat of your
-                  vehicle resulting in an extremely glossy, mirror-like finish. The ultimate restoration of your
-                  paint</p>
-                <p class="sec-text">Single-step and multi-step correction options are available based on paint condition
-                  and your target finish. A test spot helps determine the safest and most effective approach.</p>
-                <p class="sec-text"><a href="services/paint-correction-polishing.html" class="mdl-button service-more-btn" aria-label="Read full details about Paint Correction and Polishing service">Service Details &gt;</a>
-                </p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">Call for quote</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="m-polish-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/airstream-150.avif 150w, /images/carpics/srv_pics/airstream-300.avif 300w, /images/carpics/srv_pics/airstream-512.avif 512w, /images/carpics/srv_pics/airstream-640.avif 640w, /images/carpics/srv_pics/airstream-800.avif 800w, /images/carpics/srv_pics/airstream-1024.avif 1024w, /images/carpics/srv_pics/airstream-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/airstream-150.webp 150w, /images/carpics/srv_pics/airstream-300.webp 300w, /images/carpics/srv_pics/airstream-512.webp 512w, /images/carpics/srv_pics/airstream-640.webp 640w, /images/carpics/srv_pics/airstream-800.webp 800w, /images/carpics/srv_pics/airstream-1024.webp 1024w, /images/carpics/srv_pics/airstream-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Metal polishing example" src="/images/carpics/srv_pics/airstream-800.jpg" srcset="/images/carpics/srv_pics/airstream-150.jpg 150w, /images/carpics/srv_pics/airstream-300.jpg 300w, /images/carpics/srv_pics/airstream-512.jpg 512w, /images/carpics/srv_pics/airstream-640.jpg 640w, /images/carpics/srv_pics/airstream-800.jpg 800w, /images/carpics/srv_pics/airstream-1024.jpg 1024w, /images/carpics/srv_pics/airstream-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="m-polish" class="section-title">Metal Polishing</h3>
-                <p class="sec-text">From Airstreams to truck wheels to boats, if it's metal I can polish it. Put the
-                  reflections back into your metal and protect it for the long run.</p>
-                <p class="sec-text">Aluminum, chrome, and stainless can all be restored. Time and final pricing depend
-                  on
-                  oxidation level, access, and the amount of correction needed.</p>
-                <p class="sec-text"><a href="services/metal-polishing.html" class="mdl-button service-more-btn" aria-label="Read full details about Metal Polishing service">Service Details &gt;</a></p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">Call for quote</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="trim-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/trim-150.avif 150w, /images/carpics/srv_pics/trim-300.avif 300w, /images/carpics/srv_pics/trim-512.avif 512w, /images/carpics/srv_pics/trim-640.avif 640w, /images/carpics/srv_pics/trim-800.avif 800w, /images/carpics/srv_pics/trim-1024.avif 1024w, /images/carpics/srv_pics/trim-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/trim-150.webp 150w, /images/carpics/srv_pics/trim-300.webp 300w, /images/carpics/srv_pics/trim-512.webp 512w, /images/carpics/srv_pics/trim-640.webp 640w, /images/carpics/srv_pics/trim-800.webp 800w, /images/carpics/srv_pics/trim-1024.webp 1024w, /images/carpics/srv_pics/trim-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Trim restoration example" src="/images/carpics/srv_pics/trim-800.jpg" srcset="/images/carpics/srv_pics/trim-150.jpg 150w, /images/carpics/srv_pics/trim-300.jpg 300w, /images/carpics/srv_pics/trim-512.jpg 512w, /images/carpics/srv_pics/trim-640.jpg 640w, /images/carpics/srv_pics/trim-800.jpg 800w, /images/carpics/srv_pics/trim-1024.jpg 1024w, /images/carpics/srv_pics/trim-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="t-restoration" class="section-title">Trim Restoration</h3>
-                <p class="sec-text">Permanently restore the grey UV damaged plastics on your vehicle to the deep rich
-                  black finish that came from the factory.</p>
-                <p class="sec-text">Unlike temporary dressings, this process deep-cleans and restores trim for a
-                  longer-lasting, factory-like appearance that resists wash-off and fading.</p>
-                <p class="sec-text"><a href="services/trim-restoration.html" class="mdl-button service-more-btn" aria-label="Read full details about Trim Restoration service">Service Details &gt;</a></p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">$75</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="new-car-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/red-truck-150.avif 150w, /images/carpics/srv_pics/red-truck-300.avif 300w, /images/carpics/srv_pics/red-truck-512.avif 512w, /images/carpics/srv_pics/red-truck-640.avif 640w, /images/carpics/srv_pics/red-truck-800.avif 800w, /images/carpics/srv_pics/red-truck-1024.avif 1024w, /images/carpics/srv_pics/red-truck-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/red-truck-150.webp 150w, /images/carpics/srv_pics/red-truck-300.webp 300w, /images/carpics/srv_pics/red-truck-512.webp 512w, /images/carpics/srv_pics/red-truck-640.webp 640w, /images/carpics/srv_pics/red-truck-800.webp 800w, /images/carpics/srv_pics/red-truck-1024.webp 1024w, /images/carpics/srv_pics/red-truck-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="New car decontamination example" src="/images/carpics/srv_pics/red-truck-800.jpg" srcset="/images/carpics/srv_pics/red-truck-150.jpg 150w, /images/carpics/srv_pics/red-truck-300.jpg 300w, /images/carpics/srv_pics/red-truck-512.jpg 512w, /images/carpics/srv_pics/red-truck-640.jpg 640w, /images/carpics/srv_pics/red-truck-800.jpg 800w, /images/carpics/srv_pics/red-truck-1024.jpg 1024w, /images/carpics/srv_pics/red-truck-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="new-car" class="section-title">New Car Decontamination and Protection</h3>
-                <p class="sec-text">The best way to protect the finish of your new purchase. Have the iron and
-                  industrial fallout contamination removed and the paint sealed with long lasting and protective wax.
-                  Also included is an interior and exterior trim protectant to block damaging UV rays. Ensure that your
-                  paint and plastic remain how it looked from the factory. Paint correction can be added additionally.
-                </p>
-                <p class="sec-text">Even new vehicles often arrive with embedded rail dust and dealer-installed residue.
-                  Early decontamination and protection keeps the finish cleaner, glossier, and easier to maintain.</p>
-                <p class="sec-text"><a href="services/new-car-decontamination-protection.html" class="mdl-button service-more-btn" aria-label="Read full details about New Car Decontamination and Protection service">Service Details
-                    &gt;</a></p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">$125</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="overspray-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/overspray-150.avif 150w, /images/carpics/srv_pics/overspray-300.avif 300w, /images/carpics/srv_pics/overspray-512.avif 512w, /images/carpics/srv_pics/overspray-640.avif 640w, /images/carpics/srv_pics/overspray-800.avif 800w, /images/carpics/srv_pics/overspray-1024.avif 1024w, /images/carpics/srv_pics/overspray-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/overspray-150.webp 150w, /images/carpics/srv_pics/overspray-300.webp 300w, /images/carpics/srv_pics/overspray-512.webp 512w, /images/carpics/srv_pics/overspray-640.webp 640w, /images/carpics/srv_pics/overspray-800.webp 800w, /images/carpics/srv_pics/overspray-1024.webp 1024w, /images/carpics/srv_pics/overspray-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Overspray removal example" src="/images/carpics/srv_pics/overspray-800.jpg" srcset="/images/carpics/srv_pics/overspray-150.jpg 150w, /images/carpics/srv_pics/overspray-300.jpg 300w, /images/carpics/srv_pics/overspray-512.jpg 512w, /images/carpics/srv_pics/overspray-640.jpg 640w, /images/carpics/srv_pics/overspray-800.jpg 800w, /images/carpics/srv_pics/overspray-1024.jpg 1024w, /images/carpics/srv_pics/overspray-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="o-removal" class="section-title">Overspray Removal</h3>
-                <p class="sec-text">A complete removal of excess paint or other substance that's been sprayed onto your
-                  paint. Whether it's spray foam insulation, or paint from the body shop, this process leaves the paint
-                  clean and smooth to the touch.</p>
-                <p class="sec-text">Each job starts with a test spot so the safest method is used for your specific
-                  contamination. Goal is full removal while protecting your clear coat.</p>
-                <p class="sec-text"><a href="services/overspray-removal.html" class="mdl-button service-more-btn" aria-label="Read full details about Overspray Removal service">Service Details &gt;</a></p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">Call for quote</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="hw-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/hwspots-150.avif 150w, /images/carpics/srv_pics/hwspots-300.avif 300w, /images/carpics/srv_pics/hwspots-512.avif 512w, /images/carpics/srv_pics/hwspots-640.avif 640w, /images/carpics/srv_pics/hwspots-800.avif 800w, /images/carpics/srv_pics/hwspots-1024.avif 1024w, /images/carpics/srv_pics/hwspots-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/hwspots-150.webp 150w, /images/carpics/srv_pics/hwspots-300.webp 300w, /images/carpics/srv_pics/hwspots-512.webp 512w, /images/carpics/srv_pics/hwspots-640.webp 640w, /images/carpics/srv_pics/hwspots-800.webp 800w, /images/carpics/srv_pics/hwspots-1024.webp 1024w, /images/carpics/srv_pics/hwspots-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Hard water spot removal example" src="/images/carpics/srv_pics/hwspots-800.jpg" srcset="/images/carpics/srv_pics/hwspots-150.jpg 150w, /images/carpics/srv_pics/hwspots-300.jpg 300w, /images/carpics/srv_pics/hwspots-512.jpg 512w, /images/carpics/srv_pics/hwspots-640.jpg 640w, /images/carpics/srv_pics/hwspots-800.jpg 800w, /images/carpics/srv_pics/hwspots-1024.jpg 1024w, /images/carpics/srv_pics/hwspots-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="hw-removal" class="section-title">Hard Water Spot Removal</h3>
-                <p class="sec-text">Water spots on your paint or glass? Get them removed permanently!</p>
-                <p class="sec-text">Mineral deposits can etch into paint and glass if left untreated. This service
-                  removes
-                  buildup and restores clarity and smoothness.</p>
-                <p class="sec-text"><a href="services/hard-water-spot-removal.html" class="mdl-button service-more-btn" aria-label="Read full details about Hard Water Spot Removal service">Service Details &gt;</a></p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">Starts at $80</span>
-                </span>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid">
-              <div class="mdl-cell">
-                <div class="odor-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/carpics/srv_pics/cleaninterior-150.avif 150w, /images/carpics/srv_pics/cleaninterior-300.avif 300w, /images/carpics/srv_pics/cleaninterior-512.avif 512w, /images/carpics/srv_pics/cleaninterior-640.avif 640w, /images/carpics/srv_pics/cleaninterior-800.avif 800w, /images/carpics/srv_pics/cleaninterior-1024.avif 1024w, /images/carpics/srv_pics/cleaninterior-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/cleaninterior-150.webp 150w, /images/carpics/srv_pics/cleaninterior-300.webp 300w, /images/carpics/srv_pics/cleaninterior-512.webp 512w, /images/carpics/srv_pics/cleaninterior-640.webp 640w, /images/carpics/srv_pics/cleaninterior-800.webp 800w, /images/carpics/srv_pics/cleaninterior-1024.webp 1024w, /images/carpics/srv_pics/cleaninterior-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Odor removal example" src="/images/carpics/srv_pics/cleaninterior-800.jpg" srcset="/images/carpics/srv_pics/cleaninterior-150.jpg 150w, /images/carpics/srv_pics/cleaninterior-300.jpg 300w, /images/carpics/srv_pics/cleaninterior-512.jpg 512w, /images/carpics/srv_pics/cleaninterior-640.jpg 640w, /images/carpics/srv_pics/cleaninterior-800.jpg 800w, /images/carpics/srv_pics/cleaninterior-1024.jpg 1024w, /images/carpics/srv_pics/cleaninterior-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-              </div>
-              <div class="mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3 id="odor-removal" class="section-title">Odor Removal</h3>
-                <p class="sec-text">Sometimes a vehicle can develop an unwanted smell or even mold over in humid
-                  environments like the Appalachian mountains. Our industrial strength ozone and steam treatment will
-                  leave your car smelling better.</p>
-                <p class="sec-text">Source removal comes first, then ozone treatment for deeper neutralization. Smoke,
-                  mildew, and pet odors may require multiple steps depending on severity.</p>
-                <p class="sec-text"><a href="services/odor-removal.html" class="mdl-button service-more-btn" aria-label="Read full details about Odor Removal service">Service Details &gt;</a></p>
-              </div>
-              <div class="mdl-cell">
-                <span class="mdl-chip mdl-chip--contact">
-                  <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                    <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                  </span>
-                  <span class="mdl-chip__text">Call for quote</span>
-                </span>
-              </div>
-            </div>
-
-          </div>
-
-        </section>
+      <div class="mdl-layout__tab-panel" id="services" data-fragment="/fragments/home-services-panel.html" hidden="">
+        <div class="panel-shell panel-shell--loading" aria-hidden="true">
+          <p>Services load on demand.</p>
+        </div>
       </div>
 
       <!--About panel-->
-      <div class="mdl-layout__tab-panel" id="about">
-        <section class="section--center mdl-grid mdl-grid--no-spacing">
-          <div class="mdl-cell mdl-cell--12-col">
-
-            <h2 id="about-headline" class="section-title">About Me</h2>
-
-            <div class="content-grid mdl-grid">
-              <div class="inline-grid-center">
-                <div class="profile-card-image mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/profile/nieman-150.avif 150w, /images/profile/nieman-300.avif 300w, /images/profile/nieman-512.avif 512w, /images/profile/nieman-640.avif 640w, /images/profile/nieman-800.avif 800w, /images/profile/nieman-1024.avif 1024w, /images/profile/nieman-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/profile/nieman-150.webp 150w, /images/profile/nieman-300.webp 300w, /images/profile/nieman-512.webp 512w, /images/profile/nieman-640.webp 640w, /images/profile/nieman-800.webp 800w, /images/profile/nieman-1024.webp 1024w, /images/profile/nieman-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Nieman's Detailing owner portrait" src="/images/profile/nieman-800.jpg" srcset="/images/profile/nieman-150.jpg 150w, /images/profile/nieman-300.jpg 300w, /images/profile/nieman-512.jpg 512w, /images/profile/nieman-640.jpg 640w, /images/profile/nieman-800.jpg 800w, /images/profile/nieman-1024.jpg 1024w, /images/profile/nieman-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-                <div class="about-text">
-                  <p class="about-intro">I decided to start Nieman's Detailing simply because I love cars. I love my car
-                    and my customers love theirs just as much. My goal is to have every customer trust that their car
-                    was treated with the utmost care and respect, so they can have peace of mind and create more value
-                    from their hard earned money. So many other "detailing" services skip corners, hide dirt, and use
-                    harsh chemicals in sake of quick car turnover. A detail needs to be a timely, conscientious, and
-                    safe process to avoid unnecessary or irreparable damage to a vehicle’s paint or finish.</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="content-grid mdl-grid pb-20">
-              <div class="inline-grid-center">
-                <div class="profile-card-image2 mdl-card mdl-shadow--2dp">
-                  <picture><source type="image/avif" srcset="/images/profile/nieman2-150.avif 150w, /images/profile/nieman2-300.avif 300w, /images/profile/nieman2-512.avif 512w, /images/profile/nieman2-640.avif 640w, /images/profile/nieman2-800.avif 800w, /images/profile/nieman2-1024.avif 1024w, /images/profile/nieman2-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/profile/nieman2-150.webp 150w, /images/profile/nieman2-300.webp 300w, /images/profile/nieman2-512.webp 512w, /images/profile/nieman2-640.webp 640w, /images/profile/nieman2-800.webp 800w, /images/profile/nieman2-1024.webp 1024w, /images/profile/nieman2-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="card-image__img" alt="Nieman's Detailing owner portrait 2" src="/images/profile/nieman2-800.jpg" srcset="/images/profile/nieman2-150.jpg 150w, /images/profile/nieman2-300.jpg 300w, /images/profile/nieman2-512.jpg 512w, /images/profile/nieman2-640.jpg 640w, /images/profile/nieman2-800.jpg 800w, /images/profile/nieman2-1024.jpg 1024w, /images/profile/nieman2-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                </div>
-                <div class="about-text">
-                  <h6 class="pt-10">When I'm not detailing you might find me in the forest riding my bike, or hanging
-                    out with my cats at home. I also help local businesses with their websites, and I'm developing an
-                    Unreal Engine 4 based video game in my free time. </h6>
-                  <h6 class="pt-10">If you're a mountain biker in the area, get in contact! I'm looking for new people
-                    to ride with. Some of my favorite places to ride are Big Ivy, Kitsuma, and my own backyard.</h6>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </section>
+      <div class="mdl-layout__tab-panel" id="about" data-fragment="/fragments/home-about-panel.html" hidden="">
+        <div class="panel-shell panel-shell--loading" aria-hidden="true">
+          <p>About content loads on demand.</p>
+        </div>
       </div>
 
       <!--Contact panel-->
-      <div class="mdl-layout__tab-panel" id="contact">
-        <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
-          <div class="contact-card mdl-card mdl-cell mdl-cell--12-col">
-            <div class="mdl-card__supporting-text mdl-grid mdl-grid--no-spacing">
-              <h2 class="mdl-cell mdl-cell--12-col section-title">Contact Me</h2>
-
-              <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
-                <div class="section__circle-container__circle mdl-color--primary"><svg class="material-icons md-light" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-phone"></use></svg></div>
-              </div>
-
-              <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3><strong>By Phone</strong></h3>
-                Call or Text <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone'); gtag('event','conversion',{'send_to':'AW-17602789326/QubCCJ7smf0bEM7_1MlB'});">(828) 273-3894</a></strong>
-              </div>
-
-              <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
-                <div class="section__circle-container__circle mdl-color--primary"><svg class="material-icons md-light" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-email"></use></svg></div>
-              </div>
-
-              <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone" style="text-align:center;">
-                <h3><strong>E-Mail</strong></h3>
-                Send me a message at <a href="mailto:nieman@niemansdetailing.com" onclick="trackEvent('Contact','click','Email');">nieman@niemansdetailing.com</a>
-              </div>
-
-
-
-              <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
-                <div class="section__circle-container__circle mdl-color--primary"><svg class="material-icons md-light" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-link"></use></svg></div>
-              </div>
-
-              <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3><strong>Find me on Social Media</strong></h3>
-                Visit my <a href="https://www.facebook.com/niemansdetailing" onclick="trackEvent('Social','click','Facebook');">Facebook</a> or <a href="https://www.instagram.com/niemansdetailing/" onclick="trackEvent('Social','click','Instagram');">Instagram</a>.
-              </div>
-
-              <!-- QR + Button row at bottom of contact section -->
-              <div class="mdl-cell mdl-cell--12-col">
-                <div class="add-contact-row" style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:8px;flex-wrap:wrap;">
-                  <picture><source type="image/avif" srcset="/images/qr-add-contact-150.avif 150w, /images/qr-add-contact-300.avif 300w, /images/qr-add-contact-512.avif 512w, /images/qr-add-contact-640.avif 640w, /images/qr-add-contact-800.avif 800w, /images/qr-add-contact-1024.avif 1024w, /images/qr-add-contact-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/qr-add-contact-150.webp 150w, /images/qr-add-contact-300.webp 300w, /images/qr-add-contact-512.webp 512w, /images/qr-add-contact-640.webp 640w, /images/qr-add-contact-800.webp 800w, /images/qr-add-contact-1024.webp 1024w, /images/qr-add-contact-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="qr-img" alt="Scan to add Nieman's Detailing to contacts" width="180" height="180" decoding="async" loading="lazy" src="/images/qr-add-contact-800.jpg" srcset="/images/qr-add-contact-150.jpg 150w, /images/qr-add-contact-300.jpg 300w, /images/qr-add-contact-512.jpg 512w, /images/qr-add-contact-640.jpg 640w, /images/qr-add-contact-800.jpg 800w, /images/qr-add-contact-1024.jpg 1024w, /images/qr-add-contact-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  <a class="mdl-button mdl-button--raised mdl-button--colored add-contact-btn" href="/nieman.vcf" download="" rel="nofollow">ADD TO CONTACTS</a>
-                </div>
-                <div class="mdl-typography--caption add-contact-caption">Scan to add my contact</div>
-              </div>
-            </div>
-          </div>
-        </section>
+      <div class="mdl-layout__tab-panel" id="contact" data-fragment="/fragments/home-contact-panel.html" hidden="">
+        <div class="panel-shell panel-shell--loading" aria-hidden="true">
+          <p>Contact details load on demand.</p>
+        </div>
       </div>
 
       <!--Footer-->
@@ -1434,9 +1148,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
   </div>
 
   <!--Scriptz-->
-  <script defer="" src="https://code.getmdl.io/1.3.0/material.min.js"></script>
   <!-- removed better-simple-slideshow; minimal slider hydrates on idle -->
-  <script defer="" src="scripts/main.js?v=20260212i"></script>
+  <script defer="" src="scripts/home.js"></script>
 
 
 
