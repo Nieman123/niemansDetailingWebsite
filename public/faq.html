@@ -53,9 +53,9 @@ __/\\\\\\_____/\\\______________/\\\_
   <link rel="apple-touch-icon" href="images/touch/apple-touch-icon.png">
 
   <meta name="msapplication-TileImage" content="images/touch/ms-touch-icon-144x144-precomposed.png">
-  <meta name="msapplication-TileColor" content="#2F3BA2">
+  <meta name="msapplication-TileColor" content="#08112A">
 
-  <meta name="theme-color" content="#0b1330">
+  <meta name="theme-color" content="#08112A">
   <link rel="canonical" href="https://niemansdetailing.com/faq">
   <meta name="robots" content="index,follow">
 
@@ -77,79 +77,183 @@ __/\\\\\\_____/\\\______________/\\\_
   <link rel="stylesheet" href="styles/promo.css">
 
   <style>
+    :root {
+      --nd-font-sans: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      --nd-bg-0: #02050d;
+      --nd-bg-1: #08112a;
+      --nd-bg-2: #040814;
+      --nd-surface: #0f1832;
+      --nd-surface-elevated: #162142;
+      --nd-surface-strong: #0b1228;
+      --nd-surface-panel: linear-gradient(145deg, rgba(10, 15, 31, 0.88) 0%, rgba(17, 25, 49, 0.78) 100%);
+      --nd-surface-panel-strong: linear-gradient(140deg, rgba(9, 14, 30, 0.94) 0%, rgba(17, 24, 47, 0.84) 100%);
+      --nd-chip-surface: linear-gradient(140deg, rgba(16, 23, 46, 0.92) 0%, rgba(9, 14, 30, 0.97) 100%);
+      --nd-chip-surface-hover: linear-gradient(140deg, rgba(21, 29, 57, 0.94) 0%, rgba(11, 18, 38, 0.98) 100%);
+      --nd-border: rgba(119, 102, 194, 0.32);
+      --nd-border-strong: rgba(176, 163, 235, 0.18);
+      --nd-chip-border: rgba(123, 92, 255, 0.28);
+      --nd-shadow: 0 20px 44px rgba(2, 4, 15, 0.56), 0 0 0 1px rgba(110, 85, 209, 0.1);
+      --nd-text-on-dark: #f2f0ff;
+      --nd-text-on-surface: #f4f1ff;
+      --nd-text-muted: #c8c2db;
+      --nd-text-subtle: #a7a2bc;
+      --nd-accent-0: #341f67;
+      --nd-accent-1: #5534a8;
+      --nd-accent-2: #bba6ff;
+      --nd-highlight-0: #f09d2c;
+      --nd-highlight-1: #da6b1f;
+      --nd-footer-bg-top: rgba(8, 13, 29, 0.96);
+      --nd-footer-bg-bottom: rgba(3, 6, 14, 0.98);
+      --nd-footer-border: rgba(123, 92, 255, 0.22);
+      --nd-footer-text: #ddd3ff;
+      --nd-footer-link: #bba6ff;
+      --nd-footer-link-hover: #d8ccff;
+    }
+
+    html,
+    body.faq-page {
+      background: radial-gradient(1100px circle at 10% -8%, rgba(85, 52, 168, 0.22), transparent 46%),
+        radial-gradient(850px circle at 88% 0%, rgba(28, 58, 138, 0.18), transparent 43%),
+        linear-gradient(180deg, var(--nd-bg-0) 0%, var(--nd-bg-1) 52%, var(--nd-bg-2) 100%) !important;
+      color: var(--nd-text-on-dark);
+      font-family: var(--nd-font-sans);
+    }
+
+    .faq-page .mdl-layout {
+      min-height: 100vh;
+    }
+
+    .faq-page .mdl-layout__content {
+      display: block;
+      padding-bottom: 0;
+    }
+
+    .faq-page a {
+      color: var(--nd-accent-2);
+    }
+
+    .faq-page a:hover,
+    .faq-page a:focus-visible {
+      color: #ffffff;
+    }
+
+    .faq-header {
+      background: rgba(6, 10, 24, 0.94) !important;
+      box-shadow: 0 8px 28px rgba(5, 8, 22, 0.45);
+    }
+
     .faq-header .mdl-layout__header-row { padding-left: 0; padding-right: 0; }
     .faq-header .faq-logo-row,
     .faq-header .faq-logo-row--mobile { justify-content: center; }
     .faq-header .faq-logo-row img,
     .faq-header .faq-logo-row--mobile img { display: block; margin: 0 auto; }
 
+    .faq-page main > .section--center.mdl-grid {
+      max-width: 1020px;
+      padding: 24px 16px 40px;
+      margin-bottom: 0;
+    }
+
     .faq-shell {
+      position: relative;
+      overflow: hidden;
       max-width: 950px;
       margin: 0 auto;
-      border-radius: 20px;
-      border: 1px solid rgba(176, 153, 245, 0.28);
-      background: linear-gradient(145deg, rgba(250, 245, 255, 0.72) 0%, rgba(220, 206, 255, 0.48) 100%);
-      box-shadow: 0 22px 46px rgba(8, 10, 26, 0.36), 0 0 0 1px rgba(132, 96, 227, 0.14);
+      border-radius: 24px;
+      border: 1px solid var(--nd-border-strong);
+      background: var(--nd-surface-panel);
+      box-shadow: var(--nd-shadow);
       backdrop-filter: blur(13px) saturate(130%);
       -webkit-backdrop-filter: blur(13px) saturate(130%);
-      color: #2d2b3d;
-      padding: 24px 20px;
+      color: var(--nd-text-on-surface);
+      padding: 28px 24px;
+    }
+
+    .faq-shell::before {
+      content: "";
+      position: absolute;
+      inset: -90px auto auto -70px;
+      width: 280px;
+      height: 280px;
+      background: radial-gradient(circle, rgba(85, 52, 168, 0.25) 0%, rgba(85, 52, 168, 0) 72%);
+      pointer-events: none;
+    }
+
+    .faq-shell > * {
+      position: relative;
     }
 
     .faq-title {
       text-align: center;
-      color: #2f1f62;
+      color: var(--nd-accent-2);
       margin-top: 0;
       margin-bottom: 10px;
+      letter-spacing: 0.02em;
     }
 
     .faq-intro {
       text-align: center;
       margin-top: 0;
-      margin-bottom: 18px;
+      margin-bottom: 22px;
       font-size: 1.05rem;
-      color: #372f56;
+      color: var(--nd-text-muted);
     }
 
     .faq-list {
       display: grid;
-      gap: 12px;
+      gap: 14px;
     }
 
     .faq-item {
-      border-radius: 14px;
-      border: 1px solid rgba(136, 112, 214, 0.28);
-      background: linear-gradient(140deg, rgba(252, 248, 255, 0.78) 0%, rgba(234, 223, 255, 0.62) 100%);
-      box-shadow: 0 10px 24px rgba(18, 12, 42, 0.15);
-      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--nd-border);
+      background: var(--nd-surface-panel-strong);
+      box-shadow: 0 12px 30px rgba(2, 4, 15, 0.36);
+      padding: 16px 18px;
     }
 
     .faq-item h3 {
       margin: 0 0 8px;
-      color: #2f1f62;
+      color: var(--nd-accent-2);
       font-size: 1.15rem;
       font-weight: 700;
     }
 
     .faq-item p {
       margin: 0;
-      color: #2d2b3d;
-      line-height: 1.55;
+      color: var(--nd-text-on-surface);
+      line-height: 1.6;
+    }
+
+    .faq-item strong {
+      color: #ffffff;
+    }
+
+    .faq-item .phone-link {
+      color: var(--nd-accent-2);
+      text-decoration-color: rgba(187, 166, 255, 0.45);
+    }
+
+    .faq-item .phone-link:hover,
+    .faq-item .phone-link:focus-visible {
+      color: #ffffff;
+      text-decoration-color: #ffffff;
     }
 
     .faq-emphasis {
-      margin-top: 14px;
-      border-radius: 14px;
-      border: 1px solid rgba(108, 74, 198, 0.38);
-      background: linear-gradient(140deg, rgba(108, 67, 219, 0.15) 0%, rgba(77, 42, 170, 0.2) 100%);
-      padding: 12px;
+      margin-top: 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(123, 92, 255, 0.34);
+      background: linear-gradient(140deg, rgba(52, 31, 103, 0.34) 0%, rgba(22, 33, 66, 0.78) 100%);
+      padding: 14px 16px;
       font-weight: 600;
-      color: #2b1f60;
+      color: var(--nd-text-on-surface);
       text-align: center;
+      box-shadow: 0 12px 26px rgba(6, 10, 24, 0.28);
     }
 
     .faq-cta {
-      margin-top: 18px;
+      margin-top: 20px;
       text-align: center;
       display: flex;
       justify-content: center;
@@ -158,12 +262,76 @@ __/\\\\\\_____/\\\______________/\\\_
     }
 
     .faq-cta .mdl-button {
+      min-height: 42px;
+      padding: 0 18px;
+      border-radius: 999px;
       text-transform: none;
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+
+    .faq-cta .mdl-button:hover,
+    .faq-cta .mdl-button:focus-visible {
+      transform: translateY(-1px);
+    }
+
+    .faq-cta .mdl-button--colored {
+      color: #ffffff;
+      border: 1px solid rgba(123, 92, 255, 0.82);
+      background: linear-gradient(140deg, var(--nd-accent-1) 0%, var(--nd-accent-0) 100%);
+      box-shadow: 0 10px 24px rgba(16, 12, 38, 0.18);
+    }
+
+    .faq-cta .mdl-button:not(.mdl-button--colored) {
+      color: var(--nd-text-on-surface);
+      border: 1px solid var(--nd-chip-border);
+      background: var(--nd-chip-surface);
+      box-shadow: 0 12px 26px rgba(3, 5, 16, 0.28);
+    }
+
+    .faq-cta .mdl-button:not(.mdl-button--colored):hover,
+    .faq-cta .mdl-button:not(.mdl-button--colored):focus-visible {
+      color: #ffffff;
+      background: var(--nd-chip-surface-hover);
+    }
+
+    .faq-page .mdl-mega-footer {
+      margin-top: 32px;
+      background: linear-gradient(180deg, var(--nd-footer-bg-top) 0%, var(--nd-footer-bg-bottom) 100%);
+      border-top: 1px solid var(--nd-footer-border);
+      color: var(--nd-footer-text);
+    }
+
+    .faq-page .mdl-mega-footer .mdl-mega-footer--middle-section,
+    .faq-page .mdl-mega-footer .mdl-mega-footer--bottom-section {
+      border-color: rgba(200, 186, 255, 0.18);
+    }
+
+    .faq-page .mdl-mega-footer .mdl-mega-footer--heading,
+    .faq-page .mdl-mega-footer .mdl-mega-footer--link-list {
+      color: var(--nd-footer-text);
+    }
+
+    .faq-page .mdl-mega-footer .mdl-mega-footer--link-list a,
+    .faq-page .mdl-mega-footer .phone-link {
+      color: var(--nd-footer-link);
+    }
+
+    .faq-page .mdl-mega-footer .mdl-mega-footer--link-list a:hover,
+    .faq-page .mdl-mega-footer .mdl-mega-footer--link-list a:focus-visible,
+    .faq-page .mdl-mega-footer .phone-link:hover,
+    .faq-page .mdl-mega-footer .phone-link:focus-visible {
+      color: var(--nd-footer-link-hover);
     }
 
     @media (max-width: 768px) {
-      .faq-shell { padding: 18px 14px; }
+      .faq-page main > .section--center.mdl-grid {
+        padding: 16px 8px 28px;
+      }
+
+      .faq-shell { padding: 20px 16px; }
       .faq-item h3 { font-size: 1.05rem; }
     }
   </style>
@@ -217,9 +385,9 @@ __/\\\\\\_____/\\\______________/\\\_
   }
   </script>
 </head>
-<body class="mdl-site mdl-color--grey-800 mdl-color-text--grey-700 mdl-base">
+<body class="mdl-site mdl-base faq-page">
 <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
-  <header class="mdl-layout__header mdl-layout__header--scroll mdl-color--grey-800 faq-header">
+  <header class="mdl-layout__header mdl-layout__header--scroll faq-header">
 
     <!-- Large Screen Header and Logo -->
     <div class="mdl-layout--large-screen-only mdl-layout__header-row"></div>
