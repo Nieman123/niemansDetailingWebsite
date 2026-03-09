@@ -1190,6 +1190,18 @@ button:focus-visible {
 .testimonial-list blockquote footer {
   margin-top: 0.7rem;
   color: var(--nd-text-muted);
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  font-weight: 700;
+}
+
+.testimonial-list .testimonial-stars {
+  color: var(--nd-highlight-0);
+  letter-spacing: 0.08em;
+  line-height: 1;
 }
 .testimonial-list blockquote::before,
 .testimonial-list blockquote::after {
@@ -1467,6 +1479,10 @@ body.mdl-site {
   padding-left: 0;
 }
 
+.mdl-site #overview .overview-services .overview-service-copy {
+  text-align: center;
+}
+
 .mdl-site #overview .overview-services .service-more-wrap {
   margin-top: 0;
   text-align: center;
@@ -1683,14 +1699,37 @@ body.mdl-site {
   color: var(--nd-footer-link-hover);
 }
 
-@media (max-width: 768px) {
-  .mdl-site #overview .overview-services > .mdl-cell.mdl-cell--12-col-phone {
+@media (max-width: 1023px) {
+  .mdl-site #overview .overview-services .overview-service-media,
+  .mdl-site #overview .overview-services .overview-service-copy {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  .mdl-site #overview .overview-services .overview-service-media {
     display: flex;
     justify-content: center;
     align-items: center;
   }
 
-  .mdl-site #overview .overview-services > .mdl-cell.mdl-cell--12-col-phone picture {
+  .mdl-site #overview .overview-services .overview-service-media picture {
+    display: block;
+    margin: 0 auto;
+  }
+
+  .mdl-site #overview .overview-services .overview-service-copy {
+    padding-left: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .mdl-site #overview .overview-services .overview-service-media {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .mdl-site #overview .overview-services .overview-service-media picture {
     display: block;
     margin: 0 auto;
   }
