@@ -675,19 +675,19 @@ button { touch-action: manipulation; }
   .ba-frame { border-radius: 12px; }
   .hero-pricing-band {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    margin: 8px 0 10px;
+    gap: 4px;
+    margin: 6px 0 8px;
   }
   .hero-pricing-band p {
-    padding: 8px 10px;
-    gap: 6px;
-    font-size: 12px;
+    padding: 6px 8px;
+    gap: 4px;
+    font-size: 11px;
   }
   .hero-pill-icon {
-    width: 18px;
-    height: 18px;
-    flex: 0 0 18px;
-    font-size: 10px;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    font-size: 9px;
   }
   .heading-inline-note { display: block; margin: 4px 0 0; }
 }
@@ -761,18 +761,19 @@ button { touch-action: manipulation; }
     font-size: 14px;
   }
   #hero-pricing-trust {
-    margin: 8px 0 0;
-    padding: 12px;
+    margin: 6px 0 0;
+    padding: 8px 10px;
   }
   #hero-pricing-trust h2 {
-    margin-bottom: 6px;
-    font-size: 17px;
+    margin-bottom: 4px;
+    font-size: 15px;
   }
   #hero-pricing-trust .quote-line {
-    margin: 4px 0 8px;
-    font-size: 13px;
+    margin: 2px 0 6px;
+    font-size: 12px;
+    padding: 6px 8px;
   }
-  #hero-pricing-trust .hero-pricing-band { margin: 6px 0 0; }
+  #hero-pricing-trust .hero-pricing-band { margin: 4px 0 0; }
   #hero-pricing-trust .hero-pill-mobile-hide { display: none; }
   .trust-story-layout { grid-template-columns: 1fr; }
   .trust-story-copy,
