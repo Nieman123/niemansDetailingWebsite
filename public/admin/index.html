@@ -571,6 +571,108 @@
       border-top: 1px solid var(--border);
     }
 
+    .vacation-card {
+      gap: 16px;
+    }
+
+    .vacation-settings-grid {
+      display: grid;
+      grid-template-columns: minmax(180px, 0.7fr) repeat(2, minmax(150px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+
+    .vacation-toggle {
+      display: flex;
+      align-items: center;
+      min-height: 42px;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #121419;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .vacation-toggle input {
+      width: auto;
+      margin: 0;
+      accent-color: var(--brand);
+    }
+
+    .vacation-copy-grid {
+      display: grid;
+      grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.2fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .vacation-card textarea {
+      min-height: 92px;
+    }
+
+    .vacation-admin-preview {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .vacation-preview-icon {
+      width: 54px;
+      height: 54px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 14px;
+      color: oklch(96% 0.018 82);
+      background: linear-gradient(145deg, oklch(70% 0.16 61), oklch(43% 0.13 42));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26);
+    }
+
+    .vacation-preview-icon svg {
+      width: 36px;
+      height: 36px;
+    }
+
+    .vacation-preview-copy {
+      min-width: 0;
+    }
+
+    .vacation-preview-copy h4,
+    .vacation-preview-copy p {
+      margin: 0;
+    }
+
+    .vacation-preview-window {
+      color: var(--brand);
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .vacation-preview-copy h4 {
+      margin-top: 3px;
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 800;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .vacation-preview-copy .message {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
     @media (max-width: 1024px) {
       .layout {
         grid-template-columns: 1fr;
@@ -590,7 +692,9 @@
     @media (max-width: 680px) {
       .filters .split,
       .summary-grid,
-      .funnel-metrics {
+      .funnel-metrics,
+      .vacation-settings-grid,
+      .vacation-copy-grid {
         grid-template-columns: 1fr;
       }
 
@@ -728,6 +832,61 @@
 
     <main class="main">
       <div class="main-content">
+        <section id="vacation-settings-card" class="detail-card vacation-card" aria-labelledby="vacation-settings-title">
+          <header class="funnel-head">
+            <div>
+              <h3 id="vacation-settings-title">Vacation Mode</h3>
+              <div class="detail-sub">Show a date-based scheduling notice on the home, quote, and schedule pages.</div>
+            </div>
+            <span id="vacation-mode-state" class="pill pill-archived">Not loaded</span>
+          </header>
+
+          <section class="vacation-settings-grid" aria-label="Vacation mode dates">
+            <label class="vacation-toggle" for="vacation-enabled-input">
+              <input id="vacation-enabled-input" type="checkbox" />
+              <span>Enable notice</span>
+            </label>
+            <div>
+              <label for="vacation-start-input">Start Date</label>
+              <input id="vacation-start-input" type="date" />
+            </div>
+            <div>
+              <label for="vacation-end-input">End Date</label>
+              <input id="vacation-end-input" type="date" />
+            </div>
+          </section>
+
+          <section class="vacation-copy-grid" aria-label="Vacation notice copy">
+            <div>
+              <label for="vacation-headline-input">Headline</label>
+              <input id="vacation-headline-input" type="text" maxlength="90" />
+            </div>
+            <div>
+              <label for="vacation-message-input">Message</label>
+              <textarea id="vacation-message-input" maxlength="420"></textarea>
+            </div>
+          </section>
+
+          <section class="vacation-admin-preview" aria-label="Vacation notice preview">
+            <div class="vacation-preview-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" focusable="false">
+                <path d="M16 18.5h16a4 4 0 0 1 4 4v13a4 4 0 0 1-4 4H16a4 4 0 0 1-4-4v-13a4 4 0 0 1 4-4Z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" />
+                <path d="M19 18.5v-3.2a5 5 0 0 1 10 0v3.2M18 24.5v9M30 24.5v9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+                <path d="M34.5 10.5 37 8l2.5 2.5L37 13l-2.5-2.5ZM9 13.5 11.5 11l2.5 2.5-2.5 2.5L9 13.5ZM35 29.5h5M8 29.5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+            <div class="vacation-preview-copy">
+              <p id="vacation-preview-window" class="vacation-preview-window">June 18 through July 1, 2026</p>
+              <h4 id="vacation-preview-headline">Vacation notice</h4>
+              <p id="vacation-preview-message" class="message">I'll be away June 18 through July 1. I'll be scheduling details again starting July 2. You can still request a quote or text me, and I'll follow up when I'm back.</p>
+            </div>
+          </section>
+
+          <div class="save-row">
+            <button id="save-vacation-settings-btn" type="button" class="btn btn-primary">Save Vacation Mode</button>
+          </div>
+        </section>
+
         <section id="quote-funnel-card" class="detail-card funnel-card">
           <header class="funnel-head">
             <div>
@@ -820,7 +979,7 @@
     </main>
   </div>
 
-  <script type="module" src="/scripts/admin-dashboard.js?v=20260226b"></script>
+  <script type="module" src="/scripts/admin-dashboard.js?v=20260615"></script>
 </body>
 
 </html>

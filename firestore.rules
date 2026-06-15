@@ -38,6 +38,12 @@ service cloud.firestore {
       allow read, create, update, delete: if isBlogAdmin();
     }
 
+    // Public site settings. Only the vacation-mode document is publicly readable.
+    match /publicSettings/{id} {
+      allow read: if id == "vacationMode";
+      allow create, update, delete: if id == "vacationMode" && isBlogAdmin();
+    }
+
     // Admin allowlist documents. Add uid as doc ID in Firebase console to grant blog access.
     match /adminUsers/{uid} {
       allow read: if isSignedIn() && request.auth.uid == uid;

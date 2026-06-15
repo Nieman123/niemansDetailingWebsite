@@ -16,6 +16,7 @@ import {
   query,
   Timestamp,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -73,6 +74,16 @@ const els = {
   detailAdminNoteInput: document.getElementById("lead-admin-note-input"),
   deleteLeadBtn: document.getElementById("delete-lead-btn"),
   saveLeadBtn: document.getElementById("save-lead-btn"),
+  vacationState: document.getElementById("vacation-mode-state"),
+  vacationEnabledInput: document.getElementById("vacation-enabled-input"),
+  vacationStartInput: document.getElementById("vacation-start-input"),
+  vacationEndInput: document.getElementById("vacation-end-input"),
+  vacationHeadlineInput: document.getElementById("vacation-headline-input"),
+  vacationMessageInput: document.getElementById("vacation-message-input"),
+  vacationPreviewWindow: document.getElementById("vacation-preview-window"),
+  vacationPreviewHeadline: document.getElementById("vacation-preview-headline"),
+  vacationPreviewMessage: document.getElementById("vacation-preview-message"),
+  saveVacationBtn: document.getElementById("save-vacation-settings-btn"),
 };
 
 const state = {
@@ -86,8 +97,19 @@ const state = {
   loadingLeads: false,
   savingLead: false,
   deletingLead: false,
+  vacationNotice: null,
+  loadingVacation: false,
+  savingVacation: false,
 };
 
+const DEFAULT_VACATION_NOTICE = {
+  enabled: true,
+  startDate: "2026-06-18",
+  endDate: "2026-07-01",
+  headline: "Vacation notice",
+  message:
+    "I'll be away June 18 through July 1. I'll be scheduling details again starting July 2. You can still request a quote or text me, and I'll follow up when I'm back.",
+};
 const QUOTE_FUNNEL_STEPS = [
   { key: "step_1", label: "Step 1: Vehicle" },
   { key: "step_2", label: "Step 2: Service" },
@@ -129,6 +151,19 @@ function setControlsDisabled(disabled) {
   });
 }
 
+function setVacationControlsDisabled(disabled) {
+  [
+    els.vacationEnabledInput,
+    els.vacationStartInput,
+    els.vacationEndInput,
+    els.vacationHeadlineInput,
+    els.vacationMessageInput,
+    els.saveVacationBtn,
+  ].forEach((control) => {
+    if (control) control.disabled = disabled;
+  });
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -136,6 +171,79 @@ function escapeHtml(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function normalizeVacationNotice(raw = {}) {
+  return {
+    enabled: typeof raw.enabled === "boolean" ? raw.enabled : DEFAULT_VACATION_NOTICE.enabled,
+    startDate: String(raw.startDate || DEFAULT_VACATION_NOTICE.startDate).trim(),
+    endDate: String(raw.endDate || DEFAULT_VACATION_NOTICE.endDate).trim(),
+    headline: String(raw.headline || DEFAULT_VACATION_NOTICE.headline).trim().slice(0, 90),
+    message: String(raw.message || DEFAULT_VACATION_NOTICE.message).trim().slice(0, 420),
+  };
+}
+
+function vacationNoticeFromForm() {
+  return normalizeVacationNotice({
+    enabled: Boolean(els.vacationEnabledInput?.checked),
+    startDate: els.vacationStartInput?.value || "",
+    endDate: els.vacationEndInput?.value || "",
+    headline: els.vacationHeadlineInput?.value || "",
+    message: els.vacationMessageInput?.value || "",
+  });
+}
+
+function updateVacationState(notice) {
+  if (!els.vacationState) return;
+
+  els.vacationState.className = "pill";
+  if (!notice.enabled) {
+    els.vacationState.textContent = "Off";
+    els.vacationState.classList.add("pill-archived");
+    return;
+  }
+
+  if (!isDateOnly(notice.startDate) || !isDateOnly(notice.endDate) || notice.startDate > notice.endDate) {
+    els.vacationState.textContent = "Needs dates";
+    els.vacationState.classList.add("pill-spam");
+    return;
+  }
+
+  const today = dateOnlyString();
+  if (vacationIsLive(notice)) {
+    els.vacationState.textContent = "Live now";
+    els.vacationState.classList.add("pill-booked");
+  } else if (today < notice.startDate) {
+    els.vacationState.textContent = "Scheduled";
+    els.vacationState.classList.add("pill-contacted");
+  } else {
+    els.vacationState.textContent = "Ended";
+    els.vacationState.classList.add("pill-archived");
+  }
+}
+
+function renderVacationPreview(notice) {
+  if (els.vacationPreviewWindow) {
+    els.vacationPreviewWindow.textContent = formatVacationWindow(notice.startDate, notice.endDate);
+  }
+  if (els.vacationPreviewHeadline) {
+    els.vacationPreviewHeadline.textContent = notice.headline || DEFAULT_VACATION_NOTICE.headline;
+  }
+  if (els.vacationPreviewMessage) {
+    els.vacationPreviewMessage.textContent = notice.message || DEFAULT_VACATION_NOTICE.message;
+  }
+  updateVacationState(notice);
+}
+
+function renderVacationForm(notice) {
+  const next = normalizeVacationNotice(notice);
+  state.vacationNotice = next;
+  if (els.vacationEnabledInput) els.vacationEnabledInput.checked = next.enabled;
+  if (els.vacationStartInput) els.vacationStartInput.value = next.startDate;
+  if (els.vacationEndInput) els.vacationEndInput.value = next.endDate;
+  if (els.vacationHeadlineInput) els.vacationHeadlineInput.value = next.headline;
+  if (els.vacationMessageInput) els.vacationMessageInput.value = next.message;
+  renderVacationPreview(next);
 }
 
 function parseDate(value) {
@@ -218,6 +326,44 @@ function formatDateTime(value) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function dateOnlyString(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function isDateOnly(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""));
+}
+
+function dateFromDateOnly(value) {
+  const [year, month, day] = String(value).split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatDateOnly(value, includeYear = false) {
+  if (!isDateOnly(value)) return "Invalid date";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    ...(includeYear ? { year: "numeric" } : {}),
+  }).format(dateFromDateOnly(value));
+}
+
+function formatVacationWindow(startDate, endDate) {
+  if (!isDateOnly(startDate) || !isDateOnly(endDate)) return "Choose valid dates";
+  const includeStartYear = startDate.slice(0, 4) !== endDate.slice(0, 4);
+  return `${formatDateOnly(startDate, includeStartYear)} through ${formatDateOnly(endDate, true)}`;
+}
+
+function vacationIsLive(notice) {
+  if (!notice?.enabled || !isDateOnly(notice.startDate) || !isDateOnly(notice.endDate)) return false;
+  if (notice.startDate > notice.endDate) return false;
+  const today = dateOnlyString();
+  return today >= notice.startDate && today <= notice.endDate;
 }
 
 function normalizePhoneDigits(input) {
@@ -648,6 +794,65 @@ async function ensureLeadPresent(leadId) {
   state.leads.unshift({ id: snap.id, ...snap.data() });
 }
 
+async function loadVacationNotice() {
+  if (state.loadingVacation) return;
+  state.loadingVacation = true;
+  setVacationControlsDisabled(true);
+  setStatus("Loading vacation mode...");
+
+  try {
+    const snap = await getDoc(doc(db, "publicSettings", "vacationMode"));
+    const notice = snap.exists() ? normalizeVacationNotice(snap.data()) : DEFAULT_VACATION_NOTICE;
+    renderVacationForm(notice);
+  } catch (error) {
+    console.error("Failed to load vacation mode", error);
+    renderVacationForm(DEFAULT_VACATION_NOTICE);
+    setStatus("Could not load vacation mode settings.", "error");
+  } finally {
+    state.loadingVacation = false;
+    setVacationControlsDisabled(false);
+  }
+}
+
+async function saveVacationNotice() {
+  if (!state.user || !state.isAdmin || state.savingVacation) return;
+
+  const notice = vacationNoticeFromForm();
+  if (!isDateOnly(notice.startDate) || !isDateOnly(notice.endDate)) {
+    setStatus("Vacation mode needs valid start and end dates.", "error");
+    return;
+  }
+  if (notice.startDate > notice.endDate) {
+    setStatus("Vacation mode start date must be before the end date.", "error");
+    return;
+  }
+
+  state.savingVacation = true;
+  setVacationControlsDisabled(true);
+  setStatus("Saving vacation mode...");
+
+  try {
+    await setDoc(doc(db, "publicSettings", "vacationMode"), {
+      enabled: notice.enabled,
+      startDate: notice.startDate,
+      endDate: notice.endDate,
+      headline: notice.headline,
+      message: notice.message,
+      updatedBy: state.user.uid,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    renderVacationForm(notice);
+    setStatus("Vacation mode saved.");
+  } catch (error) {
+    console.error("Failed to save vacation mode", error);
+    setStatus("Could not save vacation mode settings.", "error");
+  } finally {
+    state.savingVacation = false;
+    setVacationControlsDisabled(false);
+  }
+}
+
 async function loadLeads() {
   if (state.loadingLeads) return;
   state.loadingLeads = true;
@@ -918,6 +1123,22 @@ function bindEvents() {
       if (lead) updateLeadClientActions(lead);
     });
   }
+
+  [
+    els.vacationEnabledInput,
+    els.vacationStartInput,
+    els.vacationEndInput,
+    els.vacationHeadlineInput,
+    els.vacationMessageInput,
+  ].forEach((control) => {
+    if (!control) return;
+    control.addEventListener("input", () => renderVacationPreview(vacationNoticeFromForm()));
+    control.addEventListener("change", () => renderVacationPreview(vacationNoticeFromForm()));
+  });
+
+  if (els.saveVacationBtn) {
+    els.saveVacationBtn.addEventListener("click", saveVacationNotice);
+  }
 }
 
 async function handleAuth(user) {
@@ -951,7 +1172,7 @@ async function handleAuth(user) {
     }
 
     showView("admin");
-    await loadLeads();
+    await Promise.all([loadLeads(), loadVacationNotice()]);
     if (isHostingEmulator) {
       setStatus("Admin dashboard ready (local emulator admin bypass enabled).");
       return;
