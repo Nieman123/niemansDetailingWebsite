@@ -112,6 +112,11 @@ function renderInline(value) {
         let url = String(rawUrl || "").trim();
         if (!url) return "";
         if (/^www\./i.test(url)) url = `https://${url}`;
+        if (/^(?:https?:\/\/(?:www\.)?niemansdetailing\.com\/|\/|\.\.?\/)/i.test(url)) {
+            url = url
+                .replace(/\/index\.html(?=([?#]|$))/i, "/")
+                .replace(/\.html(?=([?#]|$))/i, "");
+        }
         if (/[\u0000-\u001F\u007F]/.test(url)) return "";
 
         const normalized = url.replace(/&amp;/g, "&").toLowerCase();

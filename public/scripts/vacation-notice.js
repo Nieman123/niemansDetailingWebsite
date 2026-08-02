@@ -104,7 +104,7 @@
 
   function pageAction() {
     const path = window.location.pathname.replace(/\/$/, "");
-    if (path === "/quote" || path === "/quote.html") {
+    if (path === "/quote") {
       return { href: "sms:+18282733894", label: "Text questions" };
     }
     return { href: "/quote", label: "Request a quote" };

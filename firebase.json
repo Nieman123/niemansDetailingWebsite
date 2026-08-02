@@ -8,6 +8,8 @@
   },
   "hosting": {
     "public": "public",
+    "cleanUrls": true,
+    "trailingSlash": false,
     "predeploy": [
       "npm run images:sync"
     ],
@@ -131,6 +133,21 @@
     ],
     "redirects": [
       {
+        "source": "/index.html",
+        "destination": "/",
+        "type": 301
+      },
+      {
+        "source": "/admin/index.html",
+        "destination": "/admin",
+        "type": 301
+      },
+      {
+        "source": "/links/index.html",
+        "destination": "/links",
+        "type": 301
+      },
+      {
         "source": "/blog/index.html",
         "destination": "/blog",
         "type": 301
@@ -153,34 +170,6 @@
           "functionId": "api",
           "region": "us-east1"
         }
-      },
-      {
-        "source": "/schedule",
-        "destination": "/schedule.html"
-      },
-      {
-        "source": "/quote",
-        "destination": "/quote.html"
-      },
-      {
-        "source": "/blog",
-        "destination": "/blog/index.html"
-      },
-      {
-        "source": "/admin/blog",
-        "destination": "/admin/blog.html"
-      },
-      {
-        "source": "/privacy",
-        "destination": "/privacy.html"
-      },
-      {
-        "source": "/faq",
-        "destination": "/faq.html"
-      },
-      {
-        "source": "/terms",
-        "destination": "/terms.html"
       },
       {
         "source": "**",

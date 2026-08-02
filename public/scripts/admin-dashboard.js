@@ -382,10 +382,10 @@ function formatPhone(input) {
 function leadClientManagerPath(lead) {
   const clientId = String(lead?.client_id || "").trim();
   if (clientId) {
-    return `/admin/clients.html?id=${encodeURIComponent(clientId)}`;
+    return `/admin/clients?id=${encodeURIComponent(clientId)}`;
   }
   const leadId = String(lead?.id || "").trim();
-  return leadId ? `/admin/clients.html?fromLead=${encodeURIComponent(leadId)}` : "/admin/clients.html";
+  return leadId ? `/admin/clients?fromLead=${encodeURIComponent(leadId)}` : "/admin/clients";
 }
 
 function canLeadBecomeClient(lead) {
@@ -398,7 +398,7 @@ function canLeadBecomeClient(lead) {
 function updateLeadClientActions(lead) {
   if (!lead) {
     if (els.detailOpenClientLink) {
-      els.detailOpenClientLink.href = "/admin/clients.html";
+      els.detailOpenClientLink.href = "/admin/clients";
       els.detailOpenClientLink.textContent = "Open Client";
     }
     if (els.detailAddClientBtn) {
@@ -461,6 +461,7 @@ function serviceLabel(lead) {
   const map = {
     quick: "Quick Once Over",
     full: "Full Detail",
+    interior_only: "Interior Only",
     interior: "Interior Refresh",
     other: "Other",
   };
@@ -470,6 +471,8 @@ function serviceLabel(lead) {
 function vehicleLabel(lead) {
   const map = {
     sedan: "Sedan/Coupe",
+    suv_truck: "SUV/Truck",
+    van_3row: "Van/3-Row SUV",
     suv: "SUV/Crossover",
     truck: "Truck/Van",
   };

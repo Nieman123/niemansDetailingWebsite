@@ -27,9 +27,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       })();
     </script>
     <script>
-      gtag('config', 'AW-17602789326/QubCCJ7smf0bEM7_1MlB', {
-        'phone_conversion_number': '(828) 273-3894'
-      });
+      if (typeof window.gtag === 'function') {
+        window.gtag('config', 'AW-17602789326/QubCCJ7smf0bEM7_1MlB', {
+          'phone_conversion_number': '(828) 273-3894'
+        });
+      }
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -49,7 +51,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="192x192" href="/images/touch/chrome-touch-icon-192x192.png">
     <link rel="apple-touch-icon" href="/images/touch/apple-touch-icon.png">
-    <link rel="stylesheet" href="quote.css?v=20260226">
+    <link rel="stylesheet" href="quote.css?v=20260802">
     <link rel="stylesheet" href="styles/vacation-notice.css?v=20260615">
   </head>
   <body>
@@ -75,10 +77,10 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
 
           <section class="panel hero-pricing-trust" id="hero-pricing-trust" aria-labelledby="hero-pricing-label">
             <h2 id="hero-pricing-label">See pricing before you start</h2>
-            <p id="hero-quote-peek" class="quote-line" aria-live="polite">Quick Detail from $150 (select options to see your quote)</p>
+            <p id="hero-quote-peek" class="quote-line" aria-live="polite">Quick Detail from $200 (select options to see your quote)</p>
             <div class="hero-pricing-band" role="list" aria-label="Pricing highlights">
-              <p role="listitem"><span class="hero-pill-icon" aria-hidden="true">$</span>Quick Detail starts at $150</p>
-              <p role="listitem"><span class="hero-pill-icon" aria-hidden="true">?</span>Most vehicles: $200-$350</p>
+              <p role="listitem"><span class="hero-pill-icon" aria-hidden="true">$</span>Quick Detail starts at $200</p>
+              <p role="listitem"><span class="hero-pill-icon" aria-hidden="true">?</span>Base services: $200–$400</p>
               <p role="listitem" class="hero-pill-mobile-hide"><span class="hero-pill-icon" aria-hidden="true">🌎</span>Mobile service in WNC</p>
               <p role="listitem" class="hero-pill-mobile-hide"><span class="hero-pill-icon" aria-hidden="true">60</span>Takes ~60 seconds</p>
             </div>
@@ -108,19 +110,22 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <!-- Step 1: Vehicle -->
           <section class="screen" id="step-1" aria-labelledby="step1-label">
             <h2 id="step1-label" tabindex="-1">1. Select Your Vehicle Type</h2>
-            <h4 class="note">Tap or click your vehicle type to get started.</h4>
+            <p class="note">Tap or click your vehicle type to get started.</p>
             <div class="options vehicle-options" role="listbox" aria-label="Vehicle type">
               <button class="btn option" data-value="sedan" role="option" aria-checked="false">
                 <img class="btn-icon" aria-hidden="true" src="images/sedan.svg" alt="" loading="lazy" decoding="async">
                 <span class="btn-label">Sedan/Coupe</span>
+                <span class="btn-detail">Cars and two-door vehicles</span>
               </button>
-              <button class="btn option" data-value="suv" role="option" aria-checked="false">
+              <button class="btn option" data-value="suv_truck" role="option" aria-checked="false">
+                <img class="btn-icon" aria-hidden="true" src="images/pickup-truck.svg?v=20260802b" alt="" loading="lazy" decoding="async">
+                <span class="btn-label">SUV/Truck</span>
+                <span class="btn-detail">Two-row SUVs and pickup trucks</span>
+              </button>
+              <button class="btn option" data-value="van_3row" role="option" aria-checked="false">
                 <img class="btn-icon" aria-hidden="true" src="images/suv.svg" alt="" loading="lazy" decoding="async">
-                <span class="btn-label">SUV/Crossover</span>
-              </button>
-              <button class="btn option" data-value="truck" role="option" aria-checked="false">
-                <img class="btn-icon" aria-hidden="true" src="images/pickup-truck.svg" alt="" loading="lazy" decoding="async">
-                <span class="btn-label">Truck/Van</span>
+                <span class="btn-label">Van/3-Row SUV</span>
+                <span class="btn-detail">Minivans, vans, and three-row SUVs</span>
               </button>
             </div>
           </section>
@@ -129,11 +134,23 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <section class="screen" id="step-2" aria-labelledby="step2-label" hidden="">
             <h2 id="step2-label" tabindex="-1">2. Service</h2>
             <p id="quote-peek" class="quote-line" aria-live="polite">Select options to see your quote.</p>
-            <div class="options" role="listbox" aria-label="Service">
-              <button class="btn option" data-value="quick" role="option" aria-checked="false">Quick Once Over</button>
-              <button class="btn option" data-value="full" role="option" aria-checked="false">Full Detail</button>
-              <button class="btn option" data-value="interior" role="option" aria-checked="false">Interior Refresh</button>
-              <button class="btn option" data-value="other" role="option" aria-checked="false" aria-describedby="consult-note">Other (consult)</button>
+            <div class="options service-options" role="listbox" aria-label="Service">
+              <button class="btn option service-option" data-value="quick" role="option" aria-checked="false">
+                <span class="service-option-copy"><span class="btn-label">Quick Once Over</span><span class="service-description">Maintenance clean, inside + out</span></span>
+                <span class="service-price" data-service-price="quick">Select vehicle</span>
+              </button>
+              <button class="btn option service-option" data-value="full" role="option" aria-checked="false">
+                <span class="service-option-copy"><span class="btn-label">Full Detail</span><span class="service-description">Thorough clean, inside + out</span></span>
+                <span class="service-price" data-service-price="full">Select vehicle</span>
+              </button>
+              <button class="btn option service-option" data-value="interior_only" role="option" aria-checked="false">
+                <span class="service-option-copy"><span class="btn-label">Interior Only</span><span class="service-description">Interior cleaning without exterior service</span></span>
+                <span class="service-price" data-service-price="interior_only">Select vehicle</span>
+              </button>
+              <button class="btn option service-option" data-value="other" role="option" aria-checked="false" aria-describedby="consult-note">
+                <span class="service-option-copy"><span class="btn-label">Other</span><span class="service-description">Specialty work, price confirmed by text</span></span>
+                <span class="service-price" data-service-price="other">Consult</span>
+              </button>
             </div>
             <p class="note consult-note" id="consult-note" hidden="">Consult only — I’ll confirm pricing by text.</p>
             <div class="nav">
@@ -348,7 +365,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </article>
         </div>
-        <a class="trust-pillars-call" href="tel:+18282733894" onclick="gtag('event','conversion',{'send_to':'AW-17602789326/QubCCJ7smf0bEM7_1MlB'});" aria-label="Call Nieman’s Detailing to schedule">
+        <a class="trust-pillars-call" href="tel:+18282733894" onclick="gtag('event','conversion',{'send_to':'AW-17602789326/QubCCJ7smf0bEM7_1MlB'});">
           <span class="trust-pillars-call-icon" aria-hidden="true">☎</span>
           <span class="trust-pillars-call-copy">
             <strong>Call Now To Schedule</strong>
@@ -391,8 +408,8 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       })();
     </script>
 
-    <script src="scripts/vacation-notice.js?v=20260615" defer=""></script>
-    <script src="quote.js?v=20260225" defer=""></script>
+    <script src="scripts/vacation-notice.js?v=20260802" defer=""></script>
+    <script src="quote.js?v=20260802" defer=""></script>
   
   
 </body></html>

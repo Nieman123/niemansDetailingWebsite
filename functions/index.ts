@@ -7,20 +7,20 @@ import { FieldValue } from "firebase-admin/firestore";
 admin.initializeApp();
 const db = admin.firestore();
 
-type Vehicle = "sedan" | "suv" | "truck";
-type Service = "quick" | "full" | "interior" | "other";
+type Vehicle = "sedan" | "suv_truck" | "van_3row";
+type Service = "quick" | "full" | "interior_only" | "other";
 type Addon = "wax" | "pethair" | "odor" | "engine" | "soiled" | "ceramic" | "headlights";
 type QuoteProgressEvent = "step_view" | "lead_submitted";
 
 const VEHICLE_LABELS: Record<Vehicle, string> = {
   sedan: "Sedan/Coupe",
-  suv: "SUV/Crossover",
-  truck: "Truck/Van",
+  suv_truck: "SUV/Truck",
+  van_3row: "Van/3-Row SUV",
 };
 const SERVICE_LABELS: Record<Service, string> = {
   quick: "Quick Once Over",
   full: "Full Detail",
-  interior: "Interior Refresh",
+  interior_only: "Interior Only",
   other: "Other",
 };
 const ADDON_LABELS: Record<Addon, string> = {
@@ -34,27 +34,32 @@ const ADDON_LABELS: Record<Addon, string> = {
 };
 
 const BASE: Record<Vehicle, Partial<Record<Service, number>>> = {
-  sedan: { quick: 150, full: 300, interior: 99 },
-  suv: { quick: 170, full: 350, interior: 99 },
-  truck: { quick: 180, full: 380, interior: 99 },
+  sedan: { quick: 200, full: 300, interior_only: 200 },
+  suv_truck: { quick: 250, full: 350, interior_only: 250 },
+  van_3row: { quick: 300, full: 400, interior_only: 300 },
 };
 const ADDONS: Record<Addon, Record<Vehicle, number>> = {
-  wax: { sedan: 25, suv: 30, truck: 35 },
-  pethair: { sedan: 30, suv: 40, truck: 50 },
-  odor: { sedan: 35, suv: 45, truck: 55 },
-  engine: { sedan: 25, suv: 25, truck: 30 },
-  soiled: { sedan: 40, suv: 60, truck: 80 },
-  ceramic: { sedan: 0, suv: 0, truck: 0 },
-  headlights: { sedan: 75, suv: 85, truck: 95 },
+  wax: { sedan: 25, suv_truck: 30, van_3row: 35 },
+  pethair: { sedan: 30, suv_truck: 40, van_3row: 50 },
+  odor: { sedan: 35, suv_truck: 45, van_3row: 55 },
+  engine: { sedan: 25, suv_truck: 25, van_3row: 30 },
+  soiled: { sedan: 40, suv_truck: 60, van_3row: 80 },
+  ceramic: { sedan: 0, suv_truck: 0, van_3row: 0 },
+  headlights: { sedan: 75, suv_truck: 85, van_3row: 95 },
 };
+
+const INTERIOR_ONLY_ADDONS = new Set<Addon>(["pethair", "soiled", "headlights"]);
 
 const isConsult = (service: Service) => service === "other";
 
 function coerceVehicle(v: unknown): Vehicle | null {
   const m: Record<string, Vehicle> = {
     sedan: "sedan", "sedan/coupe": "sedan", "sedan coupe": "sedan",
-    suv: "suv", crossover: "suv", "suv/crossover": "suv",
-    truck: "truck", van: "truck", "truck/van": "truck",
+    suv_truck: "suv_truck", "suv/truck": "suv_truck", "suv truck": "suv_truck",
+    suv: "suv_truck", crossover: "suv_truck", "suv/crossover": "suv_truck",
+    truck: "suv_truck", pickup: "suv_truck", "pickup truck": "suv_truck", "truck/van": "suv_truck",
+    van_3row: "van_3row", "van/3-row suv": "van_3row", "van/3 row suv": "van_3row",
+    van: "van_3row", "3-row suv": "van_3row", "three-row suv": "van_3row",
   };
   const key = String(v || "").toLowerCase().trim();
   return (m[key] || null) as Vehicle | null;
@@ -63,9 +68,10 @@ function coerceService(s: unknown): Service | null {
   const m: Record<string, Service> = {
     quick: "quick", "quick once over": "quick",
     full: "full", "full detail": "full",
-    interior: "interior", "interior refresh": "interior", "interior-refresh": "interior",
+    interior_only: "interior_only", "interior only": "interior_only", "interior-only": "interior_only",
+    interior: "interior_only", "interior refresh": "interior_only", "interior-refresh": "interior_only",
     // Back-compat for any cached clients
-    paint: "interior", "paint correction": "interior",
+    paint: "interior_only", "paint correction": "interior_only",
     other: "other",
   };
   const key = String(s || "").toLowerCase().trim();
@@ -75,6 +81,11 @@ function coerceAddons(arr: unknown): Addon[] {
   if (!Array.isArray(arr)) return [];
   const valid: Addon[] = ["wax","pethair","odor","engine","soiled","ceramic","headlights"];
   return arr.map(x => String(x||"").toLowerCase().trim()).filter((x): x is Addon => (valid as string[]).includes(x));
+}
+
+function filterAddonsForService(service: Service | null, addons: Addon[]): Addon[] {
+  if (service !== "interior_only") return addons;
+  return addons.filter((addon) => INTERIOR_ONLY_ADDONS.has(addon));
 }
 
 function computeQuote(vehicle: Vehicle, service: Service, addons: Addon[]) {
@@ -231,7 +242,7 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
 
     const vehicle = coerceVehicle(body.vehicle);
     const service = coerceService(body.service);
-    const addons = coerceAddons(body.addons);
+    const addons = filterAddonsForService(service, coerceAddons(body.addons));
     const name = String(body.name || "").trim().slice(0, 120);
     const phoneRaw = String(body.phone || "").trim();
     const { e164: phone_normalized } = normalizeUSPhone(phoneRaw);

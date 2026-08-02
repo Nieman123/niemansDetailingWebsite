@@ -22,23 +22,25 @@
   };
 
   // Canonical keys
-  const VEHICLES = { sedan: 'Sedan/Coupe', suv: 'SUV/Crossover', truck: 'Truck/Van' };
-  const SERVICES = { quick: 'Quick Once Over', full: 'Full Detail', interior: 'Interior Refresh', other: 'Other' };
-  const HERO_SERVICE_LABELS = { quick: 'Quick Detail', full: 'Full Detail', interior: 'Interior Refresh' };
+  const VEHICLES = { sedan: 'Sedan/Coupe', suv_truck: 'SUV/Truck', van_3row: 'Van/3-Row SUV' };
+  const SERVICES = { quick: 'Quick Once Over', full: 'Full Detail', interior_only: 'Interior Only', other: 'Other' };
+  const HERO_SERVICE_LABELS = { quick: 'Quick Detail', full: 'Full Detail', interior_only: 'Interior Only' };
   const ADDON_LABELS = { wax: 'Wax/Sealant', pethair: 'Pet Hair', soiled: 'Heavily Soiled', headlights: 'Headlight Restoration' };
+  const VALID_ADDONS = new Set(Object.keys(ADDON_LABELS));
+  const INTERIOR_ONLY_ADDONS = new Set(['pethair', 'soiled', 'headlights']);
 
   // Pricing model
   const PRICES = {
     base: {
-      sedan: { quick: 200, full: 300, interior: 150 },
-      suv: { quick: 250, full: 350, interior: 200 },
-      truck: { quick: 300, full: 500, interior: 250 }
+      sedan: { quick: 200, full: 300, interior_only: 200 },
+      suv_truck: { quick: 250, full: 350, interior_only: 250 },
+      van_3row: { quick: 300, full: 400, interior_only: 300 }
     },
     addons: {
-      wax: { sedan: 25, suv: 30, truck: 35 },
-      pethair: { sedan: 30, suv: 40, truck: 50 },
-      soiled: { sedan: 40, suv: 60, truck: 80 },
-      headlights: { sedan: 75, suv: 85, truck: 95 }
+      wax: { sedan: 25, suv_truck: 30, van_3row: 35 },
+      pethair: { sedan: 30, suv_truck: 40, van_3row: 50 },
+      soiled: { sedan: 40, suv_truck: 60, van_3row: 80 },
+      headlights: { sedan: 75, suv_truck: 85, van_3row: 95 }
     }
   };
 
@@ -58,8 +60,40 @@
   };
 
   const loadState = () => {
-    try { return { ...initial, ...(JSON.parse(localStorage.getItem('quoteState') || '{}')) }; }
-    catch { return { ...initial }; }
+    try {
+      const restored = { ...initial, ...(JSON.parse(localStorage.getItem('quoteState') || '{}')) };
+      let migrated = false;
+
+      if (restored.vehicle === 'suv') {
+        restored.vehicle = 'suv_truck';
+        migrated = true;
+      } else if (restored.vehicle === 'truck') {
+        // The former Truck/Van choice is now split across two categories.
+        restored.vehicle = null;
+        migrated = true;
+      } else if (restored.vehicle && !Object.prototype.hasOwnProperty.call(VEHICLES, restored.vehicle)) {
+        restored.vehicle = null;
+        migrated = true;
+      }
+
+      if (restored.service === 'interior' || restored.service === 'paint') {
+        restored.service = 'interior_only';
+        migrated = true;
+      } else if (restored.service && !Object.prototype.hasOwnProperty.call(SERVICES, restored.service)) {
+        restored.service = null;
+        migrated = true;
+      }
+
+      const restoredAddons = Array.isArray(restored.addons) ? restored.addons : [];
+      const validAddons = restoredAddons.filter((addon) => VALID_ADDONS.has(addon));
+      if (validAddons.length !== restoredAddons.length || !Array.isArray(restored.addons)) migrated = true;
+      restored.addons = validAddons;
+
+      if (migrated) localStorage.setItem('quoteState', JSON.stringify(restored));
+      return restored;
+    } catch {
+      return { ...initial };
+    }
   };
   const saveState = (s) => localStorage.setItem('quoteState', JSON.stringify(s));
 
@@ -71,7 +105,7 @@
   const FUNNEL_STARTED_AT_KEY = 'quoteFunnelStartedAt';
   const FUNNEL_LAST_EVENT_AT_KEY = 'quoteFunnelLastEventAt';
   const FUNNEL_STATE_VERSION_KEY = 'quoteFunnelStateVersion';
-  const FUNNEL_STATE_VERSION = '3';
+  const FUNNEL_STATE_VERSION = '4';
   const FUNNEL_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
   const getSessionStorage = () => {
@@ -183,6 +217,7 @@
   window.reportQuoteConversion = fireAdsConversion;
 
   const priceDelta = (addon, vehicle) => (vehicle ? (PRICES.addons[addon]?.[vehicle] || 0) : 0);
+  const isAddonAllowed = (service, addon) => service !== 'interior_only' || INTERIOR_ONLY_ADDONS.has(addon);
 
   const computeQuote = (s) => {
     if (!s.vehicle || !s.service) return { total: null, consult: false };
@@ -190,11 +225,43 @@
     const base = PRICES.base[s.vehicle]?.[s.service];
     if (typeof base !== 'number') return { total: null, consult: false };
     let total = base;
-    for (const a of s.addons) total += priceDelta(a, s.vehicle);
+    for (const a of s.addons) {
+      if (isAddonAllowed(s.service, a)) total += priceDelta(a, s.vehicle);
+    }
     return { total, consult: false };
   };
 
   const formatUSD = (n) => `$${n.toFixed(0)}`;
+
+  const updateServicePrices = () => {
+    $$('[data-service-price]').forEach((el) => {
+      const service = el.getAttribute('data-service-price');
+      if (CONSULT_SERVICES.has(service)) {
+        el.textContent = 'Consult';
+        return;
+      }
+      const price = state.vehicle ? PRICES.base[state.vehicle]?.[service] : null;
+      el.textContent = typeof price === 'number' ? `${formatUSD(price)} base` : 'Select vehicle';
+    });
+  };
+
+  const normalizeAddonsForService = () => {
+    const nextAddons = state.addons.filter((addon) => VALID_ADDONS.has(addon) && isAddonAllowed(state.service, addon));
+    if (nextAddons.length === state.addons.length) return;
+    state.addons = nextAddons;
+    saveState(state);
+  };
+
+  const updateAddonAvailability = () => {
+    $$('#step-3 .toggle').forEach((btn) => {
+      const addon = btn.getAttribute('data-addon');
+      const allowed = isAddonAllowed(state.service, addon);
+      btn.hidden = !allowed;
+      btn.disabled = !allowed;
+      btn.setAttribute('aria-pressed', String(allowed && state.addons.includes(addon)));
+    });
+  };
+
   const reduceMotion = (() => {
     try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
     catch { return false; }
@@ -246,6 +313,7 @@
   };
 
   const toggleAddon = (key, el) => {
+    if (!isAddonAllowed(state.service, key)) return;
     const idx = state.addons.indexOf(key);
     if (idx >= 0) state.addons.splice(idx, 1); else state.addons.push(key);
     el.setAttribute('aria-pressed', String(idx < 0));
@@ -256,10 +324,10 @@
   function updateAddonDeltas() {
     const v = state.vehicle;
     const map = {
-      wax: PRICES.addons.wax[v],
-      pethair: PRICES.addons.pethair[v],
-      soiled: PRICES.addons.soiled[v],
-      headlights: PRICES.addons.headlights[v]
+      wax: v ? PRICES.addons.wax[v] : null,
+      pethair: v ? PRICES.addons.pethair[v] : null,
+      soiled: v ? PRICES.addons.soiled[v] : null,
+      headlights: v ? PRICES.addons.headlights[v] : null
     };
     for (const [k, val] of Object.entries(map)) {
       const el = document.querySelector(`.delta[data-delta="${k}"]`);
@@ -268,7 +336,10 @@
   }
 
   const recalculate = () => {
-    state.consult = (state.service === 'other' || state.service === 'paint');
+    normalizeAddonsForService();
+    updateAddonAvailability();
+    updateServicePrices();
+    state.consult = CONSULT_SERVICES.has(state.service);
     const { total, consult } = computeQuote(state);
     state.quote = total;
 
@@ -304,7 +375,7 @@
         const serviceLabel = HERO_SERVICE_LABELS[state.service] || SERVICES[state.service] || 'Detail';
         heroPeek.textContent = `${serviceLabel} estimate: ${formatUSD(total)}`;
       } else {
-        heroPeek.textContent = 'Quick Detail from $150 (select options to see your quote)';
+        heroPeek.textContent = 'Quick Detail from $200 (select options to see your quote)';
       }
     }
 

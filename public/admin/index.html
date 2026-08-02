@@ -738,8 +738,8 @@
       </div>
 
       <div style="display:grid; gap:8px;">
-        <a class="btn btn-primary" href="/admin/blog.html">Open Blog Admin</a>
-        <a class="btn btn-ghost" href="/admin/clients.html">Open Client Manager</a>
+        <a class="btn btn-primary" href="/admin/blog">Open Blog Admin</a>
+        <a class="btn btn-ghost" href="/admin/clients">Open Client Manager</a>
       </div>
 
       <section class="filters">
@@ -766,7 +766,8 @@
               <option value="all">All services</option>
               <option value="quick">Quick Once Over</option>
               <option value="full">Full Detail</option>
-              <option value="interior">Interior Refresh</option>
+              <option value="interior_only">Interior Only</option>
+              <option value="interior">Interior Refresh (legacy)</option>
               <option value="other">Other</option>
             </select>
           </div>
@@ -927,7 +928,7 @@
               <span id="detail-price-pill" class="pill">$0</span>
               <a id="lead-action-sms" class="btn btn-action" href="#">Text Customer</a>
               <a id="lead-action-call" class="btn btn-action" href="#">Call Customer</a>
-              <a id="lead-action-open-client" class="btn btn-action" href="/admin/clients.html">Open Client</a>
+              <a id="lead-action-open-client" class="btn btn-action" href="/admin/clients">Open Client</a>
               <button id="lead-action-copy-link" type="button" class="btn btn-ghost">Copy Link</button>
             </div>
           </header>
@@ -979,7 +980,7 @@
     </main>
   </div>
 
-  <script type="module" src="/scripts/admin-dashboard.js?v=20260615"></script>
+  <script type="module" src="/scripts/admin-dashboard.js?v=20260802b"></script>
 </body>
 
 </html>

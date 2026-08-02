@@ -723,6 +723,57 @@ button { touch-action: manipulation; }
   line-height: 1.2;
 }
 
+.vehicle-options .btn-detail {
+  max-width: 20ch;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.service-options .service-option {
+  justify-content: space-between;
+  gap: 18px;
+  text-align: left;
+}
+
+.service-option-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.service-option-copy .btn-label {
+  font-weight: 750;
+}
+
+.service-description {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.service-price {
+  flex: 0 0 auto;
+  color: var(--brand);
+  font-size: 16px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.options .btn[hidden] {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .service-options .service-option {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
 @media (max-width: 540px) {
   .vehicle-options {
     grid-template-columns: 1fr;

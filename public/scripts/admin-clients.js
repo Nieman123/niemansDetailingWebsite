@@ -861,10 +861,10 @@ function setClientActionLinks(client) {
   if (els.actionOpenLead) {
     if (client.source_lead_id) {
       els.actionOpenLead.hidden = false;
-      els.actionOpenLead.href = `/admin/index.html?id=${encodeURIComponent(client.source_lead_id)}`;
+      els.actionOpenLead.href = `/admin?id=${encodeURIComponent(client.source_lead_id)}`;
     } else {
       els.actionOpenLead.hidden = true;
-      els.actionOpenLead.href = "/admin/index.html";
+      els.actionOpenLead.href = "/admin";
     }
   }
 }
@@ -1768,6 +1768,7 @@ function serviceLabelFromLead(lead) {
   const map = {
     quick: "Quick Once Over",
     full: "Full Detail",
+    interior_only: "Interior Only",
     interior: "Interior Refresh",
     other: "Other",
   };
