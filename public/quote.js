@@ -268,6 +268,66 @@
   })();
   let hasRenderedStep = false;
 
+  const STEP_TITLES = {
+    1: 'Choose your vehicle',
+    2: 'Choose your package',
+    3: 'Personalize your detail',
+    4: 'Get your quote',
+  };
+
+  const updateProgress = (n) => {
+    const pct = (n / 4) * 100;
+    const bar = $('#progress');
+    if (bar) bar.style.width = `${pct}%`;
+
+    const stepCount = $('#step-count');
+    if (stepCount) stepCount.textContent = `Step ${n} of 4`;
+
+    const stepTitle = $('#step-title');
+    if (stepTitle) stepTitle.textContent = STEP_TITLES[n] || '';
+
+    const track = $('#progress-track');
+    if (track) track.setAttribute('aria-valuenow', String(n));
+
+    $$('[data-progress-step]').forEach((item) => {
+      const step = Number(item.getAttribute('data-progress-step'));
+      item.classList.toggle('is-current', step === n);
+      item.classList.toggle('is-complete', step < n);
+      if (step === n) item.setAttribute('aria-current', 'step');
+      else item.removeAttribute('aria-current');
+    });
+  };
+
+  const updateStickyAction = () => {
+    const actionBar = $('#quote-action-bar');
+    const primary = $('#quote-action-primary');
+    const label = $('#quote-action-label');
+    const back = $('#quote-action-back');
+    if (!actionBar || !primary || !label || !back) return;
+
+    actionBar.hidden = false;
+    back.hidden = state.step <= 1;
+
+    let nextLabel = 'Continue';
+    let disabled = false;
+
+    if (state.step === 1) {
+      nextLabel = state.vehicle ? 'Next: Choose Package' : 'Select a vehicle above';
+      disabled = !state.vehicle;
+    } else if (state.step === 2) {
+      nextLabel = state.service ? 'Next: Add-ons' : 'Select a package above';
+      disabled = !state.service;
+    } else if (state.step === 3) {
+      nextLabel = 'Next: Your Details';
+    } else if (state.step === 4) {
+      nextLabel = state.consult ? 'Request My Consultation' : 'Send My Quote Request';
+    }
+
+    label.textContent = nextLabel;
+    primary.disabled = disabled;
+    primary.setAttribute('aria-label', nextLabel);
+  };
+
   const placeQuotePeek = (n) => {
     const peek = $('#quote-peek');
     if (!peek) return;
@@ -287,6 +347,8 @@
   const setStep = (n) => {
     const prevStep = state.step;
     state.step = n;
+    document.body.dataset.quoteStep = String(n);
+    document.body.classList.remove('quote-flow-complete');
     trackStepView(n);
     const nextScreen = $(`#step-${n}`);
     $$('.screen').forEach(sec => {
@@ -301,9 +363,7 @@
       }, { once: true });
     }
     hasRenderedStep = true;
-    const pct = ((n - 1) / 3) * 100;
-    const bar = $('#progress'); if (bar) bar.style.width = pct + '%';
-    const stepCount = $('#step-count'); if (stepCount) stepCount.textContent = `Step ${n} of 4`;
+    updateProgress(n);
     placeQuotePeek(n);
     if (n >= 3) updateAddonDeltas();
     recalculate();
@@ -383,13 +443,14 @@
     const submitBtn = $('#submit');
     if (submitBtn) {
       if (state.consult) {
-        submitBtn.textContent = 'Request consult';
+        submitBtn.textContent = 'Request My Consultation';
         submitBtn.dataset.mode = 'consult';
       } else {
-        submitBtn.textContent = 'Text me my quote';
+        submitBtn.textContent = 'Send My Quote Request';
         submitBtn.dataset.mode = 'quote';
       }
     }
+    updateStickyAction();
   };
 
   const sanitize = (s) => (s || '').replace(/<[^>]*>/g, '').trim();
@@ -564,13 +625,34 @@
 
     // Inputs
     $('#notes').addEventListener('input', (e) => { state.notes = e.target.value.slice(0, 1000); saveState(state); });
-    $('#name').addEventListener('input', (e) => { state.name = e.target.value.slice(0, 120); saveState(state); });
+    $('#name').addEventListener('input', (e) => {
+      state.name = e.target.value.slice(0, 120);
+      saveState(state);
+      showFieldError('name', '');
+    });
     $('#phone').addEventListener('input', (e) => {
       const formatted = formatPhone(e.target.value);
       e.target.value = formatted;
       state.phone = formatted; saveState(state);
-      showPhoneError('');
+      showFieldError('phone', '');
     });
+
+    const stickyPrimary = $('#quote-action-primary');
+    if (stickyPrimary) {
+      stickyPrimary.addEventListener('click', () => {
+        if (state.step === 1 && state.vehicle) goNext(2);
+        else if (state.step === 2 && state.service) goNext(3);
+        else if (state.step === 3) goNext(4);
+        else if (state.step === 4) submit();
+      });
+    }
+
+    const stickyBack = $('#quote-action-back');
+    if (stickyBack) {
+      stickyBack.addEventListener('click', () => {
+        if (state.step > 1) goPrev(state.step - 1);
+      });
+    }
 
     // Submit
     $('#submit').addEventListener('click', submit);
@@ -622,35 +704,49 @@
 
   const validate = () => {
     const errors = [];
-    if (!state.vehicle) errors.push('Select a vehicle type');
-    if (!state.service) errors.push('Select a service');
-    if (!sanitize(state.name)) errors.push('Enter your name');
+    showFieldError('name', '');
+    showFieldError('phone', '');
+
+    if (!state.vehicle) {
+      setStep(1);
+      return [{ field: null, message: 'Select a vehicle type.' }];
+    }
+    if (!state.service) {
+      setStep(2);
+      return [{ field: null, message: 'Select a package.' }];
+    }
+    if (!sanitize(state.name)) {
+      showFieldError('name', 'Enter your name.');
+      errors.push({ field: 'name', message: 'Enter your name.' });
+    }
     const phoneDigits = getUsPhoneDigits(state.phone);
     if (phoneDigits.length !== 10) {
-      showPhoneError('Enter a valid US phone');
-      errors.push('Enter a valid US phone');
+      showFieldError('phone', 'Enter a 10-digit US phone number.');
+      errors.push({ field: 'phone', message: 'Enter a 10-digit US phone number.' });
     }
     return errors;
   };
 
-  function showPhoneError(msg) {
-    const el = document.getElementById('phone-error');
-    if (!el) return;
+  function showFieldError(fieldId, msg) {
+    const field = document.getElementById(fieldId);
+    const el = document.getElementById(`${fieldId}-error`);
+    if (!field || !el) return;
     if (msg) {
       el.textContent = msg;
       el.hidden = false;
+      field.setAttribute('aria-invalid', 'true');
     } else {
       el.textContent = '';
       el.hidden = true;
+      field.removeAttribute('aria-invalid');
     }
   }
 
   const submit = async () => {
     const errs = validate();
     if (errs.length) {
-      // Only inline error for phone; others may alert for now
-      if (errs.length === 1 && errs[0] === 'Enter a valid US phone') return;
-      alert(errs[0]);
+      const firstInvalid = errs.find((error) => error.field)?.field;
+      if (firstInvalid) document.getElementById(firstInvalid)?.focus();
       return;
     }
 
@@ -718,8 +814,12 @@
     };
 
     const submitBtn = $('#submit');
+    const stickySubmitBtn = $('#quote-action-primary');
+    const stickySubmitLabel = $('#quote-action-label');
     const prevText = submitBtn ? submitBtn.textContent : null;
     if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Confirming…'; }
+    if (stickySubmitBtn) stickySubmitBtn.disabled = true;
+    if (stickySubmitLabel) stickySubmitLabel.textContent = 'Confirming…';
     try {
       const res = await fetch(buildApiUrl('/api/createLead'), {
         method: 'POST',
@@ -756,7 +856,8 @@
     } catch (err) {
       console.error(err);
       alert('Submission failed. If testing locally, use Firebase emulators or set API_BASE to your domain.');
-      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = prevText || 'Text me my quote'; }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = prevText || 'Send My Quote Request'; }
+      updateStickyAction();
     }
   };
 
@@ -773,6 +874,10 @@
       <div class="pill">Ref: ${id}</div>
     `;
     $('#confirm').hidden = false;
+    document.body.classList.add('quote-flow-complete');
+    const actionBar = $('#quote-action-bar');
+    if (actionBar) actionBar.hidden = true;
+    $('#confirm h2')?.focus();
   };
 
   // Boot
