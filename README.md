@@ -140,7 +140,7 @@ The phone-only mobile reminder appears at most once per tab session, after a veh
 
 Lead submission is idempotent using a random pending token retained in session storage for retries. The server hashes the token and grants access to package/add-on fields for 24 hours. `/api/leadOptions` recalculates prices from server data and never returns contact details. Firestore rules still deny public access to leads. The receipt travels in the URL fragment, then moves into session storage; no customer contact information is placed in URLs. Expired or unavailable receipts offer a direct text fallback.
 
-Customer texts are still personal follow-ups, not automated SMS. Existing new-lead Telegram alerts remain; subsequent add-on changes appear in the admin lead record. Emulator runs suppress Telegram messages.
+Customer texts are still personal follow-ups, not automated SMS. Existing new-lead Telegram alerts remain. The `notifyLeadAddonUpdate` Firestore trigger sends a separate Telegram alert when saved add-ons change, including the customer, added/removed extras, old/new totals, and CMS link. Unchanged selections and replayed delivered events are skipped. Failed sends are retried by Firebase; the saved quote does not depend on Telegram availability. Delivery is at least once: a crash after Telegram accepts a message but before its delivery receipt is stored can repeat that alert. Emulator runs suppress Telegram messages.
 
 Funnel sessions use `flow_version: "5"`. The dashboard maps old/new contact stages and reports the new flow's submission rate separately, plus reminder leads. A successful lead write records completion server-side; thank-you reloads and add-on saves do not fire new Ads lead conversions. Ads conversion events use the lead ID as their transaction ID.
 
@@ -150,6 +150,7 @@ Use a demo project to avoid production leads. Generic static previews now keep A
 
 ```bash
 npm run build --prefix functions
+node scripts/test-addon-notifications.cjs
 npx firebase-tools@13.35.1 emulators:exec --project demo-quote-cro --only firestore,functions,hosting 'node scripts/test-quote-api.mjs'
 ```
 
@@ -164,9 +165,9 @@ npx firebase-tools@13.35.1 emulators:exec --project demo-quote-cro --only firest
 node scripts/test-quote-ui.cjs
 ```
 
-The API suite checks invalid contact/selection data, duplicate retries, unauthorized/expired edits, server pricing, persisted/removable add-ons, interior-only restrictions, consultations, and phone-only recovery. Browser checks cover widths of 320, 390, 768, and 1280px, both reminder triggers, typing suppression, dismissal, errors, receipt reloads, and reduced motion. External services are blocked in browser tests, so these checks do not verify live Google Ads delivery, Telegram delivery, or an actual phone keyboard.
+The notification suite exercises the compiled Firestore handler with mocked Telegram and delivery receipts, covering changed selections, message contents, duplicate suppression, and retryable failures without sending real messages. The API suite checks invalid contact/selection data, duplicate retries, unauthorized/expired edits, server pricing, persisted/removable add-ons, interior-only restrictions, consultations, and phone-only recovery. Browser checks cover widths of 320, 390, 768, and 1280px, both reminder triggers, typing suppression, dismissal, errors, receipt reloads, and reduced motion. External services are blocked in browser tests, so these checks do not verify live Google Ads delivery, Telegram delivery, or an actual phone keyboard.
 
-Deploy the rebuilt `functions:api` and Hosting assets together; the new frontend requires the new lead response and add-on endpoint.
+Deploy the rebuilt `functions:api`, `functions:notifyLeadAddonUpdate`, and Hosting assets together; the new frontend requires the new lead response and add-on endpoint.
 
 ### Conversion review
 

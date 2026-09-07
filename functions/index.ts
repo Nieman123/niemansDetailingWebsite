@@ -1,4 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
+import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { logger } from "firebase-functions";
 import { defineString } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -146,6 +147,59 @@ function coerceUtm(input: unknown): Record<string, string> {
 const HOSTING_ORIGIN_PARAM = defineString("HOSTING_ORIGIN", { default: "https://niemansdetailing.com" });
 const TELEGRAM_BOT_TOKEN = defineString("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_CHAT_ID = defineString("TELEGRAM_CHAT_ID");
+
+async function sendTelegramMessage(text: string): Promise<void> {
+  const botToken = TELEGRAM_BOT_TOKEN.value();
+  const chatId = TELEGRAM_CHAT_ID.value();
+  if (!botToken || !chatId) throw new Error("Missing Telegram configuration");
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!response.ok) throw new Error(`Telegram request failed (${response.status})`);
+  const result = await response.json() as { ok?: boolean };
+  if (!result.ok) throw new Error("Telegram did not accept the message");
+}
+
+// Deliver from the committed Firestore update, independently of the customer's tab.
+// Failed sends throw so Firebase retries the event. Successful event IDs are recorded.
+export const notifyLeadAddonUpdate = onDocumentUpdated({
+  document: "leads/{leadId}", region: "us-east1", retry: true,
+}, async (event) => {
+  if (!event.data || process.env.FUNCTIONS_EMULATOR) return;
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+  if (after.honeypot || after.status === "spam") return;
+  const previousAddons = coerceAddons(before.addons).sort();
+  const currentAddons = coerceAddons(after.addons).sort();
+  if (previousAddons.join(",") === currentAddons.join(",")) return;
+
+  const receipt = event.data.after.ref.collection("addonNotifications")
+    .doc(createHash("sha256").update(event.id).digest("hex"));
+  if ((await receipt.get()).exists) return;
+
+  const vehicle = coerceVehicle(after.vehicle);
+  const service = coerceService(after.service);
+  const added = currentAddons.filter(addon => !previousAddons.includes(addon));
+  const removed = previousAddons.filter(addon => !currentAddons.includes(addon));
+  const labels = (addons: Addon[]) => addons.map(addon => ADDON_LABELS[addon]).join(", ") || "None";
+  const price = (total: unknown) => typeof total === "number" && Number.isFinite(total) ? `$${total}` : "Confirm by text";
+  const text = [
+    `Quote updated: ${vehicle ? VEHICLE_LABELS[vehicle] : "Vehicle"} • ${service ? SERVICE_LABELS[service] : "Detail"}`,
+    `Name: ${after.name || "Not provided (text quote request)"}`,
+    `Phone: ${after.phone_normalized || after.phone || "Not provided"}`,
+    added.length ? `Added: ${labels(added)}` : null,
+    removed.length ? `Removed: ${labels(removed)}` : null,
+    `Current add-ons: ${labels(currentAddons)}`,
+    `Previous total: ${price(before.quoted_total)}`,
+    `Updated total: ${price(after.quoted_total)}`,
+    `Open: ${HOSTING_ORIGIN_PARAM.value()}/admin/index.html?id=${encodeURIComponent(event.params.leadId)}`,
+  ].filter(Boolean).join("\n");
+  await sendTelegramMessage(text);
+  await receipt.set({ event_id: event.id, sent_at: FieldValue.serverTimestamp() });
+});
 
 export const api = onRequest({ region: "us-east1" }, async (req, res) => {
   const HOSTING_ORIGIN = HOSTING_ORIGIN_PARAM.value();
@@ -382,12 +436,7 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
           `Open: ${openLink}`,
         ].filter(Boolean).join("\n");
 
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
-          signal: AbortSignal.timeout(5000),
-        }).then(async r => { if (!r.ok) throw new Error(await r.text()); });
+        await sendTelegramMessage(text);
       }
     } catch (e) {
       logger.error("Telegram error", e as any);

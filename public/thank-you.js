@@ -58,7 +58,7 @@
       $('#addon-status').textContent = 'Saved to your quote request. I’ll confirm everything by text.';
     } catch (error) {
       $('#addon-status').textContent = error.message === 'expired'
-        ? 'This edit link has expired. Your original request is saved. Text Jonathan to add extras.'
+        ? 'This edit link has expired. Your original request is saved. Text Nieman to add extras.'
         : 'Your extras didn’t save. Please try again. Your original quote request is still saved.';
     } finally { saving = false; render(); }
   });
@@ -78,7 +78,7 @@
       selected = [...saved];
       $('#thanks-kicker').textContent = 'Request received ✓';
       $('#thanks-title').textContent = 'You’re all set.';
-      $('#thanks-message').textContent = 'I’ll personally text you to confirm pricing and find a time that works. Jonathan';
+      $('#thanks-message').textContent = 'I’ll personally text you to confirm pricing and find a time that works. Nieman';
       $('#addon-section').hidden = false;
       render();
     } catch {

@@ -33,13 +33,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.api = void 0;
+exports.api = exports.notifyLeadAddonUpdate = void 0;
 const https_1 = require("firebase-functions/v2/https");
+const firestore_1 = require("firebase-functions/v2/firestore");
 const firebase_functions_1 = require("firebase-functions");
 const params_1 = require("firebase-functions/params");
 const admin = __importStar(require("firebase-admin"));
 const node_crypto_1 = require("node:crypto");
-const firestore_1 = require("firebase-admin/firestore");
+const firestore_2 = require("firebase-admin/firestore");
 admin.initializeApp();
 const db = admin.firestore();
 const VEHICLE_LABELS = {
@@ -172,6 +173,62 @@ function coerceUtm(input) {
 const HOSTING_ORIGIN_PARAM = (0, params_1.defineString)("HOSTING_ORIGIN", { default: "https://niemansdetailing.com" });
 const TELEGRAM_BOT_TOKEN = (0, params_1.defineString)("TELEGRAM_BOT_TOKEN");
 const TELEGRAM_CHAT_ID = (0, params_1.defineString)("TELEGRAM_CHAT_ID");
+async function sendTelegramMessage(text) {
+    const botToken = TELEGRAM_BOT_TOKEN.value();
+    const chatId = TELEGRAM_CHAT_ID.value();
+    if (!botToken || !chatId)
+        throw new Error("Missing Telegram configuration");
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+        signal: AbortSignal.timeout(5000),
+    });
+    if (!response.ok)
+        throw new Error(`Telegram request failed (${response.status})`);
+    const result = await response.json();
+    if (!result.ok)
+        throw new Error("Telegram did not accept the message");
+}
+// Deliver from the committed Firestore update, independently of the customer's tab.
+// Failed sends throw so Firebase retries the event. Successful event IDs are recorded.
+exports.notifyLeadAddonUpdate = (0, firestore_1.onDocumentUpdated)({
+    document: "leads/{leadId}", region: "us-east1", retry: true,
+}, async (event) => {
+    if (!event.data || process.env.FUNCTIONS_EMULATOR)
+        return;
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    if (after.honeypot || after.status === "spam")
+        return;
+    const previousAddons = coerceAddons(before.addons).sort();
+    const currentAddons = coerceAddons(after.addons).sort();
+    if (previousAddons.join(",") === currentAddons.join(","))
+        return;
+    const receipt = event.data.after.ref.collection("addonNotifications")
+        .doc((0, node_crypto_1.createHash)("sha256").update(event.id).digest("hex"));
+    if ((await receipt.get()).exists)
+        return;
+    const vehicle = coerceVehicle(after.vehicle);
+    const service = coerceService(after.service);
+    const added = currentAddons.filter(addon => !previousAddons.includes(addon));
+    const removed = previousAddons.filter(addon => !currentAddons.includes(addon));
+    const labels = (addons) => addons.map(addon => ADDON_LABELS[addon]).join(", ") || "None";
+    const price = (total) => typeof total === "number" && Number.isFinite(total) ? `$${total}` : "Confirm by text";
+    const text = [
+        `Quote updated: ${vehicle ? VEHICLE_LABELS[vehicle] : "Vehicle"} • ${service ? SERVICE_LABELS[service] : "Detail"}`,
+        `Name: ${after.name || "Not provided (text quote request)"}`,
+        `Phone: ${after.phone_normalized || after.phone || "Not provided"}`,
+        added.length ? `Added: ${labels(added)}` : null,
+        removed.length ? `Removed: ${labels(removed)}` : null,
+        `Current add-ons: ${labels(currentAddons)}`,
+        `Previous total: ${price(before.quoted_total)}`,
+        `Updated total: ${price(after.quoted_total)}`,
+        `Open: ${HOSTING_ORIGIN_PARAM.value()}/admin/index.html?id=${encodeURIComponent(event.params.leadId)}`,
+    ].filter(Boolean).join("\n");
+    await sendTelegramMessage(text);
+    await receipt.set({ event_id: event.id, sent_at: firestore_2.FieldValue.serverTimestamp() });
+});
 exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) => {
     const HOSTING_ORIGIN = HOSTING_ORIGIN_PARAM.value();
     const ALLOWED_ORIGINS = new Set([
@@ -242,7 +299,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                 if (action === "save")
                     tx.update(ref, {
                         addons, quoted_total: quote.total, quote_note: quote.consult ? "consult" : null,
-                        addons_updated_at: firestore_1.FieldValue.serverTimestamp(),
+                        addons_updated_at: firestore_2.FieldValue.serverTimestamp(),
                     });
                 return { vehicle, service, addons, quoted_total: quote.total, consult: quote.consult,
                     addon_prices: Object.fromEntries(allowed.filter(a => filterAddonsForService(service, [a]).length).map(a => [a, ADDONS[a][vehicle]])) };
@@ -275,8 +332,8 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                 page: "quote",
                 flow_version: body.flow_version === "5" ? "5" : "4",
                 last_event: event,
-                last_seen_at: firestore_1.FieldValue.serverTimestamp(),
-                event_count: firestore_1.FieldValue.increment(1),
+                last_seen_at: firestore_2.FieldValue.serverTimestamp(),
+                event_count: firestore_2.FieldValue.increment(1),
                 referrer_last: String(body.referrer || req.headers["referer"] || "").toString().slice(0, 1024) || null,
                 user_agent_last: String(req.headers["user-agent"] || "").toString().slice(0, 512),
                 ip_last: getClientIP(req),
@@ -295,14 +352,14 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                 const stepKey = `step_${step}`;
                 eventPayload.last_step = stepKey;
                 eventPayload.last_step_number = step;
-                eventPayload.steps_seen = firestore_1.FieldValue.arrayUnion(stepKey);
+                eventPayload.steps_seen = firestore_2.FieldValue.arrayUnion(stepKey);
             }
             if (event === "lead_submitted") {
                 eventPayload.last_step = "submitted";
                 eventPayload.last_step_number = 5;
                 eventPayload.completed = true;
-                eventPayload.completed_at = firestore_1.FieldValue.serverTimestamp();
-                eventPayload.steps_seen = firestore_1.FieldValue.arrayUnion(body.flow_version === "5" ? "step_3" : "step_4", "submitted");
+                eventPayload.completed_at = firestore_2.FieldValue.serverTimestamp();
+                eventPayload.steps_seen = firestore_2.FieldValue.arrayUnion(body.flow_version === "5" ? "step_3" : "step_4", "submitted");
                 eventPayload.capture_method = body.capture_method === "exit_intent" ? "exit_intent" : "quiz";
             }
             await db.collection("quotePageSessions").doc(sessionId).set(eventPayload, { merge: true });
@@ -375,7 +432,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             user_agent: (body.user_agent || req.headers["user-agent"] || "").toString().slice(0, 512),
             referrer: (body.referrer || req.headers["referer"] || "").toString().slice(0, 1024),
             ip: getClientIP(req),
-            created_at: firestore_1.FieldValue.serverTimestamp(),
+            created_at: firestore_2.FieldValue.serverTimestamp(),
         };
         // Write to Firestore
         const ref = db.collection("leads").doc(tokenHash);
@@ -388,9 +445,9 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                 tx.set(db.collection("quotePageSessions").doc(sessionId), {
                     session_id: sessionId, page: "quote", flow_version: payload.flow_version,
                     session_started_at: String(body.session_started_at || payload.ts).slice(0, 80),
-                    completed: true, completed_at: firestore_1.FieldValue.serverTimestamp(), last_seen_at: firestore_1.FieldValue.serverTimestamp(),
+                    completed: true, completed_at: firestore_2.FieldValue.serverTimestamp(), last_seen_at: firestore_2.FieldValue.serverTimestamp(),
                     capture_method: payload.capture_method, utm: coerceUtm(body.utm),
-                    steps_seen: firestore_1.FieldValue.arrayUnion("submitted"),
+                    steps_seen: firestore_2.FieldValue.arrayUnion("submitted"),
                 }, { merge: true });
             return true;
         });
@@ -421,13 +478,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                     notes ? `Notes: ${notes}` : null,
                     `Open: ${openLink}`,
                 ].filter(Boolean).join("\n");
-                await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
-                    signal: AbortSignal.timeout(5000),
-                }).then(async (r) => { if (!r.ok)
-                    throw new Error(await r.text()); });
+                await sendTelegramMessage(text);
             }
         }
         catch (e) {
