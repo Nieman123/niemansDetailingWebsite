@@ -113,8 +113,7 @@ const DEFAULT_VACATION_NOTICE = {
 const QUOTE_FUNNEL_STEPS = [
   { key: "step_1", label: "Step 1: Vehicle" },
   { key: "step_2", label: "Step 2: Service" },
-  { key: "step_3", label: "Step 3: Add-ons" },
-  { key: "step_4", label: "Step 4: Contact" },
+  { key: "contact", label: "Contact details" },
   { key: "submitted", label: "Lead Submitted" },
 ];
 const QUOTE_FUNNEL_BASELINE_ISO = "2026-02-23T14:00:00-05:00";
@@ -312,7 +311,7 @@ function rangeFilterLabel(rangeFilter) {
 function quoteSessionReachedStep(session, stepKey) {
   if (stepKey === "submitted" && session.completed === true) return true;
   const steps = Array.isArray(session.steps_seen) ? session.steps_seen : [];
-  if (stepKey === "step_4" && steps.includes("step_5")) return true;
+  if (stepKey === "contact") return session.flow_version === "5" ? steps.includes("step_3") : steps.includes("step_4") || steps.includes("step_5");
   return steps.includes(stepKey);
 }
 
@@ -583,6 +582,9 @@ function renderQuoteFunnel() {
   const rangeFilter = els.rangeFilter?.value || "all";
   const sessions = state.quoteSessions.filter((session) => quoteSessionInRange(session, rangeFilter));
   const visitorCount = sessions.length;
+  const newFlowSessions = sessions.filter(session => session.flow_version === "5");
+  const newFlowLeads = newFlowSessions.filter(session => session.completed === true).length;
+  const newFlowRate = newFlowSessions.length ? `${(100 * newFlowLeads / newFlowSessions.length).toFixed(1)}%` : "no data yet";
   const stageCounts = QUOTE_FUNNEL_STEPS.map((step) =>
     sessions.filter((session) => quoteSessionReachedStep(session, step.key)).length
   );
@@ -591,7 +593,7 @@ function renderQuoteFunnel() {
   const maxCount = Math.max(...stageCounts, 1);
 
   if (els.funnelRangeLabel) {
-    els.funnelRangeLabel.textContent = `Using ${rangeFilterLabel(rangeFilter)} filter. Baseline starts ${QUOTE_FUNNEL_BASELINE_LABEL}.`;
+    els.funnelRangeLabel.textContent = `Using ${rangeFilterLabel(rangeFilter)} filter. Baseline starts ${QUOTE_FUNNEL_BASELINE_LABEL}. Contact combines the old step 4 and new step 3. New flow: ${newFlowLeads}/${newFlowSessions.length} sessions submitted (${newFlowRate}); ${sessions.filter(s => s.capture_method === "exit_intent" && s.completed).length} leads came from the mobile reminder.`;
   }
   if (els.funnelVisitors) els.funnelVisitors.textContent = String(visitorCount);
   if (els.funnelSubmissions) els.funnelSubmissions.textContent = String(submittedCount);

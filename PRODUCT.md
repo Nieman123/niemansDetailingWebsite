@@ -10,7 +10,7 @@ Vehicle owners in Asheville and surrounding Western North Carolina who want prof
 
 ## Product Purpose
 
-Nieman's Detailing builds trust in a local owner-operated mobile detailing service and turns qualified visitors into quote requests. Success means a visitor can confidently understand the offer, complete the four-step quote flow, and receive a clear price or consultation path without confusion, hidden costs, or unnecessary data entry.
+Nieman's Detailing builds trust in a local owner-operated mobile detailing service and turns qualified visitors into quote requests. Success means a visitor can confidently understand the offer, complete the three-step quote flow, and receive a clear price or consultation path without confusion, hidden costs, or unnecessary data entry.
 
 ## Brand Personality
 

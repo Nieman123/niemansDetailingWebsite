@@ -130,3 +130,44 @@ The site should stay on a dark detailing-oriented palette and avoid pale lavende
 ### Current implementation
 
 The homepage palette tokens and dark surface treatments currently live in `public/styles/home.css`.
+
+
+## Quote funnel (September 2026)
+
+`/quote` has three steps: vehicle, package, contact. Service cards show vehicle-specific starting prices. Add-ons are selected on `/thank-you` after the lead has been created; customers tap **Save my add-ons** to update that same lead. The mobile save action stays within reach at the bottom of the screen.
+
+The phone-only mobile reminder appears at most once per tab session, after a vehicle and package are selected, on 30 seconds of inactivity or an upward scroll of more than 180px within 600ms. It is suppressed while typing, while the tab is hidden, during submission, and after success. Native dialog behavior supports focus containment, Escape dismissal, and a 48px close control. Motion respects reduced-motion settings. The 160ms skeleton overlay does not delay navigation or block interaction.
+
+Lead submission is idempotent using a random pending token retained in session storage for retries. The server hashes the token and grants access to package/add-on fields for 24 hours. `/api/leadOptions` recalculates prices from server data and never returns contact details. Firestore rules still deny public access to leads. The receipt travels in the URL fragment, then moves into session storage; no customer contact information is placed in URLs. Expired or unavailable receipts offer a direct text fallback.
+
+Customer texts are still personal follow-ups, not automated SMS. Existing new-lead Telegram alerts remain; subsequent add-on changes appear in the admin lead record. Emulator runs suppress Telegram messages.
+
+Funnel sessions use `flow_version: "5"`. The dashboard maps old/new contact stages and reports the new flow's submission rate separately, plus reminder leads. A successful lead write records completion server-side; thank-you reloads and add-on saves do not fire new Ads lead conversions. Ads conversion events use the lead ID as their transaction ID.
+
+### Local verification
+
+Use a demo project to avoid production leads. Generic static previews now keep API calls on the local origin.
+
+```bash
+npm run build --prefix functions
+npx firebase-tools@13.35.1 emulators:exec --project demo-quote-cro --only firestore,functions,hosting 'node scripts/test-quote-api.mjs'
+```
+
+Browser suites require Playwright (`PLAYWRIGHT_MODULE` can point to an existing installation) and Chrome (`BROWSER_EXECUTABLE` overrides the default macOS Chrome path):
+
+```bash
+# Real browser, Hosting rewrites, Functions and Firestore:
+npx firebase-tools@13.35.1 emulators:exec --project demo-quote-cro --only firestore,functions,hosting 'node scripts/test-quote-api.mjs && node scripts/test-quote-e2e.cjs'
+
+# Mobile layout, mocked failure/retry cases and reminder timing:
+# Run a static server for public/ on port 5173 in another terminal first.
+node scripts/test-quote-ui.cjs
+```
+
+The API suite checks invalid contact/selection data, duplicate retries, unauthorized/expired edits, server pricing, persisted/removable add-ons, interior-only restrictions, consultations, and phone-only recovery. Browser checks cover widths of 320, 390, 768, and 1280px, both reminder triggers, typing suppression, dismissal, errors, receipt reloads, and reduced motion. External services are blocked in browser tests, so these checks do not verify live Google Ads delivery, Telegram delivery, or an actual phone keyboard.
+
+Deploy the rebuilt `functions:api` and Hosting assets together; the new frontend requires the new lead response and add-on endpoint.
+
+### Conversion review
+
+The mobile changes remove the pre-contact add-on decision, shorten repeated headings and pricing copy, keep package prices visible, collapse optional notes, and retain a reachable primary action. These are conversion hypotheses, not measured lift. Compare new-flow submissions per quote-page session with the same denominator for the old flow, then check qualified leads, bookings, cost per booking, and add-on revenue. The user-reported 3% and suggested 40% have not been verified against a common denominator or traffic source. No claim of a guaranteed conversion rate is made.

@@ -2,6 +2,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
 import { defineString } from "firebase-functions/params";
 import * as admin from "firebase-admin";
+import { createHash, randomBytes } from "node:crypto";
 import { FieldValue } from "firebase-admin/firestore";
 
 admin.initializeApp();
@@ -62,7 +63,7 @@ function coerceVehicle(v: unknown): Vehicle | null {
     van: "van_3row", "3-row suv": "van_3row", "three-row suv": "van_3row",
   };
   const key = String(v || "").toLowerCase().trim();
-  return (m[key] || null) as Vehicle | null;
+  return Object.prototype.hasOwnProperty.call(m, key) ? m[key] : null;
 }
 function coerceService(s: unknown): Service | null {
   const m: Record<string, Service> = {
@@ -75,12 +76,12 @@ function coerceService(s: unknown): Service | null {
     other: "other",
   };
   const key = String(s || "").toLowerCase().trim();
-  return (m[key] || null) as Service | null;
+  return Object.prototype.hasOwnProperty.call(m, key) ? m[key] : null;
 }
 function coerceAddons(arr: unknown): Addon[] {
   if (!Array.isArray(arr)) return [];
   const valid: Addon[] = ["wax","pethair","odor","engine","soiled","ceramic","headlights"];
-  return arr.map(x => String(x||"").toLowerCase().trim()).filter((x): x is Addon => (valid as string[]).includes(x));
+  return [...new Set(arr.map(x => String(x||"").toLowerCase().trim()).filter((x): x is Addon => (valid as string[]).includes(x)))];
 }
 
 function filterAddonsForService(service: Service | null, addons: Addon[]): Addon[] {
@@ -175,9 +176,51 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
   const path = (req.path || req.originalUrl || "").toString().split("?")[0].replace(/\/+$/, "");
   const isCreateLeadRoute = path.endsWith("/createLead");
   const isQuoteProgressRoute = path.endsWith("/quoteProgress");
-  if (!isCreateLeadRoute && !isQuoteProgressRoute) { res.status(404).json({ ok: false, error: "not_found" }); return; }
+  const isLeadOptionsRoute = path.endsWith("/leadOptions");
+  res.setHeader("Cache-Control", "no-store");
+  if (!isCreateLeadRoute && !isQuoteProgressRoute && !isLeadOptionsRoute) { res.status(404).json({ ok: false, error: "not_found" }); return; }
 
   if (req.method !== "POST") { res.status(405).json({ ok: false, error: "method_not_allowed" }); return; }
+
+  // A short-lived capability grants access only to this lead's package and add-ons.
+  // Contact details are never returned and public Firestore writes remain denied.
+  if (isLeadOptionsRoute) {
+    try {
+      const { id, token, action, addons: requestedAddons } = req.body || {};
+      if (!/^[a-zA-Z0-9_-]{1,80}$/.test(String(id || "")) || !/^[a-f0-9]{64}$/.test(String(token || ""))) {
+        res.status(403).json({ ok: false, error: "invalid_or_expired" }); return;
+      }
+      if (action !== "read" && action !== "save") {
+        res.status(400).json({ ok: false, error: "invalid_action" }); return;
+      }
+      const allowed = ["wax", "pethair", "soiled", "headlights"];
+      if (action === "save" && (!Array.isArray(requestedAddons) || requestedAddons.length > 4 || requestedAddons.some((a: unknown) => !allowed.includes(String(a))))) {
+        res.status(400).json({ ok: false, error: "invalid_addons" }); return;
+      }
+      const ref = db.collection("leads").doc(id);
+      const result = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const lead = snap.data();
+        if (!lead || lead.honeypot || lead.addon_token_hash !== createHash("sha256").update(token).digest("hex") || (!Number.isFinite(lead.addon_token_expires_at) || lead.addon_token_expires_at <= Date.now())) return null;
+        const vehicle = coerceVehicle(lead.vehicle)!;
+        const service = coerceService(lead.service)!;
+        const addons = action === "save" ? filterAddonsForService(service, coerceAddons(requestedAddons)) : lead.addons;
+        const quote = computeQuote(vehicle, service, addons);
+        if (action === "save") tx.update(ref, {
+          addons, quoted_total: quote.total, quote_note: quote.consult ? "consult" : null,
+          addons_updated_at: FieldValue.serverTimestamp(),
+        });
+        return { vehicle, service, addons, quoted_total: quote.total, consult: quote.consult,
+          addon_prices: Object.fromEntries(allowed.filter(a => filterAddonsForService(service, [a as Addon]).length).map(a => [a, ADDONS[a as Addon][vehicle]])) };
+      });
+      if (!result) { res.status(403).json({ ok: false, error: "invalid_or_expired" }); return; }
+      res.status(200).json({ ok: true, ...result });
+    } catch (e) {
+      logger.error("leadOptions error", e);
+      res.status(500).json({ ok: false, error: "internal" });
+    }
+    return;
+  }
 
   if (isQuoteProgressRoute) {
     try {
@@ -195,6 +238,7 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
       const eventPayload: any = {
         session_id: sessionId,
         page: "quote",
+        flow_version: body.flow_version === "5" ? "5" : "4",
         last_event: event,
         last_seen_at: FieldValue.serverTimestamp(),
         event_count: FieldValue.increment(1),
@@ -224,7 +268,8 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
         eventPayload.last_step_number = 5;
         eventPayload.completed = true;
         eventPayload.completed_at = FieldValue.serverTimestamp();
-        eventPayload.steps_seen = FieldValue.arrayUnion("step_4", "submitted");
+        eventPayload.steps_seen = FieldValue.arrayUnion(body.flow_version === "5" ? "step_3" : "step_4", "submitted");
+        eventPayload.capture_method = body.capture_method === "exit_intent" ? "exit_intent" : "quiz";
       }
 
       await db.collection("quotePageSessions").doc(sessionId).set(eventPayload, { merge: true });
@@ -243,6 +288,7 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
     const vehicle = coerceVehicle(body.vehicle);
     const service = coerceService(body.service);
     const addons = filterAddonsForService(service, coerceAddons(body.addons));
+    const isRecovery = body.capture_method === "exit_intent";
     const name = String(body.name || "").trim().slice(0, 120);
     const phoneRaw = String(body.phone || "").trim();
     const { e164: phone_normalized } = normalizeUSPhone(phoneRaw);
@@ -255,17 +301,27 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
     const errors: string[] = [];
     if (!vehicle) errors.push("vehicle");
     if (!service) errors.push("service");
-    if (!name) errors.push("name");
+    if (!name && !isRecovery) errors.push("name");
     if (!phone_normalized) errors.push("phone");
     if (zip && !/^\d{5}$/.test(zip)) errors.push("zip");
     if (errors.length) { res.status(400).json({ ok: false, error: `invalid_fields:${errors.join(',')}` }); return; }
 
     // TypeScript knows vehicle and service are not null here
+    const suppliedToken = body.update_token;
+    if (suppliedToken !== undefined && !/^[a-f0-9]{64}$/.test(String(suppliedToken))) {
+      res.status(400).json({ ok: false, error: "invalid_token" }); return;
+    }
+    const updateToken = suppliedToken || randomBytes(32).toString("hex");
+    const tokenHash = createHash("sha256").update(updateToken).digest("hex");
     const quote = computeQuote(vehicle as Vehicle, service as Service, addons);
     const payload: any = {
       vehicle,
       service,
       addons,
+      capture_method: isRecovery ? "exit_intent" : "quiz",
+      flow_version: body.flow_version === "5" ? "5" : "4",
+      addon_token_hash: tokenHash,
+      addon_token_expires_at: Date.now() + 24 * 60 * 60 * 1000,
       zip,
       notes,
       name,
@@ -284,7 +340,23 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
     };
 
     // Write to Firestore
-    const ref = await db.collection("leads").add(payload);
+    const ref = db.collection("leads").doc(tokenHash);
+    const created = await db.runTransaction(async tx => {
+      if ((await tx.get(ref)).exists) return false;
+      tx.create(ref, payload);
+      const sessionId = coerceQuoteSessionId(body.session_id);
+      if (sessionId && !honeypot) tx.set(db.collection("quotePageSessions").doc(sessionId), {
+        session_id: sessionId, page: "quote", flow_version: payload.flow_version,
+        session_started_at: String(body.session_started_at || payload.ts).slice(0, 80),
+        completed: true, completed_at: FieldValue.serverTimestamp(), last_seen_at: FieldValue.serverTimestamp(),
+        capture_method: payload.capture_method, utm: coerceUtm(body.utm),
+        steps_seen: FieldValue.arrayUnion("submitted"),
+      }, { merge: true });
+      return true;
+    });
+    if (!created) {
+      res.status(200).json({ ok: true, id: ref.id, update_token: updateToken }); return;
+    }
 
     // Send Telegram notification
     try {
@@ -292,7 +364,7 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
       const chatId = TELEGRAM_CHAT_ID.value();
       if (!botToken || !chatId) {
         logger.error("Missing Telegram config via .env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)");
-      } else if (!honeypot) {
+      } else if (!honeypot && !process.env.FUNCTIONS_EMULATOR) {
         const vLabel = VEHICLE_LABELS[vehicle as Vehicle];
         const sLabel = SERVICE_LABELS[service as Service];
         const pricePart = quote.consult ? "consult" : `$${quote.total}`;
@@ -302,7 +374,8 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
 
         const text = [
           `New Lead: ${vLabel} • ${sLabel} • ${pricePart}`,
-          `Name: ${name}`,
+          `Name: ${name || "Not provided (text quote request)"}`,
+          isRecovery ? "Source: mobile exit-intent quote request" : null,
           `${zip ? `ZIP ${zip}` : "ZIP —"} • ${phonePretty}`,
           `Add-ons: ${addonsList}`,
           notes ? `Notes: ${notes}` : null,
@@ -313,13 +386,14 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+          signal: AbortSignal.timeout(5000),
         }).then(async r => { if (!r.ok) throw new Error(await r.text()); });
       }
     } catch (e) {
       logger.error("Telegram error", e as any);
     }
 
-    res.status(200).json({ ok: true, id: ref.id });
+    res.status(200).json({ ok: true, id: ref.id, update_token: updateToken });
   } catch (e) {
     logger.error("createLead error", e as any);
     res.status(500).json({ ok: false, error: "internal" });

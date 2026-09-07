@@ -38,6 +38,7 @@ const https_1 = require("firebase-functions/v2/https");
 const firebase_functions_1 = require("firebase-functions");
 const params_1 = require("firebase-functions/params");
 const admin = __importStar(require("firebase-admin"));
+const node_crypto_1 = require("node:crypto");
 const firestore_1 = require("firebase-admin/firestore");
 admin.initializeApp();
 const db = admin.firestore();
@@ -87,7 +88,7 @@ function coerceVehicle(v) {
         van: "van_3row", "3-row suv": "van_3row", "three-row suv": "van_3row",
     };
     const key = String(v || "").toLowerCase().trim();
-    return (m[key] || null);
+    return Object.prototype.hasOwnProperty.call(m, key) ? m[key] : null;
 }
 function coerceService(s) {
     const m = {
@@ -100,13 +101,13 @@ function coerceService(s) {
         other: "other",
     };
     const key = String(s || "").toLowerCase().trim();
-    return (m[key] || null);
+    return Object.prototype.hasOwnProperty.call(m, key) ? m[key] : null;
 }
 function coerceAddons(arr) {
     if (!Array.isArray(arr))
         return [];
     const valid = ["wax", "pethair", "odor", "engine", "soiled", "ceramic", "headlights"];
-    return arr.map(x => String(x || "").toLowerCase().trim()).filter((x) => valid.includes(x));
+    return [...new Set(arr.map(x => String(x || "").toLowerCase().trim()).filter((x) => valid.includes(x)))];
 }
 function filterAddonsForService(service, addons) {
     if (service !== "interior_only")
@@ -200,12 +201,62 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
     const path = (req.path || req.originalUrl || "").toString().split("?")[0].replace(/\/+$/, "");
     const isCreateLeadRoute = path.endsWith("/createLead");
     const isQuoteProgressRoute = path.endsWith("/quoteProgress");
-    if (!isCreateLeadRoute && !isQuoteProgressRoute) {
+    const isLeadOptionsRoute = path.endsWith("/leadOptions");
+    res.setHeader("Cache-Control", "no-store");
+    if (!isCreateLeadRoute && !isQuoteProgressRoute && !isLeadOptionsRoute) {
         res.status(404).json({ ok: false, error: "not_found" });
         return;
     }
     if (req.method !== "POST") {
         res.status(405).json({ ok: false, error: "method_not_allowed" });
+        return;
+    }
+    // A short-lived capability grants access only to this lead's package and add-ons.
+    // Contact details are never returned and public Firestore writes remain denied.
+    if (isLeadOptionsRoute) {
+        try {
+            const { id, token, action, addons: requestedAddons } = req.body || {};
+            if (!/^[a-zA-Z0-9_-]{1,80}$/.test(String(id || "")) || !/^[a-f0-9]{64}$/.test(String(token || ""))) {
+                res.status(403).json({ ok: false, error: "invalid_or_expired" });
+                return;
+            }
+            if (action !== "read" && action !== "save") {
+                res.status(400).json({ ok: false, error: "invalid_action" });
+                return;
+            }
+            const allowed = ["wax", "pethair", "soiled", "headlights"];
+            if (action === "save" && (!Array.isArray(requestedAddons) || requestedAddons.length > 4 || requestedAddons.some((a) => !allowed.includes(String(a))))) {
+                res.status(400).json({ ok: false, error: "invalid_addons" });
+                return;
+            }
+            const ref = db.collection("leads").doc(id);
+            const result = await db.runTransaction(async (tx) => {
+                const snap = await tx.get(ref);
+                const lead = snap.data();
+                if (!lead || lead.honeypot || lead.addon_token_hash !== (0, node_crypto_1.createHash)("sha256").update(token).digest("hex") || (!Number.isFinite(lead.addon_token_expires_at) || lead.addon_token_expires_at <= Date.now()))
+                    return null;
+                const vehicle = coerceVehicle(lead.vehicle);
+                const service = coerceService(lead.service);
+                const addons = action === "save" ? filterAddonsForService(service, coerceAddons(requestedAddons)) : lead.addons;
+                const quote = computeQuote(vehicle, service, addons);
+                if (action === "save")
+                    tx.update(ref, {
+                        addons, quoted_total: quote.total, quote_note: quote.consult ? "consult" : null,
+                        addons_updated_at: firestore_1.FieldValue.serverTimestamp(),
+                    });
+                return { vehicle, service, addons, quoted_total: quote.total, consult: quote.consult,
+                    addon_prices: Object.fromEntries(allowed.filter(a => filterAddonsForService(service, [a]).length).map(a => [a, ADDONS[a][vehicle]])) };
+            });
+            if (!result) {
+                res.status(403).json({ ok: false, error: "invalid_or_expired" });
+                return;
+            }
+            res.status(200).json({ ok: true, ...result });
+        }
+        catch (e) {
+            firebase_functions_1.logger.error("leadOptions error", e);
+            res.status(500).json({ ok: false, error: "internal" });
+        }
         return;
     }
     if (isQuoteProgressRoute) {
@@ -222,6 +273,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             const eventPayload = {
                 session_id: sessionId,
                 page: "quote",
+                flow_version: body.flow_version === "5" ? "5" : "4",
                 last_event: event,
                 last_seen_at: firestore_1.FieldValue.serverTimestamp(),
                 event_count: firestore_1.FieldValue.increment(1),
@@ -250,7 +302,8 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                 eventPayload.last_step_number = 5;
                 eventPayload.completed = true;
                 eventPayload.completed_at = firestore_1.FieldValue.serverTimestamp();
-                eventPayload.steps_seen = firestore_1.FieldValue.arrayUnion("step_4", "submitted");
+                eventPayload.steps_seen = firestore_1.FieldValue.arrayUnion(body.flow_version === "5" ? "step_3" : "step_4", "submitted");
+                eventPayload.capture_method = body.capture_method === "exit_intent" ? "exit_intent" : "quiz";
             }
             await db.collection("quotePageSessions").doc(sessionId).set(eventPayload, { merge: true });
             res.status(200).json({ ok: true });
@@ -267,6 +320,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
         const vehicle = coerceVehicle(body.vehicle);
         const service = coerceService(body.service);
         const addons = filterAddonsForService(service, coerceAddons(body.addons));
+        const isRecovery = body.capture_method === "exit_intent";
         const name = String(body.name || "").trim().slice(0, 120);
         const phoneRaw = String(body.phone || "").trim();
         const { e164: phone_normalized } = normalizeUSPhone(phoneRaw);
@@ -280,7 +334,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             errors.push("vehicle");
         if (!service)
             errors.push("service");
-        if (!name)
+        if (!name && !isRecovery)
             errors.push("name");
         if (!phone_normalized)
             errors.push("phone");
@@ -291,11 +345,22 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             return;
         }
         // TypeScript knows vehicle and service are not null here
+        const suppliedToken = body.update_token;
+        if (suppliedToken !== undefined && !/^[a-f0-9]{64}$/.test(String(suppliedToken))) {
+            res.status(400).json({ ok: false, error: "invalid_token" });
+            return;
+        }
+        const updateToken = suppliedToken || (0, node_crypto_1.randomBytes)(32).toString("hex");
+        const tokenHash = (0, node_crypto_1.createHash)("sha256").update(updateToken).digest("hex");
         const quote = computeQuote(vehicle, service, addons);
         const payload = {
             vehicle,
             service,
             addons,
+            capture_method: isRecovery ? "exit_intent" : "quiz",
+            flow_version: body.flow_version === "5" ? "5" : "4",
+            addon_token_hash: tokenHash,
+            addon_token_expires_at: Date.now() + 24 * 60 * 60 * 1000,
             zip,
             notes,
             name,
@@ -313,7 +378,26 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             created_at: firestore_1.FieldValue.serverTimestamp(),
         };
         // Write to Firestore
-        const ref = await db.collection("leads").add(payload);
+        const ref = db.collection("leads").doc(tokenHash);
+        const created = await db.runTransaction(async (tx) => {
+            if ((await tx.get(ref)).exists)
+                return false;
+            tx.create(ref, payload);
+            const sessionId = coerceQuoteSessionId(body.session_id);
+            if (sessionId && !honeypot)
+                tx.set(db.collection("quotePageSessions").doc(sessionId), {
+                    session_id: sessionId, page: "quote", flow_version: payload.flow_version,
+                    session_started_at: String(body.session_started_at || payload.ts).slice(0, 80),
+                    completed: true, completed_at: firestore_1.FieldValue.serverTimestamp(), last_seen_at: firestore_1.FieldValue.serverTimestamp(),
+                    capture_method: payload.capture_method, utm: coerceUtm(body.utm),
+                    steps_seen: firestore_1.FieldValue.arrayUnion("submitted"),
+                }, { merge: true });
+            return true;
+        });
+        if (!created) {
+            res.status(200).json({ ok: true, id: ref.id, update_token: updateToken });
+            return;
+        }
         // Send Telegram notification
         try {
             const botToken = TELEGRAM_BOT_TOKEN.value();
@@ -321,7 +405,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             if (!botToken || !chatId) {
                 firebase_functions_1.logger.error("Missing Telegram config via .env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)");
             }
-            else if (!honeypot) {
+            else if (!honeypot && !process.env.FUNCTIONS_EMULATOR) {
                 const vLabel = VEHICLE_LABELS[vehicle];
                 const sLabel = SERVICE_LABELS[service];
                 const pricePart = quote.consult ? "consult" : `$${quote.total}`;
@@ -330,7 +414,8 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                 const openLink = `${HOSTING_ORIGIN}/admin/index.html?id=${encodeURIComponent(ref.id)}`;
                 const text = [
                     `New Lead: ${vLabel} • ${sLabel} • ${pricePart}`,
-                    `Name: ${name}`,
+                    `Name: ${name || "Not provided (text quote request)"}`,
+                    isRecovery ? "Source: mobile exit-intent quote request" : null,
                     `${zip ? `ZIP ${zip}` : "ZIP —"} • ${phonePretty}`,
                     `Add-ons: ${addonsList}`,
                     notes ? `Notes: ${notes}` : null,
@@ -340,6 +425,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+                    signal: AbortSignal.timeout(5000),
                 }).then(async (r) => { if (!r.ok)
                     throw new Error(await r.text()); });
             }
@@ -347,7 +433,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
         catch (e) {
             firebase_functions_1.logger.error("Telegram error", e);
         }
-        res.status(200).json({ ok: true, id: ref.id });
+        res.status(200).json({ ok: true, id: ref.id, update_token: updateToken });
     }
     catch (e) {
         firebase_functions_1.logger.error("createLead error", e);

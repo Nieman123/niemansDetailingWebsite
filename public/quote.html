@@ -61,7 +61,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="192x192" href="/images/touch/chrome-touch-icon-192x192.png">
     <link rel="apple-touch-icon" href="/images/touch/apple-touch-icon.png">
-    <link rel="stylesheet" href="quote.css?v=20260823b">
+    <link rel="stylesheet" href="quote.css?v=20260907a">
     <link rel="preload" href="styles/vacation-notice.css?v=20260615" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript><link rel="stylesheet" href="styles/vacation-notice.css?v=20260615"></noscript>
   </head>
@@ -72,7 +72,7 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <picture><source type="image/avif" srcset="/images/ND-logo-white-transparentbg-horizontal-150.avif 150w, /images/ND-logo-white-transparentbg-horizontal-300.avif 300w, /images/ND-logo-white-transparentbg-horizontal-512.avif 512w" sizes="(max-width: 720px) 180px, 260px"><source type="image/webp" srcset="/images/ND-logo-white-transparentbg-horizontal-150.webp 150w, /images/ND-logo-white-transparentbg-horizontal-300.webp 300w, /images/ND-logo-white-transparentbg-horizontal-512.webp 512w" sizes="(max-width: 720px) 180px, 260px"><img class="brand-logo" alt="Nieman’s Detailing" width="600" height="132" src="/images/ND-logo-white-transparentbg-horizontal-300.jpg" srcset="/images/ND-logo-white-transparentbg-horizontal-150.jpg 150w, /images/ND-logo-white-transparentbg-horizontal-300.jpg 300w, /images/ND-logo-white-transparentbg-horizontal-512.jpg 512w" sizes="(max-width: 720px) 180px, 260px" fetchpriority="high" decoding="async"></picture>
         </a>
         <h1>Quick Quote</h1>
-        <p class="sub">Your price in about 60 seconds.</p>
+        <p class="sub">Asheville mobile detailing. No prepayment.</p>
       </header>
       <div class="vacation-notice-root" data-vacation-notice-root></div>
 
@@ -101,17 +101,16 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
         <section class="funnel-quote" id="quote-box" aria-label="Quick quote mechanism">
           <nav class="quiz-progress" aria-label="Quote progress">
             <p class="progress-heading" id="progress-label" aria-live="polite" aria-atomic="true">
-              <span class="step-count" id="step-count">Step 1 of 4</span>
+              <span class="step-count" id="step-count">Step 1 of 3</span>
               <strong id="step-title">Choose your vehicle</strong>
             </p>
-            <div class="progress-wrap" id="progress-track" role="progressbar" aria-labelledby="progress-label" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1">
-              <div class="progress-bar" id="progress" style="width:25%"></div>
+            <div class="progress-wrap" id="progress-track" role="progressbar" aria-labelledby="progress-label" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1">
+              <div class="progress-bar" id="progress" style="transform:scaleX(0.3333)"></div>
             </div>
             <ol class="progress-steps">
               <li data-progress-step="1" aria-current="step"><span>1</span>Vehicle</li>
               <li data-progress-step="2"><span>2</span>Package</li>
-              <li data-progress-step="3"><span>3</span>Add-ons</li>
-              <li data-progress-step="4"><span>4</span>Quote</li>
+              <li data-progress-step="3"><span>3</span>Contact</li>
             </ol>
           </nav>
           <ul class="trust" aria-label="Reasons to book">
@@ -127,10 +126,11 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <input type="hidden" id="utm-content">
           <input type="hidden" id="utm-term">
 
+          <div class="step-skeleton" id="step-skeleton" aria-hidden="true" hidden><i></i><i></i><i></i></div>
           <!-- Step 1: Vehicle -->
           <section class="screen" id="step-1" aria-labelledby="step1-label">
             <h2 id="step1-label" tabindex="-1">Choose your vehicle</h2>
-            <p class="note">One tap gets your pricing started.</p>
+            <p class="note">3 quick steps. Start with your vehicle.</p>
             <div class="options vehicle-options" role="radiogroup" aria-label="Vehicle type">
               <button class="btn option" data-value="sedan" role="radio" aria-checked="false">
                 <img class="btn-icon" aria-hidden="true" src="images/sedan.svg" alt="" loading="lazy" decoding="async">
@@ -153,23 +153,23 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
           <!-- Step 2: Service -->
           <section class="screen" id="step-2" aria-labelledby="step2-label" hidden="">
             <h2 id="step2-label" tabindex="-1">Choose your package</h2>
-            <p id="quote-peek" class="quote-line" aria-live="polite">Select options to see your quote.</p>
+            <p class="note">Tap a package to continue.</p>
             <div class="options service-options" role="radiogroup" aria-label="Detailing package">
               <button class="btn option service-option" data-value="quick" role="radio" aria-checked="false">
                 <span class="service-option-copy"><span class="btn-label">Quick Once Over</span><span class="service-description">Maintenance clean, inside + out</span></span>
-                <span class="service-price" data-service-price="quick">Select vehicle</span>
+                <span class="service-price" data-service-price="quick">Starting at $200</span>
               </button>
               <button class="btn option service-option" data-value="full" role="radio" aria-checked="false">
                 <span class="service-option-copy"><span class="btn-label">Full Detail</span><span class="service-description">Thorough clean, inside + out</span></span>
-                <span class="service-price" data-service-price="full">Select vehicle</span>
+                <span class="service-price" data-service-price="full">Starting at $300</span>
               </button>
               <button class="btn option service-option" data-value="interior_only" role="radio" aria-checked="false">
                 <span class="service-option-copy"><span class="btn-label">Interior Only</span><span class="service-description">Interior cleaning without exterior service</span></span>
-                <span class="service-price" data-service-price="interior_only">Select vehicle</span>
+                <span class="service-price" data-service-price="interior_only">Starting at $200</span>
               </button>
               <button class="btn option service-option" data-value="other" role="radio" aria-checked="false" aria-describedby="consult-note">
                 <span class="service-option-copy"><span class="btn-label">Other</span><span class="service-description">Specialty work, price confirmed by text</span></span>
-                <span class="service-price" data-service-price="other">Consult</span>
+                <span class="service-price" data-service-price="other">Custom quote</span>
               </button>
             </div>
             <p class="note consult-note" id="consult-note" hidden="">Consultation only. I’ll confirm pricing by text.</p>
@@ -178,29 +178,14 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
             </div>
           </section>
 
-          <!-- Step 3: Add-ons -->
+          <!-- Step 3: Contact + Quote -->
           <section class="screen" id="step-3" aria-labelledby="step3-label" hidden="">
-            <h2 id="step3-label" tabindex="-1">Personalize your detail <span class="heading-inline-note">Optional</span></h2>
-            <!-- quote-peek will be moved here dynamically on step change -->
-            <div class="options options-grid" aria-label="Add-ons">
-              <button class="btn toggle" data-addon="wax" aria-pressed="false">Wax/Sealant<span class="delta" data-delta="wax">+ $25–35</span></button>
-              <button class="btn toggle" data-addon="pethair" aria-pressed="false">Pet Hair <span class="delta" data-delta="pethair">+ $30–50</span></button>
-              <button class="btn toggle" data-addon="soiled" aria-pressed="false">Heavily Soiled <span class="delta" data-delta="soiled">+ $40–80</span></button>
-              <button class="btn toggle" data-addon="headlights" aria-pressed="false">Headlight Restoration <span class="delta" data-delta="headlights">+ $75–95</span></button>
-            </div>
-            <div class="nav">
-              <button class="btn secondary" data-prev="2">Back</button>
-              <button class="btn primary" data-next="4">Next</button>
-            </div>
-          </section>
-
-          <!-- Step 4: Contact + Quote -->
-          <section class="screen" id="step-4" aria-labelledby="step4-label" hidden="">
-            <h2 id="step4-label" tabindex="-1">Where should I send it?</h2>
+            <h2 id="step3-label" tabindex="-1">Get your quote by text</h2>
             <div class="step5-layout">
               <div class="step5-content">
                 <p id="quote-line" class="quote-line" aria-live="polite">I’ll confirm pricing by text.</p>
-                <p class="note contact-intro">Add your contact information below. I’ll text you as soon as possible to confirm your quote and find a time that works.</p>
+                <p class="note contact-intro">I’ll personally text you to confirm pricing and availability. No payment or booking required.</p>
+                <form id="contact-form" novalidate>
                 <div class="grid">
                   <label class="field">
                     <span>Name</span>
@@ -209,37 +194,27 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
                   </label>
                   <label class="field">
                     <span>Mobile phone</span>
-                    <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(828) 555-1234" maxlength="14" pattern="\([0-9]{3}\) [0-9]{3}-[0-9]{4}" required="" aria-describedby="phone-help phone-error">
-                    <small class="field-help" id="phone-help">I’ll text your quote and scheduling options.</small>
+                    <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="(828) 555-1234" maxlength="14" pattern="\([0-9]{3}\) [0-9]{3}-[0-9]{4}" required="" aria-describedby="phone-error">
                     <small class="error" id="phone-error" aria-live="polite" hidden=""></small>
                   </label>
                 </div>
-                <label class="field">
-                  <span>Notes (optional)</span>
-                  <textarea id="notes" rows="3" placeholder="Anything I should know?"></textarea>
-                </label>
-                <p class="consent">By tapping Send My Quote Request, you agree I can text you about your quote and scheduling. No spam.</p>
+                <details class="optional-notes"><summary>Add a note (optional)</summary><label class="field">
+                  <span class="sr-only">Notes</span>
+                  <textarea id="notes" rows="3" placeholder="Anything I should know?" maxlength="1000"></textarea>
+                </label></details>
+                <p class="consent">By submitting, you agree I can text you about your quote and scheduling. No spam.</p>
                 <input type="text" id="company" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="hp">
                 <div class="nav">
-                  <button class="btn secondary" data-prev="3">Back</button>
-                  <button class="btn cta" id="submit" data-mode="quote">Send My Quote Request</button>
+                  <button class="btn secondary" type="button" data-prev="2">Back</button>
+                  <button class="btn cta" id="submit" type="submit" data-mode="quote">Text Me My Quote</button>
                 </div>
+                <p id="submit-error" class="error" role="alert" hidden></p>
+                </form>
               </div>
               <!-- <picture><source type="image/avif" srcset="/images/carpics/srv_pics/cleaninterior-150.avif 150w, /images/carpics/srv_pics/cleaninterior-300.avif 300w, /images/carpics/srv_pics/cleaninterior-512.avif 512w, /images/carpics/srv_pics/cleaninterior-640.avif 640w, /images/carpics/srv_pics/cleaninterior-800.avif 800w, /images/carpics/srv_pics/cleaninterior-1024.avif 1024w, /images/carpics/srv_pics/cleaninterior-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/cleaninterior-150.webp 150w, /images/carpics/srv_pics/cleaninterior-300.webp 300w, /images/carpics/srv_pics/cleaninterior-512.webp 512w, /images/carpics/srv_pics/cleaninterior-640.webp 640w, /images/carpics/srv_pics/cleaninterior-800.webp 800w, /images/carpics/srv_pics/cleaninterior-1024.webp 1024w, /images/carpics/srv_pics/cleaninterior-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img class="final-image" alt="Spotless car interior after professional detailing" loading="lazy" src="/images/carpics/srv_pics/cleaninterior-800.jpg" srcset="/images/carpics/srv_pics/cleaninterior-150.jpg 150w, /images/carpics/srv_pics/cleaninterior-300.jpg 300w, /images/carpics/srv_pics/cleaninterior-512.jpg 512w, /images/carpics/srv_pics/cleaninterior-640.jpg 640w, /images/carpics/srv_pics/cleaninterior-800.jpg 800w, /images/carpics/srv_pics/cleaninterior-1024.jpg 1024w, /images/carpics/srv_pics/cleaninterior-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture> -->
             </div>
           </section>
 
-          <!-- Confirmation -->
-          <section class="screen" id="confirm" hidden="">
-            <h2 tabindex="-1">Got it! Your quote request is on its way to me!</h2>
-            <p>I’ll personally text you soon to confirm details and get you scheduled.</p>
-            <div id="recap"></div>
-            <p>If you don’t want to wait, you can:</p>
-            <ul>
-              <li><a href="sms:+18282733894">📱 Shoot me a text</a> I’ll reply as fast as I can! or...</li>
-              <li><a href="/schedule">📅 Book instantly online</a> if you already know what works best for you.</li>
-            </ul>
-          </section>
         </section>
       </section>
 
@@ -419,8 +394,19 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
       </div>
     </div>
 
+    <dialog class="exit-sheet" id="exit-sheet" aria-labelledby="exit-title" aria-describedby="exit-copy">
+      <button type="button" class="exit-close" id="exit-close" aria-label="Close quote reminder">×</button>
+      <h2 id="exit-title">Don't lose your instant price!</h2>
+      <p id="exit-copy">Text me my quote so I can book later.</p>
+      <form id="exit-form" novalidate>
+        <label class="sr-only" for="exit-phone">Mobile phone number</label>
+        <div class="exit-fields"><input id="exit-phone" type="tel" inputmode="tel" autocomplete="tel" maxlength="18" placeholder="(828) 555-1234" aria-describedby="exit-error exit-consent" required><button class="btn cta" id="exit-submit" type="submit">Text my quote</button></div>
+        <p id="exit-error" class="error" role="alert" hidden></p>
+        <p class="consent" id="exit-consent">By tapping, you agree I can text about your quote and scheduling. I’ll personally follow up. No spam.</p>
+      </form>
+    </dialog>
     <script src="scripts/vacation-notice.js?v=20260802" defer=""></script>
-    <script src="quote.js?v=20260823b" defer=""></script>
+    <script src="quote.js?v=20260907a" defer=""></script>
   
   
 </body></html>
