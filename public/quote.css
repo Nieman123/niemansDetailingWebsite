@@ -16,6 +16,12 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.quote-page {
+  --brand: #bba6ff;
+  --brand-2: #d6c9ff;
+  --focus: #d6c9ff;
+  background: radial-gradient(ellipse at 15% 0, #17213c 0, transparent 45%), #060b17;
+}
 .wrap { max-width: 1160px; margin: 0 auto; padding: 16px 16px 72px; }
 .header { text-align: center; margin: 8px 0 16px; }
 .brand-logo { display:block; margin: 8px auto 10px; max-width: 260px; width: 70%; height: auto; }
@@ -1799,3 +1805,9 @@ a { color: var(--brand-2); }
 }
 
 .btn.cta:disabled { background: var(--surface-raised); color: var(--muted); box-shadow: none; }
+.quote-page .btn.cta:not(:disabled),
+.quote-page .quote-action-primary:not(:disabled) {
+  background: linear-gradient(120deg, #5534a8, #7d55cf);
+  color: #fff;
+  border-color: #9675dd;
+}

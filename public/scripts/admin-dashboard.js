@@ -463,11 +463,13 @@ function serviceLabel(lead) {
     interior_only: "Interior Only",
     interior: "Interior Refresh",
     other: "Other",
+    ceramic: "Ceramic Coating",
   };
   return map[String(lead.service || "").toLowerCase()] || lead.service || "N/A";
 }
 
 function vehicleLabel(lead) {
+  if (lead.service === "ceramic") return { sedan: "Sedan/Coupe", suv_truck: "SUV/Crossover", van_3row: "Truck/Van/Other" }[lead.vehicle] || lead.vehicle || "N/A";
   const map = {
     sedan: "Sedan/Coupe",
     suv_truck: "SUV/Truck",
@@ -580,7 +582,7 @@ function renderQuoteFunnel() {
   if (!els.funnelChart) return;
 
   const rangeFilter = els.rangeFilter?.value || "all";
-  const sessions = state.quoteSessions.filter((session) => quoteSessionInRange(session, rangeFilter));
+  const sessions = state.quoteSessions.filter((session) => session.page !== "ceramic-quote" && quoteSessionInRange(session, rangeFilter));
   const visitorCount = sessions.length;
   const newFlowSessions = sessions.filter(session => session.flow_version === "5");
   const newFlowLeads = newFlowSessions.filter(session => session.completed === true).length;
@@ -725,6 +727,11 @@ function showLeadDetails(lead) {
       { label: "Client Record", value: lead.client_id || "Not linked" },
       { label: "Vehicle", value: vehicleLabel(lead) },
       { label: "Service", value: serviceLabel(lead) },
+      ...(lead.service === "ceramic" ? [
+        { label: "Coating package", value: { single_step: "Single-step correction + coating", two_step: "Two-step correction + coating", recommend: "Help me choose" }[lead.coating_package] || "N/A" },
+        { label: "Paint condition", value: { new: "New / like new", light_swirls: "Light swirls", heavy_swirls: "Visible swirls / dull paint", unsure: "Not sure" }[lead.paint_condition] || "N/A" },
+        { label: "Vehicle details", value: lead.vehicle_details || "Not provided" },
+      ] : []),
       { label: "Add-ons", value: addonText },
       { label: "ZIP", value: lead.zip || "N/A" },
       { label: "Phone", value: formatPhone(lead.phone_normalized || lead.phone || "N/A") },

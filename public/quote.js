@@ -5,6 +5,20 @@
   const isLocalHost = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   const shouldTrackFunnelSteps = !isLocalHost;
   const buildApiUrl = path => path; // Same-origin API; previews never submit to production.
+  const ceramic = document.body.dataset.quoteKind === 'ceramic';
+  const storageKey = ceramic ? 'ceramicQuoteState' : 'quoteState';
+  const sessionKey = key => ceramic ? `ceramic${key[0].toUpperCase()}${key.slice(1)}` : key;
+  const pageName = ceramic ? 'ceramic-quote' : 'quote';
+  const flowVersion = ceramic ? 'ceramic-1' : '5';
+  const stepKeys = ceramic ? ['vehicle', 'paint_condition', 'coating_package'] : ['vehicle', 'service'];
+  const totalSteps = stepKeys.length + 1;
+  const PAINT = { new: 'New / like new', light_swirls: 'Light swirls', heavy_swirls: 'Visible swirls / dull paint', unsure: 'Not sure' };
+  const COATINGS = { single_step: 'Single-step correction + coating', two_step: 'Two-step correction + coating', recommend: 'Help me choose' };
+  const ceramicPrice = () => {
+    if (state.vehicle === 'van_3row' || state.coating_package === 'recommend') return null;
+    const base = { single_step: 1000, two_step: 1400 }[state.coating_package];
+    return typeof base === 'number' ? base + (state.vehicle === 'suv_truck' ? 400 : 0) : null;
+  };
 
   // Canonical keys
   const VEHICLES = { sedan: 'Sedan/Coupe', suv_truck: 'SUV/Truck', van_3row: 'Van/3-Row SUV' };
@@ -24,7 +38,10 @@
 
   const initial = {
     vehicle: null,
-    service: null,
+    service: ceramic ? 'ceramic' : null,
+    paint_condition: null,
+    coating_package: null,
+    vehicle_details: '',
     addons: [],
     zip: '',
     notes: '',
@@ -37,7 +54,7 @@
 
   const loadState = () => {
     try {
-      const restored = { ...initial, ...(JSON.parse(localStorage.getItem('quoteState') || '{}')) };
+      const restored = { ...initial, ...(JSON.parse(localStorage.getItem(storageKey) || '{}')) };
       let migrated = false;
 
       if (restored.vehicle === 'suv') {
@@ -52,7 +69,11 @@
         migrated = true;
       }
 
-      if (restored.service === 'interior' || restored.service === 'paint') {
+      if (ceramic) {
+        restored.service = 'ceramic';
+        if (!Object.hasOwn(PAINT, restored.paint_condition)) restored.paint_condition = null;
+        if (!Object.hasOwn(COATINGS, restored.coating_package)) restored.coating_package = null;
+      } else if (restored.service === 'interior' || restored.service === 'paint') {
         restored.service = 'interior_only';
         migrated = true;
       } else if (restored.service && !Object.prototype.hasOwnProperty.call(SERVICES, restored.service)) {
@@ -64,14 +85,15 @@
       restored.name = '';
       restored.phone = '';
       restored.notes = '';
+      restored.vehicle_details = '';
 
-      if (migrated) localStorage.setItem('quoteState', JSON.stringify(restored));
+      if (migrated) localStorage.setItem(storageKey, JSON.stringify(restored));
       return restored;
     } catch {
       return { ...initial };
     }
   };
-  const saveState = (s) => { try { localStorage.setItem('quoteState', JSON.stringify({ ...s, name: '', phone: '', notes: '' })); } catch {} };
+  const saveState = (s) => { try { localStorage.setItem(storageKey, JSON.stringify({ ...s, name: '', phone: '', notes: '', vehicle_details: '' })); } catch {} };
 
   let state = loadState();
   state.addons = []; // Add-ons are offered only after the lead is saved.
@@ -80,17 +102,17 @@
   let completed = false;
   let updateToken = null;
   try {
-    const pending = sessionStorage.getItem('quotePendingToken');
+    const pending = sessionStorage.getItem(sessionKey('quotePendingToken'));
     if (/^[a-f0-9]{64}$/.test(pending || '')) updateToken = pending;
   } catch {}
 
-  const FUNNEL_SESSION_KEY = 'quoteFunnelSessionId';
-  const FUNNEL_TRACKED_STEPS_KEY = 'quoteFunnelTrackedSteps';
-  const FUNNEL_SUBMITTED_KEY = 'quoteFunnelSubmitted';
-  const FUNNEL_STARTED_AT_KEY = 'quoteFunnelStartedAt';
-  const FUNNEL_LAST_EVENT_AT_KEY = 'quoteFunnelLastEventAt';
-  const FUNNEL_STATE_VERSION_KEY = 'quoteFunnelStateVersion';
-  const FUNNEL_STATE_VERSION = '5';
+  const FUNNEL_SESSION_KEY = sessionKey('quoteFunnelSessionId');
+  const FUNNEL_TRACKED_STEPS_KEY = sessionKey('quoteFunnelTrackedSteps');
+  const FUNNEL_SUBMITTED_KEY = sessionKey('quoteFunnelSubmitted');
+  const FUNNEL_STARTED_AT_KEY = sessionKey('quoteFunnelStartedAt');
+  const FUNNEL_LAST_EVENT_AT_KEY = sessionKey('quoteFunnelLastEventAt');
+  const FUNNEL_STATE_VERSION_KEY = sessionKey('quoteFunnelStateVersion');
+  const FUNNEL_STATE_VERSION = flowVersion;
   const FUNNEL_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 
   const getSessionStorage = () => {
@@ -208,6 +230,7 @@
   window.reportQuoteConversion = fireAdsConversion;
 
   const computeQuote = (s) => {
+    if (ceramic) return { total: ceramicPrice(), consult: ceramicPrice() === null };
     if (!s.vehicle || !s.service) return { total: null, consult: false };
     if (CONSULT_SERVICES.has(s.service)) return { total: null, consult: true };
     const base = PRICES.base[s.vehicle]?.[s.service];
@@ -215,7 +238,7 @@
     return { total: base, consult: false };
   };
 
-  const formatUSD = (n) => `$${n.toFixed(0)}`;
+  const formatUSD = (n) => `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 
   const updateServicePrices = () => {
     $$('[data-service-price]').forEach((el) => {
@@ -232,19 +255,21 @@
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let hasRenderedStep = false;
 
-  const STEP_TITLES = {
+  const STEP_TITLES = ceramic ? {
+    1: 'Choose your vehicle', 2: 'Tell me about your paint', 3: 'Choose your coating package', 4: 'Get your ceramic quote',
+  } : {
     1: 'Choose your vehicle',
     2: 'Choose your package',
     3: 'Get your quote',
   };
 
   const updateProgress = (n) => {
-    const pct = n / 3;
+    const pct = n / totalSteps;
     const bar = $('#progress');
-    if (bar) { bar.style.transform = `scaleX(${pct})`; bar.classList.toggle('is-complete', n === 3); }
+    if (bar) { bar.style.transform = `scaleX(${pct})`; bar.classList.toggle('is-complete', n === totalSteps); }
 
     const stepCount = $('#step-count');
-    if (stepCount) stepCount.textContent = `Step ${n} of 3`;
+    if (stepCount) stepCount.textContent = `Step ${n} of ${totalSteps}`;
 
     const stepTitle = $('#step-title');
     if (stepTitle) stepTitle.textContent = STEP_TITLES[n] || '';
@@ -274,7 +299,15 @@
     let nextLabel = 'Continue';
     let disabled = false;
 
-    if (state.step === 1) {
+    if (ceramic) {
+      const key = stepKeys[state.step - 1];
+      nextLabel = state.step === totalSteps ? 'Text Me My Ceramic Quote' : state[key] ? `Next: ${state.step === 1 ? 'Paint Condition' : state.step === 2 ? 'Coating Package' : 'Your Quote'}` : `Select ${state.step === 1 ? 'a vehicle' : state.step === 2 ? 'your paint condition' : 'a package'} above`;
+      disabled = state.step < totalSteps && !state[key];
+      if (state.step === 1 && !state.vehicle) {
+        nextLabel = 'Start My Ceramic Quote';
+        disabled = false;
+      }
+    } else if (state.step === 1) {
       nextLabel = state.vehicle ? 'Next: Choose Package' : 'Select a vehicle above';
       disabled = !state.vehicle;
     } else if (state.step === 2) {
@@ -323,14 +356,18 @@
 
   const recalculate = () => {
     updateServicePrices();
-    state.consult = CONSULT_SERVICES.has(state.service);
     const { total, consult } = computeQuote(state);
+    state.consult = consult;
     state.quote = total;
 
     // Update the estimate before contact submission
     const line = $('#quote-line');
     if (line) {
-      if (consult) {
+      if (ceramic) {
+        line.textContent = total === null ? 'Your ceramic coating price will be confirmed by text.' : `Your ceramic estimate: ${formatUSD(total)}`;
+        const summary = $('#ceramic-summary');
+        if (summary) summary.textContent = [ceramicVehicleLabel(), PAINT[state.paint_condition], COATINGS[state.coating_package]].filter(Boolean).join(' · ');
+      } else if (consult) {
         line.textContent = 'I’ll confirm pricing by text.';
       } else if (typeof total === 'number') {
         line.textContent = `Your estimate: ${formatUSD(total)}`;
@@ -341,7 +378,9 @@
 
     const heroPeek = $('#hero-quote-peek');
     if (heroPeek) {
-      if (consult) {
+      if (ceramic) {
+        heroPeek.textContent = typeof total === 'number' ? `Correction + coating: ${formatUSD(total)}` : 'Sedans from $1,000 · SUVs from $1,400';
+      } else if (consult) {
         heroPeek.textContent = 'I’ll confirm pricing by text.';
       } else if (typeof total === 'number') {
         const serviceLabel = HERO_SERVICE_LABELS[state.service] || SERVICES[state.service] || 'Detail';
@@ -354,7 +393,10 @@
     // CTA swap
     const submitBtn = $('#submit');
     if (submitBtn) {
-      if (state.consult) {
+      if (ceramic) {
+        submitBtn.textContent = 'Text Me My Ceramic Quote';
+        submitBtn.dataset.mode = 'ceramic';
+      } else if (state.consult) {
         submitBtn.textContent = 'Request My Consultation';
         submitBtn.dataset.mode = 'consult';
       } else {
@@ -363,7 +405,12 @@
       }
     }
     updateStickyAction();
+    if (ceramic) $$('[data-coating-price]').forEach(el => {
+      const base = { single_step: 1000, two_step: 1400 }[el.dataset.coatingPrice];
+      el.textContent = state.vehicle === 'van_3row' || !base ? 'Custom quote' : `Starting at ${formatUSD(base + (state.vehicle === 'suv_truck' ? 400 : 0))}`;
+    });
   };
+  const ceramicVehicleLabel = () => ({ sedan: 'Sedan/Coupe', suv_truck: 'SUV/Crossover', van_3row: 'Truck/Van/Other' })[state.vehicle];
 
   const sanitize = (s) => (s || '').replace(/<[^>]*>/g, '').trim();
 
@@ -389,6 +436,7 @@
     state.notes = '';
     state.name = '';
     state.phone = '';
+    state.vehicle_details = '';
     saveState(state);
   };
 
@@ -425,8 +473,8 @@
       session_id: funnel.sessionId,
       session_started_at: funnel.startedAt,
       event,
-      page: 'quote',
-      flow_version: '5',
+      page: pageName,
+      flow_version: flowVersion,
       referrer: document.referrer || null,
       utm: readUTMs(),
       ts_client: new Date().toISOString(),
@@ -462,7 +510,7 @@
     if (!shouldTrackFunnelSteps) return;
     if (funnel.submitted || pendingLeadSubmissionEvent) return;
     pendingLeadSubmissionEvent = true;
-    trackFunnelEvent('lead_submitted', { step: 3, capture_method: method }).then((ok) => {
+    trackFunnelEvent('lead_submitted', { step: totalSteps, capture_method: method }).then((ok) => {
       if (!ok) return;
       funnel.submitted = true;
       if (funnel.storage) funnel.storage.setItem(FUNNEL_SUBMITTED_KEY, '1');
@@ -475,15 +523,11 @@
   const goPrev = (n) => setStep(n);
 
   const hydrateSelections = () => {
-    if (state.vehicle) {
-      const el = $(`#step-1 .option[data-value="${state.vehicle}"]`);
+    stepKeys.forEach((key, index) => {
+      const el = $(`#step-${index + 1} .option[data-value="${state[key]}"]`);
       if (el) el.setAttribute('aria-checked', 'true');
-    }
-    if (state.service) {
-      const el = $(`#step-2 .option[data-value="${state.service}"]`);
-      if (el) el.setAttribute('aria-checked', 'true');
-      $('#consult-note').hidden = !CONSULT_SERVICES.has(state.service);
-    }
+    });
+    if ($('#consult-note')) $('#consult-note').hidden = !CONSULT_SERVICES.has(state.service);
     $('#notes').value = state.notes || '';
     $('#name').value = state.name || '';
     $('#phone').value = state.phone || '';
@@ -491,37 +535,21 @@
 
   // Event wiring
   const wire = () => {
-    // Step 1 selections
-    $$('#step-1 .option').forEach(btn => {
+    stepKeys.forEach((key, index) => $$(`#step-${index + 1} .option`).forEach(btn => {
       btn.addEventListener('click', () => {
-        const val = btn.getAttribute('data-value');
-        state.vehicle = val;
-        $$('#step-1 .option').forEach(b => b.setAttribute('aria-checked', 'false'));
+        state[key] = btn.getAttribute('data-value');
+        $$(`#step-${index + 1} .option`).forEach(b => b.setAttribute('aria-checked', 'false'));
         btn.setAttribute('aria-checked', 'true');
+        if ($('#consult-note')) $('#consult-note').hidden = !CONSULT_SERVICES.has(state.service);
         saveState(state);
         recalculate();
-        goNext(2);
+        goNext(index + 2);
       });
-    });
-
-    // Step 2 selections
-    $$('#step-2 .option').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const val = btn.getAttribute('data-value');
-        state.service = val;
-        $$('#step-2 .option').forEach(b => b.setAttribute('aria-checked', 'false'));
-        btn.setAttribute('aria-checked', 'true');
-        state.consult = CONSULT_SERVICES.has(val);
-        $('#consult-note').hidden = !state.consult;
-        saveState(state);
-        recalculate();
-        goNext(3);
-      });
-    });
+    }));
 
     // Navigation
-    $$('#step-2 .nav .secondary').forEach(b => b.addEventListener('click', () => goPrev(1)));
-    $$('#step-3 .nav .secondary').forEach(b => b.addEventListener('click', () => goPrev(2)));
+    $$('[data-prev]').forEach(b => b.addEventListener('click', () => goPrev(Number(b.dataset.prev))));
+    $('#vehicle-details')?.addEventListener('input', e => { state.vehicle_details = e.target.value.slice(0, 120); });
 
     // Inputs
     $('#notes').addEventListener('input', (e) => { state.notes = e.target.value.slice(0, 1000); saveState(state); });
@@ -540,9 +568,11 @@
     const stickyPrimary = $('#quote-action-primary');
     if (stickyPrimary) {
       stickyPrimary.addEventListener('click', () => {
-        if (state.step === 1 && state.vehicle) goNext(2);
-        else if (state.step === 2 && state.service) goNext(3);
-        else if (state.step === 3) submit();
+        if (ceramic && state.step === 1 && !state.vehicle) {
+          $('#quote-box').scrollIntoView({ block: 'start', behavior: reduceMotion ? 'instant' : 'smooth' });
+          $('#step1-label').focus({ preventScroll: true });
+        } else if (state.step === totalSteps) submit();
+        else if (state[stepKeys[state.step - 1]]) goNext(state.step + 1);
       });
     }
 
@@ -578,8 +608,8 @@
       const callClickValue = typeof state.quote === 'number' ? state.quote : 1;
       const analyticsPayload = {
         method: 'quote_call_fab',
-        page: 'quote',
-      flow_version: '5',
+        page: pageName,
+        flow_version: flowVersion,
         service: state.service || 'unset',
         vehicle: state.vehicle || 'unset',
         value: callClickValue,
@@ -611,9 +641,10 @@
       setStep(1);
       return [{ field: null, message: 'Select a vehicle type.' }];
     }
-    if (!state.service) {
-      setStep(2);
-      return [{ field: null, message: 'Select a package.' }];
+    const missing = stepKeys.findIndex(key => !state[key]);
+    if (missing !== -1) {
+      setStep(missing + 1);
+      return [{ field: null, message: 'Please choose an option.' }];
     }
     if (!sanitize(state.name)) {
       showFieldError('name', 'Enter your name.');
@@ -656,7 +687,7 @@
         $('#exit-phone').focus();
         return;
       }
-      if (!state.vehicle || !state.service) return;
+      if (stepKeys.some(key => !state[key])) return;
     } else {
       const errs = validate();
       if (errs.length) {
@@ -668,14 +699,15 @@
     if (!updateToken) {
       const bytes = crypto.getRandomValues(new Uint8Array(32));
       updateToken = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-      try { sessionStorage.setItem('quotePendingToken', updateToken); } catch {}
+      try { sessionStorage.setItem(sessionKey('quotePendingToken'), updateToken); } catch {}
     }
     const payload = {
       vehicle: state.vehicle, service: state.service, addons: [],
       name: sanitize(state.name), phone: recovery ? formatPhone($('#exit-phone').value) : state.phone,
       notes: sanitize(state.notes), utm: readUTMs(), referrer: document.referrer || null,
       honeypot: Boolean($('#company').value.trim()), capture_method: method,
-      flow_version: '5', update_token: updateToken, session_id: funnel.sessionId, session_started_at: funnel.startedAt,
+      flow_version: flowVersion, page: pageName, update_token: updateToken, session_id: funnel.sessionId, session_started_at: funnel.startedAt,
+      ...(ceramic ? { paint_condition: state.paint_condition, coating_package: state.coating_package, vehicle_details: sanitize(state.vehicle_details) } : {}),
     };
     submitting = true;
     $('#submit').disabled = true;
@@ -692,7 +724,7 @@
       const data = await res.json();
       if (!res.ok || !data.ok || !data.id || !data.update_token) throw new Error('Lead submission failed');
       completed = true;
-      try { sessionStorage.removeItem('quotePendingToken'); } catch {}
+      try { sessionStorage.removeItem(sessionKey('quotePendingToken')); } catch {}
       try { sessionStorage.setItem('quoteLeadReceipt', JSON.stringify({ id: data.id, token: data.update_token })); } catch {}
       clearStoredPii();
       if (!payload.honeypot) {
@@ -723,16 +755,16 @@
     const sheet = $('#exit-sheet');
     const storage = getSessionStorage();
     let shown = false;
-    try { shown = storage?.getItem('quoteExitShown') === '1'; } catch {}
+    try { shown = storage?.getItem(sessionKey('quoteExitShown')) === '1'; } catch {}
     let lastActivity = Date.now();
     let scrollAnchor = { y: window.scrollY, time: performance.now() };
     let lastScroll = window.scrollY;
     let ignoreScrollUntil = 0;
     const typing = () => /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
     const show = trigger => {
-      if (shown || submitting || completed || document.hidden || typing() || !state.vehicle || !state.service || !matchMedia('(max-width: 767px)').matches) return;
+      if (shown || submitting || completed || document.hidden || typing() || stepKeys.some(key => !state[key]) || !matchMedia('(max-width: 767px)').matches) return;
       shown = true;
-      try { storage?.setItem('quoteExitShown', '1'); } catch {}
+      try { storage?.setItem(sessionKey('quoteExitShown'), '1'); } catch {}
       $('#exit-phone').value = state.phone || '';
       sheet.showModal();
       // Focus the close control so opening the prompt doesn't summon the keyboard.
@@ -765,7 +797,8 @@
   wire();
   wireCallFab();
   wireExitIntent();
-  setStep(state.vehicle ? (state.service ? 3 : 2) : 1);
+  const firstMissing = stepKeys.findIndex(key => !state[key]);
+  setStep(firstMissing === -1 ? totalSteps : firstMissing + 1);
   recalculate();
 })();
 

@@ -132,9 +132,19 @@ The site should stay on a dark detailing-oriented palette and avoid pale lavende
 The homepage palette tokens and dark surface treatments currently live in `public/styles/home.css`.
 
 
-## Quote funnel (September 2026)
+## Quote funnels
 
-`/quote` has three steps: vehicle, package, contact. Service cards show vehicle-specific starting prices. Add-ons are selected on `/thank-you` after the lead has been created; customers tap **Save my add-ons** to update that same lead. The mobile save action stays within reach at the bottom of the screen.
+### Ceramic coating landing page (October 2026)
+
+`/ceramic-quote` combines coating benefits, preparation guidance, FAQs, and the shared quote UI. Its four steps collect vehicle type, paint condition, correction/coating package, and contact details. Sedan pricing starts at $1,000 for single-step correction plus coating and $1,400 for two-step; SUVs add $400. Trucks/vans/other vehicles and the “Help me choose” option use custom pricing. The API calculates prices independently of the browser.
+
+Ceramic requests use `service: "ceramic"`, `page: "ceramic-quote"`, and `flow_version: "ceramic-1"`. The API validates `paint_condition` and `coating_package`, saves optional vehicle details, and includes these answers in the existing Telegram new-lead notification. Ceramic receipts show the selected package and estimate without offering detailing add-ons. Local state, pending retry tokens, and funnel sessions are separated from `/quote`; ceramic sessions are excluded from the dashboard’s detailing funnel chart. Ceramic leads remain visible in the dashboard with a service filter and their answers.
+
+Verification: build Functions, run `node scripts/test-ceramic-notifications.cjs` and `node scripts/test-addon-notifications.cjs`, then run `scripts/test-quote-api.mjs` against a demo Firebase project with Functions, Firestore, and Hosting emulators. Telegram requests are mocked in notification tests and suppressed in emulator runs. The current Firebase CLI requires Java 21 or newer. Deploy both Firebase Hosting and Functions to release the page and backend changes together.
+
+### Detailing quote (September 2026)
+
+`/quote` has three steps: vehicle, package, contact. It shares the ceramic page's purple accents, buttons, and page background. Service cards show vehicle-specific starting prices. Add-ons are selected on `/thank-you` after the lead has been created; customers tap **Save my add-ons** to update that same lead. The mobile save action stays within reach at the bottom of the screen.
 
 The phone-only mobile reminder appears at most once per tab session, after a vehicle and package are selected, on 30 seconds of inactivity or an upward scroll of more than 180px within 600ms. It is suppressed while typing, while the tab is hidden, during submission, and after success. Native dialog behavior supports focus containment, Escape dismissal, and a 48px close control. Motion respects reduced-motion settings. The 160ms skeleton overlay does not delay navigation or block interaction.
 

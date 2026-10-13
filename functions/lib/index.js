@@ -43,6 +43,19 @@ const node_crypto_1 = require("node:crypto");
 const firestore_2 = require("firebase-admin/firestore");
 admin.initializeApp();
 const db = admin.firestore();
+const COATING_LABELS = {
+    single_step: "Single-step correction + coating", two_step: "Two-step correction + coating", recommend: "Help me choose",
+};
+const PAINT_LABELS = {
+    new: "New / like new", light_swirls: "Light swirls", heavy_swirls: "Visible swirls / dull paint", unsure: "Not sure",
+};
+const CERAMIC_VEHICLE_LABELS = {
+    sedan: "Sedan/Coupe", suv_truck: "SUV/Crossover", van_3row: "Truck/Van/Other",
+};
+function enumKey(input, labels) {
+    return typeof input === "string" && Object.prototype.hasOwnProperty.call(labels, input) ? input : null;
+}
+const quoteFlowVersion = (input) => input === "ceramic-1" ? "ceramic-1" : input === "5" ? "5" : "4";
 const VEHICLE_LABELS = {
     sedan: "Sedan/Coupe",
     suv_truck: "SUV/Truck",
@@ -53,6 +66,7 @@ const SERVICE_LABELS = {
     full: "Full Detail",
     interior_only: "Interior Only",
     other: "Other",
+    ceramic: "Ceramic Coating",
 };
 const ADDON_LABELS = {
     wax: "Wax/Sealant",
@@ -78,7 +92,6 @@ const ADDONS = {
     headlights: { sedan: 75, suv_truck: 85, van_3row: 95 },
 };
 const INTERIOR_ONLY_ADDONS = new Set(["pethair", "soiled", "headlights"]);
-const isConsult = (service) => service === "other";
 function coerceVehicle(v) {
     const m = {
         sedan: "sedan", "sedan/coupe": "sedan", "sedan coupe": "sedan",
@@ -100,6 +113,7 @@ function coerceService(s) {
         // Back-compat for any cached clients
         paint: "interior_only", "paint correction": "interior_only",
         other: "other",
+        ceramic: "ceramic",
     };
     const key = String(s || "").toLowerCase().trim();
     return Object.prototype.hasOwnProperty.call(m, key) ? m[key] : null;
@@ -111,12 +125,20 @@ function coerceAddons(arr) {
     return [...new Set(arr.map(x => String(x || "").toLowerCase().trim()).filter((x) => valid.includes(x)))];
 }
 function filterAddonsForService(service, addons) {
+    if (service === "ceramic")
+        return [];
     if (service !== "interior_only")
         return addons;
     return addons.filter((addon) => INTERIOR_ONLY_ADDONS.has(addon));
 }
-function computeQuote(vehicle, service, addons) {
-    if (isConsult(service))
+function computeQuote(vehicle, service, addons, coatingPackage = null) {
+    if (service === "ceramic") {
+        const base = coatingPackage === "single_step" ? 1000 : coatingPackage === "two_step" ? 1400 : null;
+        if (base === null || vehicle === "van_3row")
+            return { total: null, consult: true };
+        return { total: base + (vehicle === "suv_truck" ? 400 : 0), consult: false };
+    }
+    if (service === "other")
         return { total: null, consult: true };
     let total = BASE[vehicle]?.[service] || 0;
     for (const a of addons)
@@ -295,13 +317,14 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                 const vehicle = coerceVehicle(lead.vehicle);
                 const service = coerceService(lead.service);
                 const addons = action === "save" ? filterAddonsForService(service, coerceAddons(requestedAddons)) : lead.addons;
-                const quote = computeQuote(vehicle, service, addons);
+                const quote = computeQuote(vehicle, service, addons, enumKey(lead.coating_package, COATING_LABELS));
                 if (action === "save")
                     tx.update(ref, {
                         addons, quoted_total: quote.total, quote_note: quote.consult ? "consult" : null,
                         addons_updated_at: firestore_2.FieldValue.serverTimestamp(),
                     });
                 return { vehicle, service, addons, quoted_total: quote.total, consult: quote.consult,
+                    ...(service === "ceramic" ? { coating_package: lead.coating_package, paint_condition: lead.paint_condition } : {}),
                     addon_prices: Object.fromEntries(allowed.filter(a => filterAddonsForService(service, [a]).length).map(a => [a, ADDONS[a][vehicle]])) };
             });
             if (!result) {
@@ -329,8 +352,8 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             }
             const eventPayload = {
                 session_id: sessionId,
-                page: "quote",
-                flow_version: body.flow_version === "5" ? "5" : "4",
+                page: body.page === "ceramic-quote" ? "ceramic-quote" : "quote",
+                flow_version: quoteFlowVersion(body.flow_version),
                 last_event: event,
                 last_seen_at: firestore_2.FieldValue.serverTimestamp(),
                 event_count: firestore_2.FieldValue.increment(1),
@@ -376,6 +399,8 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
         const body = (req.body || {});
         const vehicle = coerceVehicle(body.vehicle);
         const service = coerceService(body.service);
+        const coatingPackage = enumKey(body.coating_package, COATING_LABELS);
+        const paintCondition = enumKey(body.paint_condition, PAINT_LABELS);
         const addons = filterAddonsForService(service, coerceAddons(body.addons));
         const isRecovery = body.capture_method === "exit_intent";
         const name = String(body.name || "").trim().slice(0, 120);
@@ -391,6 +416,10 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             errors.push("vehicle");
         if (!service)
             errors.push("service");
+        if (service === "ceramic" && !coatingPackage)
+            errors.push("coating_package");
+        if (service === "ceramic" && !paintCondition)
+            errors.push("paint_condition");
         if (!name && !isRecovery)
             errors.push("name");
         if (!phone_normalized)
@@ -409,13 +438,18 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
         }
         const updateToken = suppliedToken || (0, node_crypto_1.randomBytes)(32).toString("hex");
         const tokenHash = (0, node_crypto_1.createHash)("sha256").update(updateToken).digest("hex");
-        const quote = computeQuote(vehicle, service, addons);
+        const quote = computeQuote(vehicle, service, addons, coatingPackage);
         const payload = {
             vehicle,
             service,
+            page: service === "ceramic" ? "ceramic-quote" : "quote",
+            ...(service === "ceramic" ? {
+                coating_package: coatingPackage, paint_condition: paintCondition,
+                vehicle_details: stripHtml(body.vehicle_details).slice(0, 120),
+            } : {}),
             addons,
             capture_method: isRecovery ? "exit_intent" : "quiz",
-            flow_version: body.flow_version === "5" ? "5" : "4",
+            flow_version: service === "ceramic" ? "ceramic-1" : quoteFlowVersion(body.flow_version),
             addon_token_hash: tokenHash,
             addon_token_expires_at: Date.now() + 24 * 60 * 60 * 1000,
             zip,
@@ -443,7 +477,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
             const sessionId = coerceQuoteSessionId(body.session_id);
             if (sessionId && !honeypot)
                 tx.set(db.collection("quotePageSessions").doc(sessionId), {
-                    session_id: sessionId, page: "quote", flow_version: payload.flow_version,
+                    session_id: sessionId, page: payload.page, flow_version: payload.flow_version,
                     session_started_at: String(body.session_started_at || payload.ts).slice(0, 80),
                     completed: true, completed_at: firestore_2.FieldValue.serverTimestamp(), last_seen_at: firestore_2.FieldValue.serverTimestamp(),
                     capture_method: payload.capture_method, utm: coerceUtm(body.utm),
@@ -463,7 +497,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                 firebase_functions_1.logger.error("Missing Telegram config via .env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)");
             }
             else if (!honeypot && !process.env.FUNCTIONS_EMULATOR) {
-                const vLabel = VEHICLE_LABELS[vehicle];
+                const vLabel = (service === "ceramic" ? CERAMIC_VEHICLE_LABELS : VEHICLE_LABELS)[vehicle];
                 const sLabel = SERVICE_LABELS[service];
                 const pricePart = quote.consult ? "consult" : `$${quote.total}`;
                 const addonsList = addons.map(a => ADDON_LABELS[a]).join(", ") || "None";
@@ -472,6 +506,10 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
                 const text = [
                     `New Lead: ${vLabel} • ${sLabel} • ${pricePart}`,
                     `Name: ${name || "Not provided (text quote request)"}`,
+                    service === "ceramic" ? "Source: /ceramic-quote" : null,
+                    service === "ceramic" ? `Package: ${COATING_LABELS[coatingPackage]}` : null,
+                    service === "ceramic" ? `Paint: ${PAINT_LABELS[paintCondition]}` : null,
+                    payload.vehicle_details ? `Vehicle details: ${payload.vehicle_details}` : null,
                     isRecovery ? "Source: mobile exit-intent quote request" : null,
                     `${zip ? `ZIP ${zip}` : "ZIP —"} • ${phonePretty}`,
                     `Add-ons: ${addonsList}`,

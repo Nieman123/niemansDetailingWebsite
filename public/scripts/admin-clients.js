@@ -1771,6 +1771,7 @@ function serviceLabelFromLead(lead) {
     interior_only: "Interior Only",
     interior: "Interior Refresh",
     other: "Other",
+    ceramic: "Ceramic Coating",
   };
   return map[String(lead.service || "").toLowerCase()] || sanitizeText(lead.service, 120) || "Quote lead";
 }

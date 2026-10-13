@@ -16,7 +16,7 @@
   let saved = [];
   let saving = false;
   const labels = { quick: 'Quick Once Over', full: 'Full Detail', interior_only: 'Interior Only', other: 'Custom detail' };
-  const money = value => `$${value}`;
+  const money = value => `$${value.toLocaleString('en-US')}`;
   const same = () => [...selected].sort().join() === [...saved].sort().join();
   const api = async (action, addons) => {
     const response = await fetch('/api/leadOptions', {
@@ -79,6 +79,14 @@
       $('#thanks-kicker').textContent = 'Request received ✓';
       $('#thanks-title').textContent = 'You’re all set.';
       $('#thanks-message').textContent = 'I’ll personally text you to confirm pricing and find a time that works. Nieman';
+      if (lead.service === 'ceramic') {
+        $('#thanks-title').textContent = 'Your ceramic quote is on its way.';
+        $('#thanks-message').textContent = 'I’ll personally text you to review your paint, confirm your coating package and pricing, and find a time that works. Nieman';
+        const packages = { single_step: 'Single-step correction + coating', two_step: 'Two-step correction + coating', recommend: 'Personalized ceramic coating' };
+        $('#ceramic-receipt').hidden = false;
+        $('#ceramic-saved-quote').textContent = lead.quoted_total === null ? 'Ceramic coating: pricing confirmed by text' : `${packages[lead.coating_package]} estimate: ${money(lead.quoted_total)}`;
+        return;
+      }
       $('#addon-section').hidden = false;
       render();
     } catch {
