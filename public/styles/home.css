@@ -773,6 +773,7 @@ body.desktop-header-compact .desktop-header-logo-horizontal {
   height: 256px;
   float: left;
 }
+.ceramic-card-image.mdl-card,
 .paint-card-image.mdl-card {
   width: 256px;
   height: 256px;
@@ -1474,6 +1475,22 @@ body.mdl-site {
   margin-left: auto;
 }
 
+.mdl-site #services .service-actions-row--coating {
+  flex-wrap: wrap;
+}
+.mdl-site #services .service-actions-row--coating > .mdl-chip {
+  max-width: 100%;
+  height: auto;
+}
+.mdl-site #services .service-actions-row--coating .mdl-chip__text {
+  white-space: normal;
+}
+.mdl-site #services .service-actions-row--coating .service-cta-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .mdl-site #overview .overview-services .section__text .section-title {
   text-align: center;
   padding-left: 0;
@@ -1750,6 +1767,25 @@ body.mdl-site {
   }
   .mdl-site #services .service-actions-row {
     flex-wrap: wrap;
+  }
+  .mdl-site #services .service-actions-row > .mdl-chip,
+  .mdl-site #overview .overview-service-meta .mdl-chip {
+    max-width: 100%;
+    height: auto;
+    display: inline-flex;
+    align-items: center;
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+  .mdl-site #services .service-actions-row .mdl-chip__text,
+  .mdl-site #overview .overview-service-meta .mdl-chip__text {
+    white-space: normal;
+    line-height: 1.5;
+    min-width: 0;
+  }
+  .mdl-site #services .service-actions-row .mdl-chip__contact,
+  .mdl-site #overview .overview-service-meta .mdl-chip__contact {
+    flex-shrink: 0;
   }
   .mdl-site #services .service-copy .service-cta-wrap {
     width: 100%;

@@ -253,3 +253,48 @@ a:focus-visible,
   max-height: 400px;
   object-fit: cover;
 }
+
+/* Conversion-focused paint protection pages. */
+.ceramic-service-page {
+  --accent: #5534a8;
+  --accent-strong: #7d55cf;
+  --focus: #d6c9ff;
+  background: radial-gradient(ellipse at 15% 0, #17213c 0, transparent 45%), #060b17;
+}
+.ceramic-service-page a:not(.btn) { color: #d6c9ff; }
+.ceramic-service-page .service-shell { background: rgba(16, 24, 43, .92); }
+.ceramic-service-page .service-eyebrow { color: #bba6ff; }
+.ceramic-service-page .service-section h2,
+.ceramic-service-page .service-section h3 { color: #f4f1ff; }
+.paint-service-page .btn-primary { color: #211407; }
+.service-intro-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 28px; align-items: center; }
+.service-intro-grid > *, .service-grid > * { min-width: 0; }
+.service-lede { font-size: 1.08rem; color: var(--muted); }
+.service-intro-photo { margin: 0; }
+.service-intro-photo img { height: 340px; width: 100%; object-fit: cover; }
+.service-intro-photo figcaption { padding: 9px 12px; font-size: .78rem; color: var(--muted); }
+.service-block { margin: 34px 0; }
+.service-block > h2 { line-height: 1.25; margin: 0 0 14px; font-size: clamp(1.4rem, 2.5vw, 1.9rem); }
+.service-grid--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.service-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.service-section h3 { margin: 0 0 10px; line-height: 1.35; font-size: 1.1rem; }
+.service-package { display: flex; flex-direction: column; }
+.service-package .btn { margin-top: auto; text-align: center; }
+.service-package-prices { margin: 20px 0; }
+.service-package-prices div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; border-top: 1px solid var(--panel-border); padding: 10px 0; }
+.service-package-prices dd { margin: 0; color: #f4b65f; font-weight: 700; }
+.service-price-chip { color: #f4b65f; border-color: rgba(244, 182, 95, .4); }
+.service-quote-note { color: var(--muted); font-size: .88rem; margin: 12px 0 0; }
+.service-highlight { background: linear-gradient(120deg, rgba(85, 52, 168, .22), rgba(16, 24, 43, .85)); }
+.service-process-list { padding-left: 24px; }
+.service-process-list li { margin: 10px 0; }
+.service-faq details { border-bottom: 1px solid var(--panel-border); }
+.service-faq summary { cursor: pointer; padding: 16px 0; font-weight: 600; min-height: 48px; }
+.service-faq details p { margin: 0 0 16px; color: var(--muted); }
+.ceramic-service-page .btn, .paint-service-page .btn { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+@media (max-width: 760px) {
+  .service-intro-grid, .service-grid--two, .service-grid--three { grid-template-columns: minmax(0, 1fr); }
+  .service-intro-photo img { height: 240px; }
+  .ceramic-service-page .service-actions, .paint-service-page .service-actions { flex-direction: column; }
+  .ceramic-service-page .service-actions .btn, .paint-service-page .service-actions .btn { width: 100%; }
+}
