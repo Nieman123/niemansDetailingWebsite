@@ -14,9 +14,15 @@ if (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(projectId ?? '') || projectId === pro
 
 let webConfig;
 try {
-  webConfig = JSON.parse(process.env.STAGING_FIREBASE_WEB_CONFIG ?? '');
+  const input = (process.env.STAGING_FIREBASE_WEB_CONFIG ?? '').trim();
+  const sdkSnippet = /^const\s+firebaseConfig\s*=\s*(\{[\s\S]+\})\s*;?$/.exec(input);
+  // Firebase's Web SDK snippet uses bare JS keys. Convert only its object literal and parse as data.
+  const json = sdkSnippet ? sdkSnippet[1]
+    .replace(/([,{]\s*)([A-Za-z_]\w*)(\s*:)/g, '$1"$2"$3')
+    .replace(/,\s*}/, '}') : input;
+  webConfig = JSON.parse(json);
 } catch {
-  throw new Error('STAGING_FIREBASE_WEB_CONFIG must be the staging web app SDK config as JSON.');
+  throw new Error('STAGING_FIREBASE_WEB_CONFIG must be the staging web app SDK config as JSON or as the Firebase config object snippet.');
 }
 
 const origin = `https://${projectId}.web.app`;
