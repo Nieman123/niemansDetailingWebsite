@@ -41,15 +41,13 @@ jobs:
           npm ci --no-audit --no-fund
           npm run build
 
-      - name: Install site dependencies and build
+      - name: Install site dependencies and run unit tests
         run: |
           npm ci
           node scripts/test-addon-notifications.cjs
           node scripts/test-ceramic-notifications.cjs
           node scripts/test-appointment-calendar.mjs
           node scripts/test-appointment-integrations.mjs
-          npm run images:sync
-          node scripts/prepare-staging.mjs
 
       - name: Install Firebase CLI
         run: npm install --global "firebase-tools@$FIREBASE_CLI_VERSION"
@@ -60,12 +58,17 @@ jobs:
           java-version: '21'
 
       - name: Test appointment API against Firebase emulators
-        env:
-          APPOINTMENT_INTEGRATIONS_PROJECT: demo-detailing-staging
-          HOSTING_ORIGIN: https://demo-detailing-staging.web.app
         run: |
+          emulator_env=functions/.env.local
+          trap 'rm -f "$emulator_env"' EXIT
+          printf '%s\n' 'APPOINTMENT_INTEGRATIONS_PROJECT=demo-detailing-staging' 'HOSTING_ORIGIN=https://demo-detailing-staging.web.app' > "$emulator_env"
           firebase emulators:exec --non-interactive --project demo-detailing-staging \
             --only auth,firestore,functions,hosting 'node scripts/test-appointments-api.mjs'
+
+      - name: Build staging site
+        run: |
+          npm run images:sync
+          node scripts/prepare-staging.mjs
 
       - name: Authenticate to the staging project
         env:
