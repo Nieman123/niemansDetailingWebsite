@@ -35,11 +35,15 @@ jobs:
             package-lock.json
             functions/package-lock.json
 
-      - name: Install and build
+      - name: Install Functions dependencies and build
+        working-directory: functions
         run: |
           npm ci
-          npm ci --prefix functions
-          npm run build --prefix functions
+          npm run build
+
+      - name: Install site dependencies and build
+        run: |
+          npm ci
           node scripts/test-addon-notifications.cjs
           node scripts/test-ceramic-notifications.cjs
           node scripts/test-appointment-calendar.mjs
