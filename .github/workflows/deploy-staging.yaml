@@ -38,18 +38,8 @@ jobs:
       - name: Install Functions dependencies and build
         working-directory: functions
         run: |
-          if ! npm ci --no-audit --no-fund; then
-            mv package-lock.json "$RUNNER_TEMP/previous-functions-lock.json"
-            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-            npm ci --no-audit --no-fund
-          fi
+          npm ci --no-audit --no-fund
           npm run build
-
-      - name: Save verified Functions lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: verified-functions-lockfile
-          path: functions/package-lock.json
 
       - name: Install site dependencies and build
         run: |

@@ -15,7 +15,7 @@ Create a separate Firebase project for the staging branch. The workflow publishe
 | Authentication | Enable the Google provider and select your support email. Verify that `<staging-project-id>.web.app` is listed under authorized domains. |
 | Web app | Project settings → General → Your apps → Add app → Web. Name it `Detailing Staging Web`. Use the default Hosting site if prompted. |
 
-After registering the web app, open **SDK setup and configuration → Config**. Copy these values into a JSON object with double-quoted keys and strings. Use the real values from the console. If the web config lacks `storageBucket`, copy the bucket name from Storage without the `gs://` prefix.
+After registering the web app, open **SDK setup and configuration → Config**. Paste the `const firebaseConfig = {...};` object snippet or copy its values into a JSON object with double-quoted keys and strings. Use the real values from the console. If the web config lacks `storageBucket`, copy the bucket name from Storage without the `gs://` prefix.
 
 ```json
 {
@@ -60,7 +60,7 @@ Create an environment named **`staging`** under **Settings → Environments**. R
 | Kind | Name | Value |
 | --- | --- | --- |
 | Variable | `STAGING_FIREBASE_PROJECT_ID` | Exact staging project ID. |
-| Variable | `STAGING_FIREBASE_WEB_CONFIG` | JSON object containing the staging Web SDK config above. |
+| Variable | `STAGING_FIREBASE_WEB_CONFIG` | JSON or the Firebase Web SDK config object snippet. |
 | Secret | `STAGING_FIREBASE_SERVICE_ACCOUNT` | Contents of the JSON key for `github-staging-deploy`. |
 
 The workflow runs on pushes to `staging`. Once the workflow also exists on the default branch, you can run it manually from Actions by selecting the `staging` branch. The workflow verifies that the web app settings and deploy key match the staging project ID. It deploys the Functions, Firestore indexes/rules and Storage rules before building the blog from staging Firestore and releasing Hosting. Production deploys from `main`.
