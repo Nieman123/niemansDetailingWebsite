@@ -64,8 +64,6 @@ function buildAppointment(body, uid, now) {
     if (body.deposit !== "required" && body.deposit !== "waived")
         throw new AppointmentError(400, "invalid_deposit");
     const waived = body.deposit === "waived";
-    if (waived && body.calendarChecked !== true)
-        throw new AppointmentError(400, "calendar_check_required");
     return {
         clientId: identifier(body.clientId, true), leadId: identifier(body.leadId, true),
         name, service, address, email, phone: digits ? `+1${digits.slice(-10)}` : "",
@@ -95,11 +93,11 @@ async function updateReservation(db, tx, reservation, remove, now, before) {
     }
     days.forEach((day, index) => tx.set(day.ref, { slots: remove || !newPaths.has(day.ref.path) ? activeByDay[index] : [...activeByDay[index], reservation] }));
 }
-async function assertCalendarOpen(appointment, manual, except) {
+async function assertCalendarOpen(appointment, except) {
     try {
         const config = await (0, appointment_calendar_1.calendarConfig)();
         if (!config) {
-            if (manual)
+            if (process.env.FUNCTIONS_EMULATOR === "true")
                 return;
             throw new AppointmentError(503, "calendar_unavailable");
         }
@@ -119,12 +117,14 @@ function customerDetails(appointment) {
     const paidDeposit = appointment.refund?.state === "succeeded" ? 0 : appointment.paidDeposit ?? 0;
     return { service, vehicle, address, preparation, start, end, estimateCents, depositCents, status, paidDeposit,
         refundState: appointment.refund?.state ?? null,
+        paymentPending: hasPendingCheck(appointment),
         finalCents: appointment.finalCents ?? null, balanceCents: remainingBalance(appointment),
         invoiceLines: appointment.invoiceLines ?? [],
         depositDeadline: appointment.depositDeadline ?? null, preapproved: !!appointment.preapproved,
         depositPolicy: appointment.acceptedPolicy ?? DEPOSIT_POLICY,
         calendarSequence: appointment.calendarSequence ?? 0,
         hasRescheduleRequest: !!appointment.rescheduleRequest,
+        paymentUnderReview: !!appointment.paymentReview,
         alternateOffer: appointment.alternateOffer && appointment.alternateOffer.expiresAt > Date.now() ? appointment.alternateOffer : null,
         depositRefundable: (appointment.paidDeposit ?? 0) > 0 && (appointment.status === "pending_approval" ||
             (appointment.status === "confirmed" && !depositLock(appointment, Date.now()))),
@@ -138,6 +138,8 @@ function adminDetails(id, appointment) {
         calendarFailed: !!appointment.calendarFailure, calendarPending: !!appointment.calendarDueAt,
         maintenanceEligible: !!maintenanceDeadline(appointment) && !appointment.maintenanceEnrolledAt,
         maintenanceEnrolled: !!appointment.maintenanceEnrolledAt,
+        maintenanceInviteQueued: !!appointment.maintenanceInviteAfterPayment && !!appointment.maintenanceInvite,
+        paymentReview: appointment.paymentReview ?? null,
     };
 }
 function remainingBalance(appointment) {
@@ -150,13 +152,31 @@ const hasPendingCheck = (appointment) => (appointment.payments ?? []).some(entry
 function depositLock(appointment, now) {
     return appointment.depositLockedAt || ((appointment.paidDeposit ?? 0) > 0 && appointment.start - now < 96 * 60 * MINUTE ? now : null);
 }
+const maintenanceService = (service) => /\b(full detail|the works)\b/i.test(service);
 function maintenanceDeadline(appointment) {
     if (appointment.status !== "completed" || !appointment.completedAt || !appointment.email ||
-        remainingBalance(appointment) !== 0 || !/\b(full detail|the works)\b/i.test(appointment.service))
+        appointment.paymentReview || hasPendingCheck(appointment) || !(appointment.finalCents && appointment.finalCents > 0) ||
+        remainingBalance(appointment) !== 0 || !maintenanceService(appointment.service))
         return null;
     const start = Date.parse(`${(0, appointment_booking_1.easternDate)(appointment.completedAt)}T12:00:00Z`);
     const through = new Date(start + 60 * DAY).toISOString().slice(0, 10);
     return (0, appointment_booking_1.easternDate)(Date.now()) <= through ? through : null;
+}
+function prepareMaintenanceInvite(db, tx, id, appointment, through, sendEmail) {
+    const token = (0, node_crypto_1.randomBytes)(32).toString("hex");
+    const hash = digest(token);
+    const url = `${checkoutOrigin()}/maintenance#${id}.${token}`;
+    tx.update(db.collection("appointments").doc(id), { maintenanceInvite: { hash, through }, maintenanceInvitedAt: Date.now() });
+    if (sendEmail)
+        (0, appointment_email_1.queueAppointmentEmail)(db, tx, `maintenance-${id}-${hash.slice(0, 16)}`, appointment.email, "Monthly maintenance detailing invitation", `Review and request monthly detailing by ${through}: ${url}\n\nEach visit is paid separately.`, { appointmentId: id, inviteHash: hash });
+    return url;
+}
+function queueOptedInMaintenance(db, tx, id, appointment) {
+    if (!appointment.maintenanceInviteAfterPayment || appointment.maintenanceInvite || appointment.maintenanceEnrolledAt)
+        return;
+    const through = maintenanceDeadline(appointment);
+    if (through)
+        prepareMaintenanceInvite(db, tx, id, appointment, through, true);
 }
 async function adminUid(db, auth, req, contentOnly = false) {
     const token = /^Bearer (\S+)$/.exec(req.get("Authorization") ?? "")?.[1];
@@ -199,7 +219,7 @@ async function createAppointment(db, uid, body) {
         return adminDetails(id, previous);
     const requested = buildAppointment(body, uid, Date.now());
     if (requested.status === "confirmed")
-        await assertCalendarOpen(requested, body.calendarChecked === true);
+        await assertCalendarOpen(requested);
     return db.runTransaction(async (tx) => {
         const existing = (await tx.get(ref)).data();
         if (existing)
@@ -231,10 +251,10 @@ async function changeAppointment(db, uid, id, action, body) {
     let newStart;
     if (action === "reschedule" || action === "offer-alternate") {
         newStart = validMoveStart(body.start ?? previous.rescheduleRequest?.start);
-        await assertCalendarOpen({ ...previous, start: newStart, end: newStart + previous.end - previous.start }, body.calendarChecked === true, id);
+        await assertCalendarOpen({ ...previous, start: newStart, end: newStart + previous.end - previous.start }, id);
     }
     else if (action === "approve" || (action === "issue-link" && previous.status === "draft" && stripe)) {
-        await assertCalendarOpen(previous, body.calendarChecked === true, id);
+        await assertCalendarOpen(previous, id);
     }
     return db.runTransaction(async (tx) => {
         const appointment = (await tx.get(ref)).data();
@@ -247,6 +267,7 @@ async function changeAppointment(db, uid, id, action, body) {
             }
             const offer = { start: newStart, offeredAt: now, expiresAt: Math.min(appointment.start, newStart, now + DAY) };
             tx.update(ref, { alternateOffer: offer, alternateOfferedBy: uid });
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `alternate-${id}-${now}`, appointment.email, "A different time for your detail", "Nieman proposed a different time for your detail. Open your appointment link to review the offer.");
             return adminDetails(id, { ...appointment, alternateOffer: offer });
         }
         if (action === "reschedule") {
@@ -265,6 +286,7 @@ async function changeAppointment(db, uid, id, action, body) {
             };
             tx.create(ref.collection("history").doc(), { kind: "reschedule", from: appointment.start, to: moved.start, at: now, by: uid });
             tx.update(ref, update);
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `moved-${id}-${update.calendarSequence}`, appointment.email, "Your detailing appointment time changed", "Your appointment has moved. Open your appointment link to see the updated time and calendar options.");
             return adminDetails(id, { ...appointment, ...update, rescheduleRequest: undefined });
         }
         if (action === "reject-reschedule") {
@@ -290,6 +312,7 @@ async function changeAppointment(db, uid, id, action, body) {
             }
             const update = { status: "confirmed", confirmedAt: now, confirmedBy: uid, depositLockedAt: depositLock(appointment, now), reconcileAt: null, ...calendarUpdate(now) };
             tx.update(ref, update);
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `approved-${id}`, appointment.email, "Your detailing appointment is confirmed", "Your appointment is confirmed. Open your appointment link to review the time, preparation notes, and Add to calendar options.");
             return adminDetails(id, { ...appointment, ...update });
         }
         if (action === "no-show") {
@@ -316,9 +339,12 @@ async function changeAppointment(db, uid, id, action, body) {
                     supplied.reduce((total, item) => total + item.cents, 0) !== final)
                     throw new AppointmentError(400, "invalid_line_items");
                 const invoiceLines = supplied.map(item => ({ description: text(item.description, 140), cents: item.cents }));
-                const update = { ...work, status: "completed", finalCents: final, invoiceLines, completedAt: now, completedBy: uid };
+                const update = { ...work, status: "completed", finalCents: final, invoiceLines, completedAt: now, completedBy: uid,
+                    maintenanceInviteAfterPayment: body.maintenanceInviteAfterPayment === true && !!appointment.email && maintenanceService(appointment.service), };
+                const completed = { ...appointment, ...update };
                 tx.update(ref, update);
-                return adminDetails(id, { ...appointment, ...update });
+                queueOptedInMaintenance(db, tx, id, completed);
+                return adminDetails(id, completed);
             }
             const update = action === "start-job" ? { status: "in_progress", startedAt: now, startedBy: uid } : work;
             tx.update(ref, update);
@@ -327,6 +353,8 @@ async function changeAppointment(db, uid, id, action, body) {
         if (action === "record-payment" || action === "reverse-payment" || action === "clear-check" || action === "return-check") {
             if (appointment.status !== "completed" || appointment.checkout)
                 throw new AppointmentError(409, "checkout_active");
+            if (appointment.paymentReview)
+                throw new AppointmentError(409, "payment_review_required");
             const operation = identifier(body.requestId);
             const payments = appointment.payments ?? [];
             if (payments.some(entry => entry.id === operation))
@@ -345,8 +373,10 @@ async function changeAppointment(db, uid, id, action, body) {
                 const entry = { id: operation, amount: 0, method: clearance === "cleared" ? "check_cleared" : "check_returned", reference: original.id, by: uid, at: now };
                 const revised = payments.map(payment => payment.id === original.id ? { ...payment, clearance } : payment);
                 tx.create(ref.collection("ledger").doc(operation), { ...entry, kind: entry.method, status: clearance });
-                tx.update(ref, { payments: [...revised, entry] });
-                return adminDetails(id, { ...appointment, payments: [...revised, entry] });
+                const paid = { ...appointment, payments: [...revised, entry] };
+                tx.update(ref, { payments: paid.payments });
+                queueOptedInMaintenance(db, tx, id, paid);
+                return adminDetails(id, paid);
             }
             if (action === "reverse-payment") {
                 const original = payments.find(entry => entry.id === body.paymentId);
@@ -369,18 +399,17 @@ async function changeAppointment(db, uid, id, action, body) {
                 ...(entryMethod === "check" ? { clearance: "pending" } : {}),
             };
             tx.create(ref.collection("ledger").doc(operation), entry);
-            tx.update(ref, { payments: [...payments, entry] });
-            return adminDetails(id, { ...appointment, payments: [...payments, entry] });
+            const paid = { ...appointment, payments: [...payments, entry] };
+            tx.update(ref, { payments: paid.payments });
+            queueOptedInMaintenance(db, tx, id, paid);
+            return adminDetails(id, paid);
         }
         if (action === "maintenance-invite") {
             const through = maintenanceDeadline(appointment);
             if (!through || appointment.maintenanceEnrolledAt || body.permitted !== true)
                 throw new AppointmentError(409, "maintenance_unavailable");
-            const token = (0, node_crypto_1.randomBytes)(32).toString("hex");
-            const url = `${checkoutOrigin()}/maintenance#${id}.${token}`;
-            tx.update(ref, { maintenanceInvite: { hash: digest(token), through }, maintenanceInvitedBy: uid, maintenanceInvitedAt: now });
-            if (body.sendEmail === true)
-                (0, appointment_email_1.queueAppointmentEmail)(db, tx, `maintenance-${id}-${now}`, appointment.email, "Monthly maintenance detailing invitation", `Review and request monthly detailing by ${through}: ${url}\n\nEach visit is paid separately.`);
+            const url = prepareMaintenanceInvite(db, tx, id, appointment, through, body.sendEmail === true);
+            tx.update(ref, { maintenanceInvitedBy: uid });
             return { url };
         }
         if (action === "revoke-link") {
@@ -390,8 +419,6 @@ async function changeAppointment(db, uid, id, action, body) {
         if (appointment.status === "draft") {
             if (!stripe)
                 throw new AppointmentError(503, "stripe_unavailable");
-            if (body.calendarChecked !== true)
-                throw new AppointmentError(400, "calendar_check_required");
             if (appointment.start < now + 36 * MINUTE)
                 throw new AppointmentError(409, "checkout_too_close");
             await updateReservation(db, tx, reservationFor(id, appointment), false, now);
@@ -418,7 +445,7 @@ async function acceptAlternate(db, id, body) {
         throw new AppointmentError(409, "status_changed");
     }
     const moved = { ...previous, start: offer.start, end: offer.start + previous.end - previous.start };
-    await assertCalendarOpen(moved, false, id);
+    await assertCalendarOpen(moved, id);
     const ref = db.collection("appointments").doc(id);
     return db.runTransaction(async (tx) => {
         const appointment = (await tx.get(ref)).data();
@@ -436,6 +463,7 @@ async function acceptAlternate(db, id, body) {
         };
         tx.create(ref.collection("history").doc(), { kind: "accepted_alternate", from: appointment.start, to: moved.start, at: now, by: "customer_link" });
         tx.update(ref, update);
+        (0, appointment_email_1.queueAppointmentEmail)(db, tx, `approved-${id}`, appointment.email, "Your detailing appointment is confirmed", "Your new appointment time is confirmed. Open your appointment link to review the time, preparation notes, and Add to calendar options.");
         return customerDetails({ ...appointment, ...update, alternateOffer: undefined, rescheduleRequest: undefined });
     });
 }
@@ -564,7 +592,7 @@ async function publicBooking(db, auth, req, body) {
                 appointment.estimateCents = Math.round(lead.quoted_total * 100);
         }
     }
-    await assertCalendarOpen(appointment, false);
+    await assertCalendarOpen(appointment);
     const ref = db.collection("appointments").doc(id);
     const throttle = db.collection("appointmentBookingHolds").doc(digest(email.toLowerCase()));
     return db.runTransaction(async (tx) => {
@@ -638,6 +666,7 @@ async function cancelAppointment(db, tx, id, appointment, actor, override, reaso
         depositLockedAt: locked, reconcileAt: null,
         ...(refund ? { refund, refundAt: now } : {}), ...calendarUpdate(now), };
     tx.update(db.collection("appointments").doc(id), update);
+    (0, appointment_email_1.queueAppointmentEmail)(db, tx, `cancel-${id}`, appointment.email, "Your detailing appointment was cancelled", refund ? "Your appointment was cancelled and your deposit refund has been requested." : "Your detailing appointment was cancelled. Contact Nieman if you need to book a different time.");
     return { ...appointment, ...update };
 }
 function checkoutOrigin() {
@@ -655,13 +684,21 @@ async function openCheckout(db, id, body) {
     const ref = db.collection("appointments").doc(id);
     const current = await readAppointment(db, id);
     assertLink(id, body.token, current);
-    if (current.checkout?.id)
-        await applyStripeSession(db, await (0, appointment_stripe_1.stripeSession)(config, current.checkout.id));
+    if (current.checkout?.id) {
+        const session = await (0, appointment_stripe_1.stripeSession)(config, current.checkout.id);
+        await applyStripeSession(db, session);
+        if (session.status === "complete")
+            throw new AppointmentError(409, "checkout_finished");
+    }
+    if (current.status === "awaiting_deposit")
+        await assertCalendarOpen(current, id);
     const reservation = await db.runTransaction(async (tx) => {
         const appointment = (await tx.get(ref)).data();
         assertLink(id, body.token, appointment);
         const now = Date.now();
         const deposit = appointment.status === "awaiting_deposit";
+        if (appointment.paymentReview)
+            throw new AppointmentError(409, "payment_review_required");
         if (hasPendingCheck(appointment))
             throw new AppointmentError(409, "check_pending");
         const amount = deposit ? appointment.depositCents : appointment.status === "completed" ? remainingBalance(appointment) : 0;
@@ -724,7 +761,9 @@ async function applyStripeSession(db, session) {
         tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: false });
         if (checkout.kind === "balance") {
             const entry = { id: session.id, amount: checkout.amount, method: "stripe", at: now, by: "stripe", reference: session.payment_intent };
-            tx.update(ref, { checkout: null, reconcileAt: null, payments: [...(appointment.payments ?? []), entry] });
+            const paid = { ...appointment, payments: [...(appointment.payments ?? []), entry] };
+            tx.update(ref, { checkout: null, reconcileAt: null, payments: paid.payments });
+            queueOptedInMaintenance(db, tx, id, paid);
             (0, appointment_email_1.queueAppointmentEmail)(db, tx, `receipt-${session.id}`, appointment.email, "Detailing payment received", `We received your payment of $${(checkout.amount / 100).toFixed(2)} for ${appointment.service}.`);
         }
         else {
@@ -745,7 +784,11 @@ async function reconcileAppointments(db) {
     const config = await (0, appointment_stripe_1.stripeConfig)();
     const now = Date.now();
     const collection = db.collection("appointments");
-    await (0, appointment_email_1.deliverAppointmentEmails)(db, now).catch(() => firebase_functions_1.logger.error("Appointment email delivery needs review"));
+    await (0, appointment_email_1.deliverAppointmentEmails)(db, now, async ({ appointmentId, inviteHash }) => {
+        const appointment = await readAppointment(db, appointmentId);
+        return !!appointment && appointment.maintenanceInvite?.hash === inviteHash &&
+            !appointment.maintenanceEnrolledAt && !!maintenanceDeadline(appointment);
+    }).catch(() => firebase_functions_1.logger.error("Appointment email delivery needs review"));
     const calendar = await (0, appointment_calendar_1.calendarConfig)().catch(() => null);
     if (calendar) {
         const pending = await collection.where("calendarDueAt", "<=", now).where("calendarDueAt", ">", 0).orderBy("calendarDueAt").limit(5).get();
@@ -804,6 +847,10 @@ async function reconcileAppointments(db) {
         const appointment = doc.data();
         if (!appointment.depositIntent || !appointment.paidDeposit || !appointment.refund)
             continue;
+        if (appointment.paymentReview?.kind === "dispute") {
+            await doc.ref.update({ refundAt: now + 60 * MINUTE });
+            continue;
+        }
         try {
             if (!appointment.refund.id && now - appointment.refund.requestedAt > 23 * 60 * MINUTE) {
                 await doc.ref.update({ refund: { ...appointment.refund, state: "failed" }, refundAt: null });
@@ -988,7 +1035,9 @@ async function handleStripeWebhook(db, req, res) {
             res.sendStatus(400);
             return;
         }
-        if (!["checkout.session.completed", "checkout.session.expired"].includes(event.type)) {
+        const checkoutEvent = ["checkout.session.completed", "checkout.session.expired"].includes(event.type);
+        const ledgerEvent = ["charge.refunded", "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed"].includes(event.type);
+        if (!checkoutEvent && !ledgerEvent) {
             res.sendStatus(204);
             return;
         }
@@ -1000,7 +1049,37 @@ async function handleStripeWebhook(db, req, res) {
         }
         const sessionId = event.data.object.id;
         await receipt.set({ sessionId, type: event.type, receivedAt: Date.now() }, { merge: true });
-        await applyStripeSession(db, await (0, appointment_stripe_1.stripeSession)(config, sessionId));
+        if (checkoutEvent)
+            await applyStripeSession(db, await (0, appointment_stripe_1.stripeSession)(config, sessionId));
+        else {
+            const change = await (0, appointment_stripe_1.stripeMoneyChange)(config, event);
+            if (change && HASH.test(change.appointmentId)) {
+                const ref = db.collection("appointments").doc(change.appointmentId);
+                await db.runTransaction(async (tx) => {
+                    const appointment = (await tx.get(ref)).data();
+                    if (!appointment)
+                        return;
+                    const deposit = appointment.depositIntent === change.intent;
+                    const balance = appointment.payments?.some(payment => payment.method === "stripe" && payment.reference === change.intent);
+                    if (!deposit && !balance) {
+                        if (appointment.checkout)
+                            throw new Error("stripe_capture_pending");
+                        return;
+                    }
+                    // An internally requested full deposit refund is already tracked by the refund worker.
+                    if (deposit && appointment.refund && change.kind === "refund" && change.amount === appointment.paidDeposit)
+                        return;
+                    const existing = await tx.get(ref.collection("ledger").doc(event.id));
+                    if (existing.exists)
+                        return;
+                    tx.create(existing.ref, { kind: `stripe_${change.kind}_review`, method: "stripe", amount: 0, at: Date.now(),
+                        reference: change.stripeObjectId, status: change.stripeStatus, reportedAmount: change.amount });
+                    if (appointment.paymentReview?.kind !== "dispute" || change.kind === "dispute") {
+                        tx.update(ref, { paymentReview: change });
+                    }
+                });
+            }
+        }
         await receipt.set({ completedAt: Date.now() }, { merge: true });
         res.sendStatus(204);
     }

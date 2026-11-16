@@ -9,6 +9,15 @@ const elm = (tag, text, className = "") => Object.assign(document.createElement(
 const cents = value => Math.round(Number(value) * 100);
 const methodNames = { cash: "Cash", check: "Check", venmo: "Venmo", cash_app: "Cash App", other: "Other", stripe: "Stripe", reversal: "Reversal", check_cleared: "Check cleared", check_returned: "Check returned" };
 const readDay = value => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", dateStyle: "short" }).format(value);
+const pendingNotes = new Map();
+const noteSaves = new Map();
+export const hasUnsavedJobNotes = () => pendingNotes.size > 0;
+export const clearJobNotes = () => pendingNotes.clear();
+window.addEventListener("beforeunload", event => {
+  if (!pendingNotes.size) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
 
 function inputField(form, name, label, attributes = {}, value = "") {
   const field = elm("label", "", attributes.type === "checkbox" ? "appointment-checkbox" : "field");
@@ -57,6 +66,7 @@ export function jobWorkspace(record, request, refresh, report) {
 
   if (record.status === "completed") {
     area.append(elm("p", `Final total ${appointmentMoney(record.finalCents)} · Deposit credit ${appointmentMoney(record.paidDeposit)} · Remaining ${appointmentMoney(record.balanceCents)}`));
+    if (record.maintenanceInviteQueued) area.append(elm("p", "Maintenance invitation prepared for this customer."));
     for (const entry of record.payments) {
       const line = elm("div", "", "appointment-actions");
       line.append(elm("span", `${readDay(entry.at)} · ${methodNames[entry.method] || entry.method} · ${appointmentMoney(entry.amount)}${entry.clearance ? ` · ${entry.clearance}` : ""}`));
@@ -88,7 +98,7 @@ export function jobWorkspace(record, request, refresh, report) {
         await request("record-payment", { id: record.id, requestId, method: method.value, amountCents: cents(amount.value), reference: reference.value });
         await refresh();
       }));
-    } else if (record.maintenanceEligible) {
+    } else if (record.maintenanceEligible && !record.maintenanceInviteQueued) {
       form.append(action("Create monthly maintenance invitation", async () => {
         if (!confirm("I have the customer's permission to share a monthly maintenance invitation.")) return;
         const sendEmail = confirm("Queue this invitation for your staging email inbox? Cancel to create a share link only.");
@@ -103,29 +113,65 @@ export function jobWorkspace(record, request, refresh, report) {
       }));
     }
   } else {
-    const notes = inputField(form, "workNotes", "Private job notes", { tag: "textarea", rows: 3, maxLength: 5000 }, record.workNotes);
-    const changes = inputField(form, "scopeChanges", "Agreed scope changes", { tag: "textarea", rows: 2, maxLength: 1500 }, record.scopeChanges);
+    const pending = pendingNotes.get(record.id);
+    const notes = inputField(form, "workNotes", "Private job notes", { tag: "textarea", rows: 3, maxLength: 5000 }, pending?.workNotes ?? record.workNotes);
+    const changes = inputField(form, "scopeChanges", "Agreed scope changes", { tag: "textarea", rows: 2, maxLength: 1500 }, pending?.scopeChanges ?? record.scopeChanges);
     const final = inputField(form, "final", "Final total ($)", { type: "number", step: .01, min: record.paidDeposit / 100 },
       record.estimateCents == null ? "" : (record.estimateCents / 100).toFixed(2));
     const invoice = inputField(form, "invoice", "Itemized charges (optional)", { tag: "textarea", rows: 3, maxLength: 4200,
       placeholder: "Full detail | 300.00\nPet hair | 25.00\nDiscount | -10.00" });
     const accepted = inputField(form, "scopeAccepted", "Customer approved any price increase", { type: "checkbox" });
+    const autoInvite = record.email && /\b(full detail|the works)\b/i.test(record.service)
+      ? inputField(form, "maintenanceInviteAfterPayment", "Email a maintenance invitation after full payment (customer agreed)", { type: "checkbox" })
+      : null;
     const work = () => ({ id: record.id, workNotes: notes.value, scopeChanges: changes.value });
+    let autosave;
+    async function saveNotes(draft) {
+      const previous = noteSaves.get(record.id) ?? Promise.resolve();
+      const save = previous.catch(() => {}).then(async () => {
+        if (!form.isConnected) return;
+        await request("save-job", draft);
+        if (pendingNotes.get(record.id) === draft) pendingNotes.delete(record.id);
+      });
+      noteSaves.set(record.id, save);
+      try { await save; }
+      finally { if (noteSaves.get(record.id) === save) noteSaves.delete(record.id); }
+    }
+    function queueSave() {
+      const draft = work();
+      pendingNotes.set(record.id, draft);
+      clearTimeout(autosave);
+      message.textContent = "Changes pending.";
+      autosave = setTimeout(async () => {
+        if (!form.isConnected || pendingNotes.get(record.id) !== draft) return;
+        try { await saveNotes(draft); message.textContent = "Notes saved."; }
+        catch { message.textContent = "Notes aren't saved yet. Check your connection and try Save notes."; }
+      }, 900);
+    }
+    notes.oninput = changes.oninput = queueSave;
     if (record.status === "confirmed") form.append(action("Start job", async () => {
-      if (notes.value || changes.value) await request("save-job", work());
+      clearTimeout(autosave);
+      if (pendingNotes.has(record.id)) await saveNotes(pendingNotes.get(record.id));
       await request("start-job", { id: record.id }); await refresh();
     }));
     form.append(action("Save notes", async () => {
-      await request("save-job", work());
+      clearTimeout(autosave);
+      await saveNotes(pendingNotes.get(record.id) ?? work());
       message.textContent = "Notes saved.";
     }), action("Complete job", async () => {
       if (!final.value) { final.focus(); message.textContent = "Enter the final total."; return; }
+      clearTimeout(autosave);
+      await noteSaves.get(record.id)?.catch(() => {});
       const invoiceLines = invoice.value.split(/\r?\n/).filter(line => line.trim()).map(line => {
         const [description, price, extra] = line.split("|").map(value => value.trim());
         if (extra !== undefined || !description || !/^-?\d+(\.\d{1,2})?$/.test(price || "")) throw new Error("Enter each charge as Description | Amount.");
         return { description, cents: cents(price) };
       });
-      await request("finish-job", { ...work(), finalCents: cents(final.value), scopeAccepted: accepted.checked, ...(invoiceLines.length ? { invoiceLines } : {}) });
+      await request("finish-job", {
+        ...work(), finalCents: cents(final.value), scopeAccepted: accepted.checked,
+        maintenanceInviteAfterPayment: autoInvite?.checked === true, ...(invoiceLines.length ? { invoiceLines } : {}),
+      });
+      pendingNotes.delete(record.id);
       await refresh();
     }));
   }
@@ -142,7 +188,6 @@ export function rescheduleWorkspace(record, request, refresh, report) {
     const requested = record.rescheduleRequest.start;
     form.prepend(elm("p", `Customer asked for ${appointmentTime({ start: requested, end: requested + record.end - record.start })}.`));
   }
-  const checked = inputField(form, "calendarChecked", "I checked all three calendars", { type: "checkbox", required: true });
   const message = elm("p", "");
   message.setAttribute("role", "status");
   const move = Object.assign(elm("button", record.status === "pending_approval" ? "Send or approve proposed time" : "Save appointment move", "btn secondary"), { type: "submit" });
@@ -154,7 +199,7 @@ export function rescheduleWorkspace(record, request, refresh, report) {
       const proposed = start.value ? easternStart(start.value) : record.rescheduleRequest?.start;
       if (!proposed) { message.textContent = "Choose a proposed time."; return; }
       const action = record.status === "pending_approval" && record.rescheduleRequest?.start !== proposed ? "offer-alternate" : "reschedule";
-      await request(action, { id: record.id, calendarChecked: checked.checked, start: proposed });
+      await request(action, { id: record.id, start: proposed });
       await refresh();
     } catch (error) { message.textContent = error.code ? report(error) : error.message; }
     finally { move.disabled = false; }

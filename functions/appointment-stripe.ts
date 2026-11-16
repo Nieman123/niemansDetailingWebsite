@@ -71,6 +71,22 @@ export function stripeSession(config: StripeConfig, id: string) {
   return stripeRequest<StripeSession>(config, `checkout/sessions/${id}`);
 }
 
+export async function stripeMoneyChange(config: StripeConfig, event: StripeEvent) {
+  const id = event.data.object.id;
+  const isRefund = event.type === "charge.refunded";
+  if (!(isRefund ? /^ch_\w+$/ : /^dp_\w+$/).test(id)) return null;
+  const object = await stripeRequest<{
+    livemode: boolean; currency: string; payment_intent: string; status: string; amount: number; amount_refunded?: number;
+  }>(config, `${isRefund ? "charges" : "disputes"}/${id}`);
+  if (object.livemode !== false || object.currency !== "usd" || !/^pi_\w+$/.test(object.payment_intent)) return null;
+  const intent = await stripeRequest<{ livemode: boolean; metadata?: Record<string, string> }>(config, `payment_intents/${object.payment_intent}`);
+  if (intent.livemode !== false || !intent.metadata?.appointmentId) return null;
+  const amount = isRefund ? object.amount_refunded : object.amount;
+  if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount < 0) return null;
+  return { appointmentId: intent.metadata.appointmentId, intent: object.payment_intent, kind: isRefund ? "refund" : "dispute",
+    amount, stripeStatus: isRefund ? "refunded" : object.status, stripeObjectId: id };
+}
+
 export function stripeRefund(config: StripeConfig, input: { id: string; intent: string; cents: number; refundId?: string }) {
   if (input.refundId) {
     if (!/^re_\w+$/.test(input.refundId)) throw new Error("invalid_refund_id");

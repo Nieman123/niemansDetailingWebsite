@@ -60,6 +60,9 @@ jobs:
           java-version: '21'
 
       - name: Test appointment API against Firebase emulators
+        env:
+          APPOINTMENT_INTEGRATIONS_PROJECT: demo-detailing-staging
+          HOSTING_ORIGIN: https://demo-detailing-staging.web.app
         run: |
           firebase emulators:exec --non-interactive --project demo-detailing-staging \
             --only auth,firestore,functions,hosting 'node scripts/test-appointments-api.mjs'

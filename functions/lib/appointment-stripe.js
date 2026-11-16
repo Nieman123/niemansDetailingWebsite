@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.stripeConfig = stripeConfig;
 exports.createStripeSession = createStripeSession;
 exports.stripeSession = stripeSession;
+exports.stripeMoneyChange = stripeMoneyChange;
 exports.stripeRefund = stripeRefund;
 exports.verifyStripeEvent = verifyStripeEvent;
 const node_crypto_1 = require("node:crypto");
@@ -54,6 +55,23 @@ function stripeSession(config, id) {
     if (!/^cs_test_\w+$/.test(id))
         throw new Error("invalid_stripe_session");
     return stripeRequest(config, `checkout/sessions/${id}`);
+}
+async function stripeMoneyChange(config, event) {
+    const id = event.data.object.id;
+    const isRefund = event.type === "charge.refunded";
+    if (!(isRefund ? /^ch_\w+$/ : /^dp_\w+$/).test(id))
+        return null;
+    const object = await stripeRequest(config, `${isRefund ? "charges" : "disputes"}/${id}`);
+    if (object.livemode !== false || object.currency !== "usd" || !/^pi_\w+$/.test(object.payment_intent))
+        return null;
+    const intent = await stripeRequest(config, `payment_intents/${object.payment_intent}`);
+    if (intent.livemode !== false || !intent.metadata?.appointmentId)
+        return null;
+    const amount = isRefund ? object.amount_refunded : object.amount;
+    if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount < 0)
+        return null;
+    return { appointmentId: intent.metadata.appointmentId, intent: object.payment_intent, kind: isRefund ? "refund" : "dispute",
+        amount, stripeStatus: isRefund ? "refunded" : object.status, stripeObjectId: id };
 }
 function stripeRefund(config, input) {
     if (input.refundId) {

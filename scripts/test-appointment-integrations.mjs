@@ -44,5 +44,34 @@ try {
   assert.equal(calls[0].body.get('line_items[0][price_data][unit_amount]'), '5000');
   assert.equal(calls[0].body.get('payment_method_types[0]'), 'card');
   assert.equal(calls[0].body.get('success_url'), 'https://example-test.web.app/appointment?checkout=complete');
+
+  const changePayloads = {
+    '/v1/charges/ch_test_charge': { livemode: false, currency: 'usd', payment_intent: 'pi_test_payment', amount_refunded: 1500 },
+    '/v1/disputes/dp_test_dispute': { livemode: false, currency: 'usd', payment_intent: 'pi_test_payment', amount: 5000, status: 'needs_response' },
+    '/v1/payment_intents/pi_test_payment': { livemode: false, metadata: { appointmentId: 'appointment-id' } },
+  };
+  const requests = [];
+  globalThis.fetch = async url => {
+    const { pathname } = new URL(url);
+    requests.push(pathname);
+    assert(Object.hasOwn(changePayloads, pathname), pathname);
+    return { ok: true, json: async () => changePayloads[pathname] };
+  };
+  const config = { secretKey: 'sk_test_sample', webhookSecret: secret };
+  const refund = { type: 'charge.refunded', data: { object: { id: 'ch_test_charge', metadata: { appointmentId: 'forged-id' } } } };
+  assert.deepEqual(await stripe.stripeMoneyChange(config, refund), {
+    appointmentId: 'appointment-id', intent: 'pi_test_payment', kind: 'refund', amount: 1500,
+    stripeStatus: 'refunded', stripeObjectId: 'ch_test_charge',
+  });
+  const dispute = { type: 'charge.dispute.created', data: { object: { id: 'dp_test_dispute' } } };
+  assert.deepEqual(await stripe.stripeMoneyChange(config, dispute), {
+    appointmentId: 'appointment-id', intent: 'pi_test_payment', kind: 'dispute', amount: 5000,
+    stripeStatus: 'needs_response', stripeObjectId: 'dp_test_dispute',
+  });
+  changePayloads['/v1/payment_intents/pi_test_payment'].livemode = true;
+  assert.equal(await stripe.stripeMoneyChange(config, dispute), null);
+  const before = requests.length;
+  assert.equal(await stripe.stripeMoneyChange(config, { ...refund, data: { object: { id: '../unexpected' } } }), null);
+  assert.equal(requests.length, before);
 } finally { globalThis.fetch = previous; }
-console.log('PASS: Stripe authentication, mode and replay window, stable Checkout requests, and public booking policy validation.');
+console.log('PASS: Stripe signature and replay checks, stable Checkout requests, provider-verified refund and dispute references, and public booking policy validation.');

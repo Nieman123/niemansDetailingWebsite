@@ -53,9 +53,9 @@ const appointment = {
   requestId: randomUUID(), clientId: client.id, leadId: lead.id,
   name: 'Test Customer', phone: '(828) 555-0123', email: 'client@example.test',
   address: '1 Test Street, Asheville, NC', service: 'Full Detail', vehicle: 'Test sedan', preparation: 'Park in the driveway.',
-  start, durationMinutes: 60, estimateCents: 30_000, deposit: 'waived', calendarChecked: true, saveClientDefault: true,
+  start, durationMinutes: 60, estimateCents: 30_000, deposit: 'waived', saveClientDefault: true,
 };
-assert.equal((await asOwner('create', { ...appointment, calendarChecked: false })).error, 'calendar_check_required');
+assert.equal((await asOwner('create', { ...appointment, durationMinutes: -1 })).error, 'invalid_time');
 const draft = await asOwner('create', { ...appointment, requestId: randomUUID(), deposit: 'required', saveClientDefault: false });
 assert.equal(draft.result.status, 'draft');
 assert.equal(draft.result.depositCents, 5000);
@@ -117,13 +117,24 @@ assert.equal((await asOwner('cancel', { id: pending.id })).result.refundState, '
 
 const job = (await asOwner('create', { ...appointment, requestId: randomUUID(), start: paidLater + 86_400_000 })).result;
 assert.equal((await asOwner('finish-job', { id: job.id, finalCents: 31_000 })).error, 'scope_acceptance_required');
-const finished = await asOwner('finish-job', { id: job.id, finalCents: 31_000, scopeAccepted: true, scopeChanges: 'Approved extra work' });
+const finished = await asOwner('finish-job', {
+  id: job.id, finalCents: 31_000, scopeAccepted: true, scopeChanges: 'Approved extra work', maintenanceInviteAfterPayment: true,
+});
 assert.equal(finished.result.balanceCents, 31_000);
+const invitations = () => db.collection('appointmentEmails').where('maintenance.appointmentId', '==', job.id).get();
+assert.equal((await invitations()).size, 0);
 const manual = { id: job.id, amountCents: 10_000, method: 'cash', requestId: randomUUID() };
 assert.equal((await asOwner('record-payment', manual)).result.balanceCents, 21_000);
 assert.equal((await asOwner('record-payment', manual)).result.balanceCents, 21_000);
 assert.equal((await asOwner('reverse-payment', { id: job.id, paymentId: manual.requestId, requestId: randomUUID() })).result.balanceCents, 31_000);
 assert.equal((await asOwner('payment-export')).result.csv.includes('cash'), true);
+const check = { id: job.id, amountCents: 31_000, method: 'check', requestId: randomUUID() };
+assert.equal((await asOwner('record-payment', check)).result.paymentPending, true);
+assert.equal((await invitations()).size, 0);
+const cleared = { id: job.id, paymentId: check.requestId, requestId: randomUUID() };
+assert.equal((await asOwner('clear-check', cleared)).result.balanceCents, 0);
+assert.equal((await asOwner('clear-check', cleared)).result.balanceCents, 0);
+assert.equal((await invitations()).size, 1);
 
 await db.collection('adminUsers').doc(stranger.localId).set({ role: 'editor' });
 assert.equal((await post('list', {}, stranger.idToken)).status, 403);
@@ -133,5 +144,5 @@ assert.equal((await post('site-content', {})).result.headline, undefined);
 await post('cms-publish', { content: { headline: 'Published headline' }, revision: draftContent.result.draft.revision }, stranger.idToken);
 assert.equal((await post('site-content', {})).result.headline, 'Published headline');
 
-console.log('PASS: appointment authorization, lead/client prefill, capture reconciliation, ledger idempotency, reservations, private links, cancellation, and content roles.');
+console.log('PASS: appointment authorization, lead/client prefill, capture reconciliation, ledger idempotency, reservations, private links, cancellation, check clearance, one maintenance invitation, and content roles.');
 await admin.app().delete();

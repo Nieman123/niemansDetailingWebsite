@@ -25,6 +25,8 @@ const errors = {
   checkout_finished: "Stripe has finished this session. Open your appointment again to check the result.",
   checkout_too_close: "The payment deadline is too close. Text Nieman to arrange a new time.",
   stripe_unavailable: "Online payments are currently unavailable. Please text Nieman.",
+  calendar_unavailable: "We couldn't verify your appointment time right now. Try again in a few minutes.",
+  time_unavailable: "This time needs to be reconfirmed. Please text Nieman before paying a deposit.",
   check_pending: "A check is pending clearance. Text Nieman for help with your balance.",
   status_changed: "The appointment status changed. Reopen your link for the latest details.",
   cancellation_terms_changed: "The cancellation terms changed. Reopen the appointment to review the latest terms.",
@@ -46,7 +48,9 @@ function render() {
   byId("estimate-label").textContent = finalCents === null ? "Estimated total" : "Final total";
   if (price !== null) byId("appointment-estimate").textContent = appointmentMoney(price);
   byId("balance-label").hidden = byId("appointment-balance").hidden = balanceCents === null;
-  if (balanceCents !== null) byId("appointment-balance").textContent = balanceCents ? appointmentMoney(balanceCents) : "Paid";
+  if (balanceCents !== null) {
+    byId("appointment-balance").textContent = appointment.paymentUnderReview ? "Under review" : balanceCents ? appointmentMoney(balanceCents) : "Paid";
+  }
   const invoiceLines = appointment.invoiceLines ?? [];
   byId("invoice-detail").hidden = !invoiceLines.length;
   byId("invoice-lines").replaceChildren(...invoiceLines.map(line =>
@@ -61,7 +65,9 @@ function render() {
   byId("google-calendar").href = googleCalendarUrl(appointment);
   const dueDeposit = appointment.status === "awaiting_deposit" && appointment.depositDeadline > Date.now();
   const dueBalance = appointment.status === "completed" && balanceCents >= 50;
-  byId("payment-actions").hidden = !dueDeposit && !dueBalance;
+  byId("payment-actions").hidden = appointment.paymentUnderReview || appointment.paymentPending || (!dueDeposit && !dueBalance);
+  if (appointment.paymentUnderReview) status.textContent += " A payment is under review. Contact Nieman before paying again.";
+  else if (appointment.paymentPending) status.textContent += " A check is pending clearance.";
   byId("payment-heading").textContent = dueDeposit ? `Pay ${appointmentMoney(depositCents)} deposit` : `Pay ${appointmentMoney(balanceCents)} balance`;
   byId("payment-policy").textContent = dueDeposit
     ? `${appointment.preapproved ? "Paying confirms this preapproved appointment. " : "Payment sends this appointment to Nieman for approval. "}${appointment.depositPolicy}`

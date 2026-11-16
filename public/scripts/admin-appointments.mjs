@@ -1,7 +1,7 @@
 import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { appointmentMoney, appointmentRequest, appointmentTime, easternStart } from "./appointment-utils.mjs";
-import { jobWorkspace, rescheduleWorkspace, setupBookingSettings, statusLabels } from "./appointment-admin-tools.mjs";
+import { clearJobNotes, hasUnsavedJobNotes, jobWorkspace, rescheduleWorkspace, setupBookingSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);
 const form = byId("create-booking");
@@ -23,7 +23,6 @@ const messages = {
   invalid_time: "Choose a future appointment with a duration from 15 minutes to seven days.",
   invalid_price: "Enter a valid estimated total.",
   time_unavailable: "This overlaps a confirmed appointment. Choose another time.",
-  calendar_check_required: "Check your calendars before confirming the time.",
   link_unavailable: "Share links are available for active, confirmed appointments.",
   calendar_unavailable: "The configured calendars couldn't be checked.",
   stripe_unavailable: "Configure Stripe test credentials before creating deposit links.",
@@ -35,6 +34,7 @@ const messages = {
   invalid_payment: "Enter a payment amount within the remaining balance and select its method.",
   invalid_line_items: "Check the invoice lines. Their amounts must add up to the final total.",
   check_pending: "Clear or return the pending check before recording another payment.",
+  payment_review_required: "Reconcile the Stripe refund or dispute before recording another payment.",
   invalid_booking_settings: "Check the days, hours, ZIP codes, blocked dates, and service lines.",
   settings_updated: "These settings were updated elsewhere. Reload before saving.",
   maintenance_unavailable: "This job is outside the maintenance invitation window.",
@@ -50,11 +50,9 @@ const ownerRequest = async (action, body = {}) => appointmentRequest(action, bod
 
 function syncDeposit() {
   const waived = fields.deposit.value === "waived";
-  byId("calendar-check").hidden = !waived;
-  fields.calendarChecked.required = waived;
   form.querySelector("[type=submit]").textContent = waived ? "Confirm appointment" : "Save draft";
   byId("deposit-help").textContent = waived
-    ? "The customer can open an appointment link and add the booking to their calendar."
+    ? "This checks availability across all three calendars and confirms the appointment without collecting a deposit."
     : "Save a draft, then generate a deposit link to reserve the time and send it to your customer.";
 }
 
@@ -121,11 +119,11 @@ function renderRecord(record) {
     actions.append(actionButton(label, async () => {
       const session = scope;
       const warning = record.status === "draft"
-        ? "I checked Detailing, personal, and Pluto Events. Hold this time for a $50 deposit?"
+        ? "Check availability and hold this time for a $50 deposit?"
         : "Generate a customer link? This replaces any earlier shared link for this appointment.";
       if (!window.confirm(warning)) return;
       const sendEmail = !!record.email && window.confirm("Queue an email to the customer’s staging test inbox? Cancel to create the link only.");
-      const { token } = await ownerRequest("issue-link", { id: record.id, calendarChecked: true, sendEmail });
+      const { token } = await ownerRequest("issue-link", { id: record.id, sendEmail });
       if (session !== scope) return;
       const issued = `${location.origin}/appointment#${record.id}.${token}`;
       links.set(record.id, issued);
@@ -146,8 +144,8 @@ function renderRecord(record) {
   }
   if (record.status === "pending_approval") {
     actions.append(actionButton("Approve appointment", async () => {
-      if (!confirm("I checked Detailing, personal, and Pluto Events. Approve this request?")) return;
-      await ownerRequest("approve", { id: record.id, calendarChecked: true }); await refreshList();
+      if (!confirm("Check availability and approve this request?")) return;
+      await ownerRequest("approve", { id: record.id }); await refreshList();
     }));
   }
   if (["draft", "awaiting_deposit", "pending_approval", "confirmed"].includes(record.status)) {
@@ -175,6 +173,7 @@ function renderRecord(record) {
   card.append(heading, summary, actions, share);
   if (record.calendarFailed) card.append(Object.assign(document.createElement("p"), { textContent: "Calendar sync failed and will retry." }));
   if (record.refundState) card.append(Object.assign(document.createElement("p"), { textContent: `Deposit refund: ${record.refundState}` }));
+  if (record.paymentReview) card.append(Object.assign(document.createElement("p"), { textContent: `Stripe ${record.paymentReview.kind} needs review · ${appointmentMoney(record.paymentReview.amount)} · ${record.paymentReview.stripeObjectId}` }));
   if (["confirmed", "pending_approval"].includes(record.status)) card.append(rescheduleWorkspace(record, ownerRequest, refreshList, explain));
   if (["confirmed", "in_progress", "completed"].includes(record.status)) card.append(jobWorkspace(record, ownerRequest, refreshList, explain));
   return card;
@@ -213,7 +212,6 @@ form.addEventListener("submit", async event => {
     const record = await ownerRequest("create", {
       ...payload, start, durationMinutes: Number(payload.durationMinutes),
       estimateCents: payload.estimate ? Math.round(Number(payload.estimate) * 100) : null,
-      calendarChecked: fields.calendarChecked.checked,
       saveClientDefault: !!context.clientId && fields.saveClientDefault.checked,
       clientId: context.clientId, leadId: context.leadId, requestId,
     });
@@ -232,7 +230,6 @@ form.addEventListener("submit", async event => {
 });
 
 fields.deposit.addEventListener("change", syncDeposit);
-for (const name of ["start", "durationMinutes"]) fields[name].addEventListener("input", () => { fields.calendarChecked.checked = false; });
 
 if (!appointmentsEnabled) {
   authStatus.textContent = "Appointments are available on the staging site.";
@@ -241,9 +238,13 @@ if (!appointmentsEnabled) {
     try { await signInWithPopup(auth, new GoogleAuthProvider()); }
     catch { authStatus.textContent = "Couldn’t sign in. Try again."; }
   });
-  signOutButton.addEventListener("click", () => signOut(auth).catch(() => { authStatus.textContent = "Couldn’t sign out. Try again."; }));
+  signOutButton.addEventListener("click", () => {
+    if (hasUnsavedJobNotes() && !confirm("Some job notes are still unsaved. Sign out and discard them?")) return;
+    signOut(auth).catch(() => { authStatus.textContent = "Couldn't sign out. Try again."; });
+  });
   onAuthStateChanged(auth, async user => {
     const session = ++scope;
+    clearJobNotes();
     links.clear();
     list.replaceChildren();
     form.reset();

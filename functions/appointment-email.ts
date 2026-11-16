@@ -2,15 +2,21 @@ import type { Firestore, Transaction } from "firebase-admin/firestore";
 import { integrationConfig } from "./appointment-secrets";
 
 type EmailConfig = { apiKey: string; from: string; testRecipients: string[] };
-type EmailMessage = { to: string; subject: string; text: string; createdAt: number; nextAt: number; sentAt?: number };
+type MaintenanceEligibility = { appointmentId: string; inviteHash: string };
+type EmailMessage = {
+  to: string; subject: string; text: string; createdAt: number; nextAt: number; sentAt?: number;
+  maintenance?: MaintenanceEligibility;
+};
 
-export function queueAppointmentEmail(db: Firestore, tx: Transaction, key: string, to: string, subject: string, text: string) {
+export function queueAppointmentEmail(db: Firestore, tx: Transaction, key: string, to: string, subject: string, text: string,
+  maintenance?: MaintenanceEligibility) {
   if (!to) return;
   const now = Date.now();
-  tx.set(db.collection("appointmentEmails").doc(key), { to, subject, text, createdAt: now, nextAt: now });
+  tx.set(db.collection("appointmentEmails").doc(key), { to, subject, text, createdAt: now, nextAt: now, ...(maintenance ? { maintenance } : {}) });
 }
 
-export async function deliverAppointmentEmails(db: Firestore, now: number) {
+export async function deliverAppointmentEmails(db: Firestore, now: number,
+  maintenanceEligible: (details: MaintenanceEligibility) => Promise<boolean>) {
   const config = await integrationConfig<EmailConfig>("APPOINTMENT_EMAIL_CONFIG").catch(() => null);
   if (!config?.apiKey?.startsWith("re_") || !config.from || !Array.isArray(config.testRecipients)) return;
   const recipients = new Set(config.testRecipients.map(value => value.toLowerCase()));
@@ -22,6 +28,10 @@ export async function deliverAppointmentEmails(db: Firestore, now: number) {
       continue;
     }
     try {
+      if (email.maintenance && !(await maintenanceEligible(email.maintenance))) {
+        await row.ref.update({ nextAt: null, state: "ineligible" });
+        continue;
+      }
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST", signal: AbortSignal.timeout(6000),
         headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json", "Idempotency-Key": `detailing/${row.id}` },

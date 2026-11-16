@@ -31,6 +31,8 @@ The web app SDK config is public client configuration. The deployment service ac
 
 ## Google Cloud Console for the same staging project
 
+Create the default bucket in Firebase Console under **Storage** and verify the [Cloud Storage for Firebase API](https://console.cloud.google.com/apis/library/firebasestorage.googleapis.com?project=niemansdetailing-staging) is enabled. The GitHub deployment account uses enabled services and cannot turn on a disabled API.
+
 Under **APIs & Services → Library**, enable Cloud Functions, Cloud Run Admin, Cloud Build, Artifact Registry, Eventarc, and Pub/Sub. Firebase enables the Firebase product APIs during setup. If the CLI reports a disabled API, enable the one it names in this project and rerun the workflow.
 
 Under **IAM & Admin → Service Accounts**, create `github-staging-deploy`. Grant it these staging project roles in IAM:
@@ -78,11 +80,11 @@ The workflow also checks the staging SDK config, `/quote`, `/schedule`, `/admin/
 ## Test owner appointments
 
 1. Open `/admin/appointments` or choose **Create appointment** from a test lead or client. A linked record prefills contact information, quote details, and the client’s deposit preference when available.
-2. Select **No deposit required**, check the three calendars, and confirm a future appointment. For a client record, **Save as this client's default** applies the preference to future owner-created appointments. For a deposit-required entry, save the draft and choose **Hold time and generate deposit link** after configuring Stripe test mode.
+2. Select **No deposit required** and confirm a future appointment. The site checks all three calendars. For a client record, **Save as this client's default** applies the preference to future owner-created appointments. For a deposit-required entry, save the draft and choose **Hold time and generate deposit link** after configuring Stripe test mode.
 3. Generate a customer link and open it in a private browser window. Confirm the Eastern time, address, estimate, and Add to calendar options. **Text link** and **Email link** open a message in your device’s messaging or email app for you to send.
 4. Create a second appointment that overlaps the first. It should be rejected. Cancel the first and check that its link shows the cancellation and the slot can be booked again. Generate a replacement link to invalidate the previous one, or choose **Revoke link** to remove access. Share links expire 30 days after the appointment ends.
 
-An owner can manually check calendars before confirming when Calendar integration is unavailable on staging. Public booking requires a configured connection to all three calendars. App overlap checking is always active for reserved times. CI runs the appointment API suite against a demo Firebase project before deploy and checks the deployed admin page and API afterward.
+If any configured calendar is unavailable, owner drafts and quote intake remain available. New reservations, confirmations, and moves resume when availability checks succeed. CI tests the standalone reservation and approval logic in Firebase emulators and checks deployed pages and API responses after deployment.
 
 ## Connect the staging integrations
 
@@ -94,7 +96,7 @@ The existing GitHub deploy variables and service account deploy Firebase. Store 
 | `APPOINTMENT_GOOGLE_CONFIG` | `{"clientId":"…","clientSecret":"…","refreshToken":"…","detailingId":"…","personalId":"…","plutoId":"…"}` |
 | `APPOINTMENT_EMAIL_CONFIG` | `{"apiKey":"re_…","from":"Detailing Staging <staging@example.test>","testRecipients":["your-test-inbox@example.com"]}` |
 
-- **Stripe**. Use Stripe test mode or a sandbox. Add the event destination `https://<staging-project-id>.web.app/api/appointments/stripe-webhook` for `checkout.session.completed` and `checkout.session.expired`. Use snapshot events and the matching endpoint signing secret. API calls pin `2026-10-28.endive`. The app rejects live keys and live events. The staging UI uses hosted Checkout. [Stripe Checkout API](https://docs.stripe.com/api/checkout/sessions/create) · [Webhook destinations](https://docs.stripe.com/events/set-up-events)
+- **Stripe**. Use Stripe test mode or a sandbox. Add the event destination `https://<staging-project-id>.web.app/api/appointments/stripe-webhook` for `checkout.session.completed`, `checkout.session.expired`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.updated`, and `charge.dispute.closed`. Use snapshot events and the matching endpoint signing secret. API calls pin `2026-10-28.endive`. The app rejects live keys and live events. The staging UI uses hosted Checkout. [Stripe Checkout API](https://docs.stripe.com/api/checkout/sessions/create) · [Webhook destinations](https://docs.stripe.com/events/set-up-events)
 - **Calendar**. Authorize an OAuth client with offline access using the owner of three dedicated test calendars. Request `https://www.googleapis.com/auth/calendar.events` and `https://www.googleapis.com/auth/calendar.events.freebusy`. Use the returned refresh token and each calendar's ID from Calendar settings. Only the staging Detailing calendar gets mirror writes. Set calendar time zones to America/New_York. Test configuration manually expires if your Google consent app is in testing and the refresh token expires. [Calendar scopes](https://developers.google.com/workspace/calendar/api/auth) · [Server OAuth](https://developers.google.com/identity/protocols/oauth2/web-server)
 - **Email**. Provide a Resend test key and an allowed sender for the account. Use only test inboxes in `testRecipients`. Email is optional if sharing links manually. The scheduled worker retries delivery. [Resend API](https://resend.com/docs/api-reference/emails/send-email)
 - **Firebase Auth**. Enable Email/Password and Email link sign-in alongside Google. Add the staging Hosting domain to authorized domains. Open customer links in a private window so the test does not sign the admin out. [Firebase email-link authentication](https://firebase.google.com/docs/auth/web/email-link-auth)
@@ -108,6 +110,6 @@ After setup, save business hours, ZIPs, and services under **Business hours and 
 3. Cancel an unapproved paid request and an approved request with at least 96 hours' notice. Check that the test refund reaches Stripe. Cancel another confirmed request inside 96 hours and verify the deposit is retained. Reschedule an inside-cutoff job and verify a later cancellation still retains it.
 4. Close a test job. Confirm that the approved final total deducts any deposit. Record and reverse a cash payment, then pay a remaining balance with a test card. Export the ledger and compare each payment and refund to Stripe.
 5. Save a customer appointment to an account after verifying the same email. Sign in using email link and Google, try a different account, and check that it cannot claim the appointment.
-6. After a fully paid Full Detail, create a maintenance invitation and request enrollment. Verify the 60-day cutoff and that giving consent does not start automatic billing.
+6. Select the optional maintenance email at closeout for a Full Detail with a test email address. Check that a partial payment or uncleared check does not send it and that full settlement queues it once. Test manually creating an invitation for a different fully paid job, then request enrollment. Verify the 60-day cutoff and that giving consent does not start automatic billing.
 7. Save a CMS draft, verify the public page is untouched, then publish and restore a revision. Use a test editor with `role: "editor"` and verify it cannot read appointments or change payment records.
 8. Install the admin app from Android Chrome and launch it. Turn off networking, check the offline page, then reconnect and verify the app reloads appointments.

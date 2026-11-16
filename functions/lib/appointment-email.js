@@ -3,13 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.queueAppointmentEmail = queueAppointmentEmail;
 exports.deliverAppointmentEmails = deliverAppointmentEmails;
 const appointment_secrets_1 = require("./appointment-secrets");
-function queueAppointmentEmail(db, tx, key, to, subject, text) {
+function queueAppointmentEmail(db, tx, key, to, subject, text, maintenance) {
     if (!to)
         return;
     const now = Date.now();
-    tx.set(db.collection("appointmentEmails").doc(key), { to, subject, text, createdAt: now, nextAt: now });
+    tx.set(db.collection("appointmentEmails").doc(key), { to, subject, text, createdAt: now, nextAt: now, ...(maintenance ? { maintenance } : {}) });
 }
-async function deliverAppointmentEmails(db, now) {
+async function deliverAppointmentEmails(db, now, maintenanceEligible) {
     const config = await (0, appointment_secrets_1.integrationConfig)("APPOINTMENT_EMAIL_CONFIG").catch(() => null);
     if (!config?.apiKey?.startsWith("re_") || !config.from || !Array.isArray(config.testRecipients))
         return;
@@ -22,6 +22,10 @@ async function deliverAppointmentEmails(db, now) {
             continue;
         }
         try {
+            if (email.maintenance && !(await maintenanceEligible(email.maintenance))) {
+                await row.ref.update({ nextAt: null, state: "ineligible" });
+                continue;
+            }
             const response = await fetch("https://api.resend.com/emails", {
                 method: "POST", signal: AbortSignal.timeout(6000),
                 headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json", "Idempotency-Key": `detailing/${row.id}` },
