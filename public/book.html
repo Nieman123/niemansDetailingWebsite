@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Book detailing | Nieman's Detailing</title>
+  <link rel="stylesheet" href="/quote.css">
+  <link rel="stylesheet" href="/styles/appointments.css">
+</head>
+<body class="quote-page appointment-app appointment-customer">
+  <main class="wrap">
+    <nav class="appointment-actions" aria-label="Booking navigation"><a href="/quote">Get a quote</a><a href="/account">My appointments</a></nav>
+    <p class="business-name">Nieman’s Detailing</p>
+    <h1>Book mobile detailing</h1>
+    <p id="booking-state" role="status">Checking online booking availability…</p>
+    <form id="public-booking" class="panel" hidden>
+      <fieldset>
+        <legend>Service and time</legend>
+        <label class="field"><span>Service</span><select name="serviceId" required></select></label>
+        <label class="field"><span>Date (Eastern)</span><input name="date" type="date" required></label>
+        <button type="button" class="btn secondary" id="check-times">Check available times</button>
+        <label class="field"><span>Start time (Eastern)</span><select name="start" required></select></label>
+        <p id="public-estimate"></p>
+      </fieldset>
+      <fieldset>
+        <legend>Appointment details</legend>
+        <label class="field"><span>Name</span><input name="name" autocomplete="name" maxlength="150" required></label>
+        <label class="field"><span>Email</span><input name="email" type="email" autocomplete="email" maxlength="250" required></label>
+        <label class="field"><span>Phone</span><input name="phone" type="tel" autocomplete="tel" maxlength="48"></label>
+        <label class="field"><span>Vehicle</span><input name="vehicle" maxlength="150"></label>
+        <label class="field"><span>Service address</span><input name="address" autocomplete="street-address" maxlength="390" required></label>
+        <label class="field"><span>ZIP code</span><input name="postalCode" autocomplete="postal-code" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" required></label>
+      </fieldset>
+      <p id="public-policy"></p>
+      <label class="appointment-checkbox"><input name="accepted" type="checkbox" required> I agree to the deposit and cancellation policy.</label>
+      <button class="btn primary" type="submit">Continue to deposit</button>
+    </form>
+    <p><a href="sms:+18282733894">Text Nieman for help booking</a></p>
+  </main>
+  <script type="module" src="/scripts/public-booking.mjs"></script>
+</body>
+</html>

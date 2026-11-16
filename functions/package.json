@@ -2,7 +2,7 @@
   "name": "functions",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": "20" },
+  "engines": { "node": "22" },
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -p .",

@@ -1,0 +1,39 @@
+.appointment-app { min-height: 100vh; color-scheme: dark; }
+.appointment-app .wrap { padding-top: 24px; }
+.appointment-customer .wrap { max-width: 680px; }
+.appointment-app [hidden] { display: none !important; }
+.appointment-app a { color: var(--brand-2); }
+.appointment-app .btn { width: auto; min-height: 48px; font-size: 1rem; text-decoration: none; }
+.appointment-app .btn.primary { color: #151024; }
+.appointment-app .btn:disabled { opacity: .65; cursor: wait; }
+.appointment-layout, .appointment-fields { display: grid; gap: 12px; }
+.appointment-layout { align-items: start; }
+.appointment-fields .field { margin-block: 4px; }
+.appointment-app .field span { font-size: .94rem; }
+.appointment-app select {
+  font: inherit;
+  padding: 12px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-raised);
+  color: var(--text);
+}
+.appointment-checkbox { display: flex; min-height: 48px; gap: 10px; align-items: center; }
+.appointment-checkbox input { width: 20px; height: 20px; flex: 0 0 20px; accent-color: var(--brand); }
+.appointment-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.appointment-app nav a, .appointment-app .quiet { padding-block: 12px; }
+.appointment-app .quiet { background: none; color: var(--text); border: 0; cursor: pointer; font: inherit; }
+.appointment-notice { color: var(--text); background: var(--surface-raised); border-inline-start: 4px solid var(--brand); padding: 12px 14px; border-radius: 8px; }
+.appointment-submit { margin-top: 16px; }
+.appointment-record { border-top: 1px solid var(--line); padding-block: 16px; }
+.appointment-record h3 { margin: 0 0 6px; }
+.appointment-record p { margin: 6px 0 12px; color: var(--muted); }
+.appointment-app details > summary { cursor: pointer; padding-block: 12px; }
+.job-photo-preview { display: block; max-width: 100%; max-height: 380px; border-radius: 8px; object-fit: contain; }
+.appointment-app .business-name { font-weight: 700; color: var(--brand-2); }
+.appointment-summary { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; }
+.appointment-summary dt { color: var(--muted); }
+.appointment-summary dd { margin: 0; overflow-wrap: anywhere; }
+#appointment-preparation { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (min-width: 560px) { .appointment-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 920px) { .appointment-layout { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); } }

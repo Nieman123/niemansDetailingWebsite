@@ -1,4 +1,4 @@
-import { auth, db } from "/scripts/firebase-client.js";
+import { appointmentsEnabled, auth, db } from "/scripts/firebase-client.js";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -395,6 +395,11 @@ function canLeadBecomeClient(lead) {
 }
 
 function updateLeadClientActions(lead) {
+  const booking = document.getElementById("lead-action-appointment");
+  if (booking) {
+    booking.hidden = !appointmentsEnabled || !lead?.id;
+    if (lead?.id) booking.href = `/admin/appointments?lead=${encodeURIComponent(lead.id)}`;
+  }
   if (!lead) {
     if (els.detailOpenClientLink) {
       els.detailOpenClientLink.href = "/admin/clients";
@@ -437,6 +442,8 @@ function updateLeadClientActions(lead) {
     }
   }
 }
+
+if (appointmentsEnabled) document.querySelector("[data-appointment-nav]")?.removeAttribute("hidden");
 
 function smsHrefForLead(lead) {
   const digits = normalizePhoneDigits(lead.phone_normalized || lead.phone);

@@ -1,10 +1,6 @@
 (function () {
   "use strict";
 
-  const PROJECT_ID = "niemansdetailing";
-  const API_KEY = "AIzaSyBgUntKRCQsi_SyJmNOgJLBI8Yj8gEsmA4";
-  const SETTINGS_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/publicSettings/vacationMode?key=${API_KEY}`;
-
   const DEFAULT_NOTICE = {
     enabled: true,
     startDate: "2026-06-18",
@@ -83,7 +79,9 @@
   }
 
   async function loadNotice() {
-    const response = await fetch(SETTINGS_URL, { cache: "no-store" });
+    const { firebaseConfig: { projectId, apiKey } } = await import("./firebase-config.mjs");
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/publicSettings/vacationMode`;
+    const response = await fetch(`${url}?key=${encodeURIComponent(apiKey)}`, { cache: "no-store" });
     if (response.status === 403 || response.status === 404) return DEFAULT_NOTICE;
     if (!response.ok) throw new Error(`Vacation settings request failed: ${response.status}`);
     const payload = await response.json();

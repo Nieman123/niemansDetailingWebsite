@@ -81,6 +81,8 @@ npm run build
 
 ## Deployment Notes
 
+The `staging` branch deploys to a separate Firebase project. See [Firebase staging setup](docs/firebase-staging-setup.md) for the Firebase Console settings, GitHub environment variables, and first deployment checks.
+
 - Firebase Hosting serves directly from `public/`
 - `npm run images:sync` runs automatically as a Firebase Hosting predeploy step
 - HTML is short-lived in cache; images are long-lived and immutable

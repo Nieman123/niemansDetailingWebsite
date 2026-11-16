@@ -2,18 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/fireba
 import { connectAuthEmulator, getAuth } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { connectFirestoreEmulator, getFirestore } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-storage.js";
-
-const DEFAULT_FIREBASE_API_KEY = "AIzaSyBgUntKRCQsi_SyJmNOgJLBI8Yj8gEsmA4";
-
-const pageApiKey =
-  document.querySelector('meta[name="firebase-api-key"]')?.getAttribute("content")?.trim() || "";
-
-const firebaseConfig = {
-  apiKey: pageApiKey || DEFAULT_FIREBASE_API_KEY,
-  authDomain: "niemansdetailing.firebaseapp.com",
-  projectId: "niemansdetailing",
-  storageBucket: "niemansdetailing.firebasestorage.app", // standard bucket name
-};
+import { appointmentsPreview, firebaseConfig } from "./firebase-config.mjs";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -28,4 +17,5 @@ if (isHostingEmulator) {
   connectFirestoreEmulator(db, "127.0.0.1", 8080);
 }
 
-export { app, auth, db, storage, firebaseConfig };
+const appointmentsEnabled = appointmentsPreview || isHostingEmulator;
+export { app, auth, db, storage, firebaseConfig, appointmentsEnabled };

@@ -19,7 +19,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           registry-url: 'https://registry.npmjs.org'
 
@@ -72,7 +72,7 @@ jobs:
 
       - name: Install Firebase CLI (main)
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        run: npm install --global firebase-tools
+        run: npm install --global firebase-tools@15.32.0
 
       - name: Write Functions env file (main)
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Site content | Nieman's Detailing</title>
+  <link rel="stylesheet" href="/quote.css">
+  <link rel="stylesheet" href="/styles/appointments.css">
+</head>
+<body class="quote-page appointment-app">
+  <main class="wrap">
+    <nav class="appointment-actions" aria-label="Admin navigation"><a href="/admin">Lead dashboard</a><a href="/admin/appointments">Appointments</a><a href="/admin/blog">Blog and images</a></nav>
+    <h1>Site content</h1>
+    <p id="cms-status" role="status">Checking access…</p>
+    <button class="btn primary" id="cms-sign-in" type="button" hidden>Sign in with Google</button>
+    <form id="cms-form" class="panel" hidden>
+      <label class="field"><span>Homepage headline</span><input name="headline" maxlength="140"></label>
+      <label class="field"><span>Homepage introduction</span><textarea name="introduction" maxlength="1300" rows="3"></textarea></label>
+      <label class="field"><span>Booking notice</span><textarea name="bookingNotice" maxlength="500" rows="2"></textarea></label>
+      <label class="field"><span>Contact note</span><textarea name="contactNote" maxlength="700" rows="2"></textarea></label>
+      <label class="field"><span>Service areas</span><textarea name="serviceAreas" maxlength="1200" rows="2"></textarea></label>
+      <label class="field"><span>Testimonials</span><textarea name="testimonials" maxlength="3000" rows="4"></textarea></label>
+      <label class="field"><span>Additional FAQs</span><textarea name="faq" maxlength="4500" rows="5"></textarea></label>
+      <label class="field"><span>Service guide</span><textarea name="serviceDescriptions" maxlength="7000" rows="5"></textarea></label>
+      <div class="appointment-actions">
+        <button type="button" class="btn secondary" id="cms-preview">Preview draft</button>
+        <button type="submit" class="btn secondary" name="action" value="save">Save draft</button>
+        <button type="submit" class="btn primary" name="action" value="publish">Publish to staging</button>
+      </div>
+      <label class="field"><span>Published revisions</span><select id="cms-revision"></select></label>
+      <button type="button" class="btn secondary" id="cms-restore">Restore selected version as draft</button>
+    </form>
+    <section id="cms-draft-preview" class="panel" hidden aria-label="Draft preview"></section>
+  </main>
+  <script type="module" src="/scripts/appointment-cms.mjs"></script>
+</body>
+</html>

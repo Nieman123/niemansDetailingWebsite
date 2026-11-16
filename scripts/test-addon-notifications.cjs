@@ -15,6 +15,7 @@ const sandbox = {
   require(name) {
     switch (name) {
       case 'firebase-functions/v2/https': return { onRequest: (_options, handler) => handler };
+      case 'firebase-functions/v2/scheduler': return { onSchedule: (_options, handler) => handler };
       case 'firebase-functions/v2/firestore': return { onDocumentUpdated: (options, handler) => { triggerOptions = options; return handler; } };
       case 'firebase-functions': return { logger: { error() {} } };
       case 'firebase-functions/params': return { defineString: name => ({ value: () => ({ HOSTING_ORIGIN: 'https://example.test', TELEGRAM_BOT_TOKEN: 'test-token', TELEGRAM_CHAT_ID: 'test-chat' })[name] }) };
@@ -77,6 +78,11 @@ const event = (id, before, after) => ({
   nextResponse = { ok: true, status: 200, json: async () => ({ ok: false }) };
   await assert.rejects(notify(event('rejected', lead, updated)), /did not accept/);
   assert.equal(receipts.size, 3);
+  sandbox.process.env.ENABLE_TELEGRAM_NOTIFICATIONS = 'false';
+  const beforeStaging = requests.length;
+  await notify(event('staging', lead, updated));
+  assert.equal(requests.length, beforeStaging, 'Staging must not send Telegram messages even with credentials');
+  delete sandbox.process.env.ENABLE_TELEGRAM_NOTIFICATIONS;
   sandbox.process.env.FUNCTIONS_EMULATOR = 'true';
   const beforeEmulator = requests.length;
   await notify(event('local', lead, updated));

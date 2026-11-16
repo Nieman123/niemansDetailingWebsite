@@ -10,6 +10,11 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
     }
 
+    function isOperationsAdmin() {
+      return isBlogAdmin()
+        && get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.get("role", "") != "editor";
+    }
+
     function validBlogWriteData(slug) {
       return request.resource.data.slug == slug
         && request.resource.data.authorUid == request.auth.uid
@@ -21,27 +26,25 @@ service cloud.firestore {
 
     // Quote leads are private. Allow only admin allowlist reads and updates.
     match /leads/{id} {
-      allow read: if isBlogAdmin();
-      allow update: if isBlogAdmin();
-      allow delete: if isBlogAdmin();
+      allow read, update, delete: if isOperationsAdmin();
       allow create: if false;
     }
 
     // Quote page funnel telemetry is private. Admins can read in dashboard.
     match /quotePageSessions/{id} {
-      allow read: if isBlogAdmin();
+      allow read: if isOperationsAdmin();
       allow write: if false;
     }
 
     // Client contact database is private. Admins can manage all client records.
     match /clients/{id} {
-      allow read, create, update, delete: if isBlogAdmin();
+      allow read, create, update, delete: if isOperationsAdmin();
     }
 
     // Public site settings. Only the vacation-mode document is publicly readable.
     match /publicSettings/{id} {
       allow read: if id == "vacationMode";
-      allow create, update, delete: if id == "vacationMode" && isBlogAdmin();
+      allow create, update, delete: if id == "vacationMode" && isOperationsAdmin();
     }
 
     // Admin allowlist documents. Add uid as doc ID in Firebase console to grant blog access.

@@ -1,4 +1,4 @@
-import { auth, db } from "/scripts/firebase-client.js";
+import { appointmentsEnabled, auth, db } from "/scripts/firebase-client.js";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -840,6 +840,11 @@ function showClientDetails(client) {
 }
 
 function setClientActionLinks(client) {
+  const booking = document.getElementById("client-action-appointment");
+  if (booking) {
+    booking.hidden = !appointmentsEnabled || !client.id;
+    if (client.id) booking.href = `/admin/appointments?client=${encodeURIComponent(client.id)}`;
+  }
   if (els.actionSms) {
     const href = smsHref(client);
     els.actionSms.href = href;
@@ -868,6 +873,8 @@ function setClientActionLinks(client) {
     }
   }
 }
+
+if (appointmentsEnabled) document.querySelector("[data-appointment-nav]")?.removeAttribute("hidden");
 
 function renderBookingsList() {
   if (!els.bookingsList) return;
@@ -964,173 +971,7 @@ function addBookingFromInputs() {
     return;
   }
 
-  state.editingBookings = mergeBookings(state.editingBookings, [booking]);
-  renderBookingsList();
-
-  if (els.lastServiceInput) {
-    const currentLastService = normalizeDateInput(els.lastServiceInput.value);
-    if (!currentLastService || booking.date > currentLastService) {
-      els.lastServiceInput.value = booking.date;
-      if (els.nextFollowupInput) {
-        els.nextFollowupInput.value = "";
-        autoFillNextFollowup();
-      }
-    }
-  }
-
-  if (els.bookingDateInput) els.bookingDateInput.value = "";
-  if (els.bookingServiceInput) els.bookingServiceInput.value = "";
-  if (els.bookingAmountInput) els.bookingAmountInput.value = "";
-  if (els.bookingNoteInput) els.bookingNoteInput.value = "";
-
-  setStatus("Booking entry added to draft.");
-}
-
-function collectDraftFromForm() {
-  const fullName = sanitizeText(els.nameInput?.value, 140);
-  const split = splitName(fullName);
-  const phoneE164 = normalizePhoneE164(els.phoneInput?.value || "");
-  const phoneDisplay = phoneE164 ? formatPhone(phoneE164) : sanitizeText(els.phoneInput?.value, 24);
-  const email = normalizeEmail(els.emailInput?.value || "");
-
-  const repeatInterval = normalizeNumber(els.repeatMonthsInput?.value, DEFAULT_REPEAT_MONTHS, 0, 36);
-  const lastServiceDate = normalizeDateInput(els.lastServiceInput?.value || "");
-  let nextFollowupDate = normalizeDateInput(els.nextFollowupInput?.value || "");
-  if (!nextFollowupDate && lastServiceDate && repeatInterval > 0) {
-    nextFollowupDate = addMonthsIsoDate(lastServiceDate, repeatInterval);
-  }
-
-  const draft = blankClient({
-    id: state.activeClientId,
-    full_name: fullName,
-    first_name: split.first_name,
-    last_name: split.last_name,
-    phone: phoneDisplay,
-    phone_e164: phoneE164,
-    email,
-    preferred_contact: normalizePreferredContact(els.preferredContactInput?.value || ""),
-    status: normalizeClientStatus(els.statusInput?.value || "prospect"),
-    source: sanitizeText(els.sourceInput?.value, 80),
-    neighborhood: sanitizeText(els.neighborhoodInput?.value, 120),
-    address: sanitizeText(els.addressInput?.value, 180),
-    city: sanitizeText(els.cityInput?.value, 80),
-    state: sanitizeText(els.stateInput?.value, 40).toUpperCase(),
-    zip: normalizeZip(els.zipInput?.value),
-    country: normalizeCountry(els.countryInput?.value || "US"),
-    repeat_interval_months: repeatInterval,
-    last_service_date: lastServiceDate,
-    next_followup_date: nextFollowupDate,
-    last_contacted_date: normalizeDateInput(els.lastContactedInput?.value || ""),
-    tags: normalizeTags(els.tagsInput?.value || ""),
-    followup_note: sanitizeText(els.followupNoteInput?.value, 4000),
-    notes: sanitizeText(els.notesInput?.value, 4000),
-    bookings: mergeBookings([], state.editingBookings),
-    source_lead_id: sanitizeText(state.prefillLead?.id || state.activeDraft?.source_lead_id || "", 120),
-    import_source_file: sanitizeText(state.activeDraft?.import_source_file || "", 220),
-    external_created_date: normalizeDateInput(state.activeDraft?.external_created_date),
-    external_updated_date: normalizeDateInput(state.activeDraft?.external_updated_date),
-  });
-
-  draft.lookup_keys = computeLookupKeys(draft);
-  return draft;
-}
-
-function validateDraft(draft) {
-  const errors = [];
-
-  if (!draft.full_name) errors.push("Client name is required.");
-  if (!draft.phone_e164 && !draft.email) errors.push("At least one contact method (phone or email) is required.");
-  if (draft.zip && !/^\d{5}$/.test(draft.zip)) errors.push("ZIP code must be 5 digits.");
-
-  return errors;
-}
-
-function collectDocPayload(draft) {
-  const normalized = blankClient(draft);
-  const bookings = mergeBookings([], normalized.bookings);
-
-  return {
-    full_name: normalized.full_name || null,
-    first_name: normalized.first_name || null,
-    last_name: normalized.last_name || null,
-    phone: normalized.phone || null,
-    phone_e164: normalized.phone_e164 || null,
-    email: normalized.email || null,
-    preferred_contact: normalized.preferred_contact || null,
-    status: normalizeClientStatus(normalized.status),
-    source: normalized.source || null,
-    neighborhood: normalized.neighborhood || null,
-    address: normalized.address || null,
-    city: normalized.city || null,
-    state: normalized.state || null,
-    zip: normalized.zip || null,
-    country: normalizeCountry(normalized.country || "US"),
-    repeat_interval_months: normalizeNumber(normalized.repeat_interval_months, DEFAULT_REPEAT_MONTHS, 0, 36),
-    last_service_date: normalizeDateInput(normalized.last_service_date) || null,
-    next_followup_date: normalizeDateInput(normalized.next_followup_date) || null,
-    last_contacted_date: normalizeDateInput(normalized.last_contacted_date) || null,
-    tags: normalizeTags(normalized.tags),
-    followup_note: normalized.followup_note || null,
-    notes: normalized.notes || null,
-    bookings,
-    source_lead_id: normalized.source_lead_id || null,
-    import_source_file: normalized.import_source_file || null,
-    external_created_date: normalizeDateInput(normalized.external_created_date) || null,
-    external_updated_date: normalizeDateInput(normalized.external_updated_date) || null,
-    lookup_keys: computeLookupKeys(normalized),
-  };
-}
-
-function updateClientInState(clientId, patch) {
-  const index = state.clients.findIndex((client) => client.id === clientId);
-  if (index < 0) return;
-  state.clients[index] = normalizeClientRecord({ ...state.clients[index], ...patch, id: clientId });
-}
-
-async function maybeSyncLeadLink(clientId, draft) {
-  const leadId = sanitizeText(draft.source_lead_id || "", 120);
-  if (!leadId) return;
-
-  const updates = {
-    client_id: clientId,
-    client_synced_at: serverTimestamp(),
-    admin_updated_by: state.user.uid,
-    admin_updated_at: serverTimestamp(),
-  };
-
-  if (state.prefillLead?.status === "booked" || normalizeClientStatus(draft.status) === "active") {
-    updates.status = "booked";
-  }
-
-  try {
-    await updateDoc(doc(db, "leads", leadId), updates);
-  } catch (error) {
-    console.error("Failed to sync lead link", error);
-    setStatus("Client saved, but lead link sync failed.", "error");
-  }
-}
-
-async function saveClient() {
-  if (!state.user || !state.isAdmin || state.saving || state.deleting || state.importing) return;
-
-  const draft = collectDraftFromForm();
-  const validationErrors = validateDraft(draft);
-  if (validationErrors.length) {
-    setStatus(validationErrors[0], "error");
-    return;
-  }
-
-  const payload = collectDocPayload(draft);
-
-  state.saving = true;
-  setControlsDisabled(true);
-  setStatus("Saving client...");
-
-  try {
-    if (state.creatingNew || !state.activeClientId) {
-      const ref = await addDoc(collection(db, "clients"), {
-        ...payload,
-        created_at: serverTimestamp(),
+  state.editin(node:37272) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.mestamp(),
         created_by: state.user.uid,
         updated_at: serverTimestamp(),
         updated_by: state.user.uid,

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Your appointment | Nieman's Detailing</title>
+  <link rel="stylesheet" href="/quote.css">
+  <link rel="stylesheet" href="/styles/appointments.css">
+</head>
+<body class="quote-page appointment-app appointment-customer">
+  <main class="wrap">
+    <p class="business-name">Nieman’s Detailing</p>
+    <h1>Your appointment</h1>
+    <p id="appointment-status" class="appointment-notice" role="status">Opening appointment…</p>
+    <article id="appointment-details" class="panel" hidden>
+      <h2 id="appointment-service"></h2>
+      <dl class="appointment-summary">
+        <dt>When</dt><dd id="appointment-time"></dd>
+        <dt>Where</dt><dd id="appointment-address"></dd>
+        <dt id="vehicle-label">Vehicle</dt><dd id="appointment-vehicle"></dd>
+        <dt id="estimate-label">Estimated total</dt><dd id="appointment-estimate"></dd>
+        <dt>Deposit</dt><dd id="appointment-deposit"></dd>
+        <dt id="balance-label" hidden>Balance</dt><dd id="appointment-balance" hidden></dd>
+      </dl>
+      <div id="preparation" hidden><h3>Getting ready</h3><p id="appointment-preparation"></p></div>
+      <section id="invoice-detail" hidden aria-label="Invoice breakdown"><h3>Itemized charges</h3><ul id="invoice-lines"></ul></section>
+      <section id="calendar-actions" hidden aria-label="Add to calendar">
+        <h3>Add to calendar</h3>
+        <div class="appointment-actions">
+          <a class="btn primary" id="google-calendar" target="_blank" rel="noopener noreferrer">Google Calendar</a>
+          <button class="btn secondary" id="download-calendar" type="button">Download calendar file</button>
+        </div>
+      </section>
+      <section id="payment-actions" hidden>
+        <h3 id="payment-heading">Pay deposit</h3>
+        <p id="payment-policy"></p>
+        <label class="appointment-checkbox"><input id="accept-payment" type="checkbox"> I agree to the amount and terms above.</label>
+        <button class="btn primary" id="pay-appointment" type="button">Continue to Stripe</button>
+      </section>
+      <section id="manage-actions" hidden>
+        <h3>Manage appointment</h3>
+        <div id="alternate-offer" hidden><p id="alternate-time"></p><button class="btn primary" type="button" id="accept-alternate">Accept this time</button></div>
+        <form id="request-move">
+          <label class="field"><span>Requested new time (Eastern)</span><input name="start" type="datetime-local" required></label>
+          <button class="btn secondary" type="submit">Request a different time</button>
+        </form>
+        <p><button class="btn secondary" id="cancel-appointment" type="button">Cancel appointment</button></p>
+      </section>
+      <div class="appointment-actions">
+        <button class="quiet" id="save-appointment-account" type="button">Save to my account</button>
+        <button class="quiet" id="copy-appointment-link" type="button">Copy appointment link</button>
+      </div>
+      <p id="appointment-message" role="status"></p>
+    </article>
+    <p><a href="/account">My appointments</a> · <a href="sms:+18282733894">Text Nieman</a></p>
+  </main>
+  <script type="module" src="/scripts/appointment-page.mjs"></script>
+</body>
+</html>

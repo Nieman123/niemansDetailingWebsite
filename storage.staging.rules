@@ -1,0 +1,25 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /blog-images/{fileName} {
+      allow get: if true;
+      allow create: if request.auth != null
+        && firestore.exists(/databases/(default)/documents/adminUsers/$(request.auth.uid))
+        && request.resource.size <= 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp|avif|gif)');
+    }
+    match /job-photos/{appointmentId}/{fileName} {
+      function canManageJobPhotos() {
+        return request.auth != null
+          && firestore.exists(/databases/(default)/documents/adminUsers/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/adminUsers/$(request.auth.uid)).data.get("role", "") != "editor"
+          && firestore.exists(/databases/(default)/documents/appointments/$(appointmentId));
+      }
+      allow read, delete: if canManageJobPhotos();
+      allow create: if canManageJobPhotos()
+        && fileName.matches('(before|after)-[a-f0-9-]+')
+        && request.resource.size <= 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+  }
+}

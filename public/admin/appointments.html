@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Appointments | Nieman's Detailing</title>
+  <meta name="theme-color" content="#0B1330">
+  <link rel="manifest" href="/admin/appointments.webmanifest">
+  <link rel="stylesheet" href="/quote.css">
+  <link rel="stylesheet" href="/styles/appointments.css">
+</head>
+<body class="quote-page appointment-app">
+  <main class="wrap">
+    <nav class="appointment-actions" aria-label="Admin navigation">
+      <a href="/admin">Lead dashboard</a>
+      <a href="/admin/clients">Clients</a>
+      <a href="/admin/content">Site content</a>
+      <button type="button" class="quiet" id="install-appointments" hidden>Install admin app</button>
+      <button type="button" class="quiet" id="sign-out" hidden>Sign out</button>
+    </nav>
+    <h1>Appointments</h1>
+    <p id="auth-status" role="status">Checking admin access…</p>
+    <button class="btn primary" type="button" id="sign-in" hidden>Sign in with Google</button>
+
+    <div id="workspace" hidden>
+      <p class="appointment-notice">Staging preview. Use test customer details and Stripe test cards.</p>
+      <details class="panel">
+        <summary>Business hours and online booking</summary>
+        <form id="booking-settings">
+          <label class="appointment-checkbox"><input name="enabled" type="checkbox"> Enable public booking</label>
+          <fieldset>
+            <legend>Weekly hours (Eastern)</legend>
+            <div class="appointment-actions">
+              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="1"> Mon</label>
+              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="2"> Tue</label>
+              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="3"> Wed</label>
+              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="4"> Thu</label>
+              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="5"> Fri</label>
+              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="6"> Sat</label>
+              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="0"> Sun</label>
+            </div>
+            <div class="appointment-fields">
+              <label class="field"><span>Open</span><input name="open" type="time" required></label>
+              <label class="field"><span>Close</span><input name="close" type="time" required></label>
+            </div>
+          </fieldset>
+          <div class="appointment-fields">
+            <label class="field"><span>Minimum notice (hours)</span><input name="minimumHours" type="number" min="1" max="168" required></label>
+            <label class="field"><span>Days in advance</span><input name="horizonDays" type="number" min="1" max="90" required></label>
+            <label class="field"><span>Travel buffer per side (minutes)</span><input name="bufferMinutes" type="number" min="0" max="120" required></label>
+            <label class="field"><span>Blocked dates (YYYY-MM-DD)</span><input name="blockedDates" placeholder="2026-12-25"></label>
+          </div>
+          <label class="field"><span>Service-area ZIP codes</span><input name="postalCodes" placeholder="28803, 28804"></label>
+          <label class="field"><span>Bookable services (one per line)</span><textarea name="services" rows="4" placeholder="full | Full Detail | 180 | 300.00"></textarea></label>
+          <p class="sub">Enter code, name, minutes, and price in dollars separated by vertical bars. Use the quote service code to carry forward quote estimates.</p>
+          <button class="btn primary" type="submit" disabled>Save booking settings</button>
+          <p role="status"></p>
+        </form>
+      </details>
+      <div class="appointment-layout">
+        <section class="panel" aria-labelledby="create-heading">
+          <h2 id="create-heading">New appointment</h2>
+          <form id="create-booking">
+            <label class="field"><span>Customer name</span><input name="name" required maxlength="150"></label>
+            <div class="appointment-fields">
+              <label class="field"><span>Phone</span><input name="phone" type="tel" maxlength="48"></label>
+              <label class="field"><span>Email</span><input name="email" type="email" maxlength="250"></label>
+            </div>
+            <p class="sub">Enter at least one contact method.</p>
+            <label class="field"><span>Service address</span><input name="address" required maxlength="400" autocomplete="off"></label>
+            <div class="appointment-fields">
+              <label class="field"><span>Service</span><input name="service" required maxlength="150"></label>
+              <label class="field"><span>Vehicle</span><input name="vehicle" maxlength="150"></label>
+            </div>
+            <div class="appointment-fields">
+              <label class="field"><span>Start time (Eastern)</span><input name="start" type="datetime-local" required></label>
+              <label class="field"><span>Duration (minutes)</span><input name="durationMinutes" type="number" min="15" max="10080" step="1" required></label>
+            </div>
+            <label class="field"><span>Estimated total ($)</span><input name="estimate" type="number" min="0" max="100000" step="0.01" inputmode="decimal" placeholder="Optional"></label>
+            <label class="field"><span>Preparation instructions for the customer</span><textarea name="preparation" rows="2" maxlength="1500"></textarea></label>
+            <label class="field"><span>Deposit</span>
+              <select name="deposit"><option value="required">Require $50 deposit</option><option value="waived">No deposit required</option></select>
+            </label>
+            <label id="client-default" class="appointment-checkbox" hidden><input name="saveClientDefault" type="checkbox"> Save as this client’s default</label>
+            <label id="calendar-check" class="appointment-checkbox" hidden><input name="calendarChecked" type="checkbox"> I checked the Detailing, personal, and Pluto Events calendars.</label>
+            <p id="deposit-help" class="sub"></p>
+            <button class="btn primary appointment-submit" type="submit">Save draft</button>
+            <p id="form-status" role="status"></p>
+          </form>
+        </section>
+        <section class="panel" aria-labelledby="recent-heading">
+          <h2 id="recent-heading">Recent appointments</h2>
+          <label class="field"><span>Filter</span><select id="filter-appointments">
+            <option value="all">All recent</option><option value="today">Today</option><option value="pending_approval">Pending approval</option>
+            <option value="awaiting_deposit">Awaiting deposit</option><option value="confirmed">Confirmed</option>
+            <option value="in_progress">In progress</option><option value="due">Balance due</option>
+          </select></label>
+          <button class="btn secondary" id="export-payments" type="button">Export payment ledger</button>
+          <p id="list-status" role="status"></p>
+          <div id="appointments-list"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script type="module" src="/scripts/admin-appointments.mjs"></script>
+  <script type="module" src="/scripts/appointment-install.mjs"></script>
+</body>
+</html>
