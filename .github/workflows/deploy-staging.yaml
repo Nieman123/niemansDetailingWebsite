@@ -143,6 +143,16 @@ jobs:
           assert.equal(response.headers.get('access-control-allow-origin'), origin);
           assert.match((await response.json()).error, /^invalid_fields:/);
 
+          const webhook = await request('/api/appointments/stripe-webhook', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+          });
+          if (webhook.status === 503) {
+            console.warn('::warning::Staging webhook could not load the Stripe test configuration.');
+          } else {
+            assert.equal(webhook.status, 400, 'Configured webhook should reject an unsigned request');
+            console.log('Staging webhook loaded the Stripe test configuration and rejected an unsigned request.');
+          }
+
           const ownerPage = await request('/admin/appointments');
           assert.equal(ownerPage.status, 200);
           assert.match(await ownerPage.text(), /New appointment/);

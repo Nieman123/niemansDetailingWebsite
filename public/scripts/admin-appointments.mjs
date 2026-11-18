@@ -26,6 +26,8 @@ const messages = {
   link_unavailable: "Share links are available for active, confirmed appointments.",
   calendar_unavailable: "The configured calendars couldn't be checked.",
   stripe_unavailable: "Configure Stripe test credentials before creating deposit links.",
+  stripe_config_unavailable: "The booking API could not load a valid APPOINTMENT_STRIPE_CONFIG. Check its latest Secret Manager version and the runtime service account’s access.",
+  calendar_config_unavailable: "Stripe configuration loaded. Check APPOINTMENT_GOOGLE_CONFIG, including three distinct calendar IDs and the runtime service account’s access.",
   booking_unavailable: "Stripe and all three calendars must be configured to enable public booking.",
   checkout_active: "A Stripe Checkout Session is active. Wait for reconciliation before changing payments or cancelling.",
   checkout_too_close: "Choose a time at least 36 minutes away to accept a deposit.",

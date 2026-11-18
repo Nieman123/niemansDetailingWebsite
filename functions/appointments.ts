@@ -966,7 +966,10 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
       else if (action === "save-booking-settings") {
         const settings = parseBookingSettings(body);
         if (!settings) throw new AppointmentError(400, "invalid_booking_settings");
-        if (settings.enabled && (!(await stripeConfig()) || !(await calendarConfig()))) throw new AppointmentError(503, "booking_unavailable");
+        if (settings.enabled) {
+          if (!(await stripeConfig().catch(() => null))) throw new AppointmentError(503, "stripe_config_unavailable");
+          if (!(await calendarConfig().catch(() => null))) throw new AppointmentError(503, "calendar_config_unavailable");
+        }
         await db.runTransaction(async tx => {
           const previous = await tx.get(settingsDoc(db));
           if ((previous.get("revision") ?? "") !== (body.revision ?? "")) throw new AppointmentError(409, "settings_updated");

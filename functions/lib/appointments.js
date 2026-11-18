@@ -972,8 +972,12 @@ async function handleAppointments(db, auth, req, res, action) {
                 const settings = (0, appointment_booking_1.parseBookingSettings)(body);
                 if (!settings)
                     throw new AppointmentError(400, "invalid_booking_settings");
-                if (settings.enabled && (!(await (0, appointment_stripe_1.stripeConfig)()) || !(await (0, appointment_calendar_1.calendarConfig)())))
-                    throw new AppointmentError(503, "booking_unavailable");
+                if (settings.enabled) {
+                    if (!(await (0, appointment_stripe_1.stripeConfig)().catch(() => null)))
+                        throw new AppointmentError(503, "stripe_config_unavailable");
+                    if (!(await (0, appointment_calendar_1.calendarConfig)().catch(() => null)))
+                        throw new AppointmentError(503, "calendar_config_unavailable");
+                }
                 await db.runTransaction(async (tx) => {
                     const previous = await tx.get(settingsDoc(db));
                     if ((previous.get("revision") ?? "") !== (body.revision ?? ""))
