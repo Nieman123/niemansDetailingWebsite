@@ -97,5 +97,14 @@ delete firebase.hosting.predeploy;
 firebase.hosting.headers[0].headers.push({ key: 'X-Robots-Tag', value: 'noindex, nofollow' });
 firebase.storage = { rules: 'storage.staging.rules' };
 writeFileSync(deploymentConfig, `${JSON.stringify(firebase, null, 2)}\n`, { flag: 'wx' });
-writeFileSync(`functions/.env.${projectId}`, `HOSTING_ORIGIN=${origin}\nENABLE_TELEGRAM_NOTIFICATIONS=false\nENABLE_APPOINTMENTS=true\nAPPOINTMENT_INTEGRATIONS_PROJECT=${projectId}\n`, { flag: 'wx' });
+// Firebase CLI resolves declared parameters even when staging disables Telegram delivery.
+const functionsEnv = [
+  `HOSTING_ORIGIN=${origin}`,
+  'ENABLE_TELEGRAM_NOTIFICATIONS=false',
+  'TELEGRAM_BOT_TOKEN=disabled',
+  'TELEGRAM_CHAT_ID=disabled',
+  'ENABLE_APPOINTMENTS=true',
+  `APPOINTMENT_INTEGRATIONS_PROJECT=${projectId}`,
+].join('\n');
+writeFileSync(`functions/.env.${projectId}`, `${functionsEnv}\n`, { flag: 'wx' });
 console.log(`Prepared staging assets for ${origin}`);
