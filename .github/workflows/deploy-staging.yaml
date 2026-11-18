@@ -96,9 +96,10 @@ jobs:
 
       - name: Deploy staging backend and rules
         run: |
+          # Telegram delivery is disabled in staging, so omit its Firestore trigger.
           firebase deploy --non-interactive --config firebase.staging.generated.json \
             --project "$STAGING_FIREBASE_PROJECT_ID" \
-            --only functions,firestore:rules,firestore:indexes,storage
+            --only functions:api,functions:appointmentMaintenance,firestore:rules,firestore:indexes,storage
 
       - name: Build static blog from staging Firestore
         env:
