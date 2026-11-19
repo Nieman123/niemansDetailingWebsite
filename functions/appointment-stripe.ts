@@ -49,7 +49,6 @@ export function createStripeSession(config: StripeConfig, input: {
   const { id, attempt, origin, kind, amount, expiresAt, disclosure } = input;
   return stripeRequest<StripeSession>(config, "checkout/sessions", {
     mode: "payment",
-    "payment_method_types[0]": "card",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": "usd",
     "line_items[0][price_data][unit_amount]": String(amount),
@@ -69,6 +68,23 @@ export function createStripeSession(config: StripeConfig, input: {
 export function stripeSession(config: StripeConfig, id: string) {
   if (!/^cs_test_\w+$/.test(id)) throw new Error("invalid_stripe_session");
   return stripeRequest<StripeSession>(config, `checkout/sessions/${id}`);
+}
+
+// A create request can succeed at Stripe before its session ID is saved in Firestore.
+export async function findCheckoutAttempt(config: StripeConfig, id: string, attempt: string, from: number, until: number) {
+  const query = new URLSearchParams({
+    "created[gte]": String(Math.floor(from / 1000)), "created[lte]": String(Math.ceil(until / 1000)), limit: "100",
+  });
+  for (;;) {
+    const page = await stripeRequest<{ data: StripeSession[]; has_more: boolean }>(config, `checkout/sessions?${query}`);
+    const match = page.data.find(session => session.livemode === false && session.metadata?.appointmentId === id &&
+      session.metadata.attemptId === attempt);
+    if (match) return match;
+    if (page.has_more === false) return null;
+    const cursor = page.data[page.data.length - 1]?.id;
+    if (!cursor || query.get("starting_after") === cursor) throw new Error("invalid_stripe_page");
+    query.set("starting_after", cursor);
+  }
 }
 
 export async function stripeMoneyChange(config: StripeConfig, event: StripeEvent) {

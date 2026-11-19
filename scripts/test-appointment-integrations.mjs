@@ -42,7 +42,7 @@ try {
   assert.equal(calls[0].headers['Idempotency-Key'], calls[1].headers['Idempotency-Key']);
   assert.equal(String(calls[0].body), String(calls[1].body));
   assert.equal(calls[0].body.get('line_items[0][price_data][unit_amount]'), '5000');
-  assert.equal(calls[0].body.get('payment_method_types[0]'), 'card');
+  assert(![...calls[0].body.keys()].some(key => key.split('[')[0] === 'payment_method_types'));
   assert.equal(calls[0].body.get('success_url'), 'https://example-test.web.app/appointment?checkout=complete');
 
   const changePayloads = {
@@ -73,5 +73,23 @@ try {
   const before = requests.length;
   assert.equal(await stripe.stripeMoneyChange(config, { ...refund, data: { object: { id: '../unexpected' } } }), null);
   assert.equal(requests.length, before);
+
+  const matchingSession = { id: 'cs_test_match', livemode: false, metadata: { appointmentId: options.id, attemptId: options.attempt } };
+  const otherSession = { ...matchingSession, id: 'cs_test_other', metadata: { ...matchingSession.metadata, attemptId: 'other-attempt' } };
+  const lookup = () => stripe.findCheckoutAttempt(config, options.id, options.attempt, now, options.expiresAt);
+  globalThis.fetch = async (url, { method }) => {
+    const { pathname, searchParams } = new URL(url);
+    assert.equal(method, 'GET');
+    assert.equal(pathname, '/v1/checkout/sessions');
+    assert.equal(searchParams.get('created[gte]'), String(now / 1000));
+    assert.equal(searchParams.get('created[lte]'), String(options.expiresAt / 1000));
+    const nextPage = searchParams.get('starting_after') === otherSession.id;
+    return { ok: true, json: async () => ({ data: nextPage ? [matchingSession] : [otherSession], has_more: !nextPage }) };
+  };
+  assert.deepEqual(await lookup(), matchingSession);
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ data: [otherSession], has_more: false }) });
+  assert.equal(await lookup(), null);
+  globalThis.fetch = async () => ({ ok: false, status: 503 });
+  await assert.rejects(lookup, /stripe_request_503/);
 } finally { globalThis.fetch = previous; }
 console.log('PASS: Stripe signature and replay checks, stable Checkout requests, provider-verified refund and dispute references, and public booking policy validation.');

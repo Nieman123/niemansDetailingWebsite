@@ -16,6 +16,7 @@ const DEPOSIT_CENTS = 5000;
 const ID = /^[\w-]{1,128}$/;
 const HASH = /^[a-f0-9]{64}$/;
 const MINUTE = 60000;
+const CHECKOUT_WINDOW = 35 * MINUTE;
 const POLICY_VERSION = "deposit-v1";
 const DEPOSIT_POLICY = "The $50 deposit applies toward service. Before approval, you can cancel for a full refund. After confirmation, cancel at least 96 hours before the appointment for a refund. Inside 96 hours or for a no-show, the deposit is nonrefundable. An approved reschedule carries your deposit forward without resetting a forfeiture that already applies. If we cancel, you may request a refund or agree to another time.";
 const MANUAL_METHODS = new Set(["cash", "check", "venmo", "cash_app", "other"]);
@@ -706,9 +707,12 @@ async function openCheckout(db, id, body) {
             throw new AppointmentError(409, "nothing_due");
         if (body.accepted !== true)
             throw new AppointmentError(400, "policy_acceptance_required");
-        if (appointment.checkout)
+        if (appointment.checkout) {
+            if (!appointment.checkout.id && appointment.checkout.expiresAt <= now)
+                throw new AppointmentError(409, "checkout_too_close");
             return appointment.checkout;
-        const expiresAt = Math.min(deposit ? appointment.depositDeadline ?? 0 : Infinity, now + 35 * MINUTE);
+        }
+        const expiresAt = Math.min(deposit ? appointment.depositDeadline ?? 0 : Infinity, now + CHECKOUT_WINDOW);
         if (expiresAt - now < 31 * MINUTE)
             throw new AppointmentError(409, "checkout_too_close");
         const kind = deposit ? "deposit" : "balance";
@@ -819,8 +823,23 @@ async function reconcileAppointments(db) {
                 if (!config)
                     throw new Error("stripe_unavailable");
                 const checkout = appointment.checkout;
-                const session = checkout.id ? await (0, appointment_stripe_1.stripeSession)(config, checkout.id) : await (0, appointment_stripe_1.createStripeSession)(config, { id: doc.id, ...checkout });
-                await applyStripeSession(db, session);
+                if (checkout.id) {
+                    await applyStripeSession(db, await (0, appointment_stripe_1.stripeSession)(config, checkout.id));
+                }
+                else if (checkout.expiresAt <= now) {
+                    const session = await (0, appointment_stripe_1.findCheckoutAttempt)(config, doc.id, checkout.attempt, checkout.expiresAt - CHECKOUT_WINDOW - MINUTE, checkout.expiresAt);
+                    if (session) {
+                        await applyStripeSession(db, session);
+                    }
+                    else {
+                        await db.runTransaction(async (tx) => {
+                            const latest = (await tx.get(doc.ref)).data();
+                            if (latest?.checkout?.attempt === checkout.attempt && !latest.checkout.id) {
+                                tx.update(doc.ref, { checkout: null, reconcileAt: checkout.kind === "deposit" ? latest.depositDeadline : null });
+                            }
+                        });
+                    }
+                }
             }
             await db.runTransaction(async (tx) => {
                 const latest = (await tx.get(doc.ref)).data();

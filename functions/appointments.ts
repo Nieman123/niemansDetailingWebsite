@@ -9,7 +9,7 @@ import { ContentError, manageSiteContent, publicSiteContent } from "./appointmen
 import { busyWindows, calendarConfig, mirrorAppointment } from "./appointment-calendar";
 import { bookingSlots, easternDate, emptyBookingSettings, parseBookingSettings, type BookingSettings } from "./appointment-booking";
 import {
-  createStripeSession, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
+  createStripeSession, findCheckoutAttempt, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
   type StripeSession,
 } from "./appointment-stripe";
 
@@ -18,6 +18,7 @@ const DEPOSIT_CENTS = 5000;
 const ID = /^[\w-]{1,128}$/;
 const HASH = /^[a-f0-9]{64}$/;
 const MINUTE = 60_000;
+const CHECKOUT_WINDOW = 35 * MINUTE;
 const POLICY_VERSION = "deposit-v1";
 const DEPOSIT_POLICY = "The $50 deposit applies toward service. Before approval, you can cancel for a full refund. After confirmation, cancel at least 96 hours before the appointment for a refund. Inside 96 hours or for a no-show, the deposit is nonrefundable. An approved reschedule carries your deposit forward without resetting a forfeiture that already applies. If we cancel, you may request a refund or agree to another time.";
 const MANUAL_METHODS = new Set(["cash", "check", "venmo", "cash_app", "other"]);
@@ -743,8 +744,11 @@ async function openCheckout(db: Firestore, id: string, body: Record<string, unkn
     const amount = deposit ? appointment.depositCents : appointment.status === "completed" ? remainingBalance(appointment) : 0;
     if (!amount || amount < 50) throw new AppointmentError(409, "nothing_due");
     if (body.accepted !== true) throw new AppointmentError(400, "policy_acceptance_required");
-    if (appointment.checkout) return appointment.checkout;
-    const expiresAt = Math.min(deposit ? appointment.depositDeadline ?? 0 : Infinity, now + 35 * MINUTE);
+    if (appointment.checkout) {
+      if (!appointment.checkout.id && appointment.checkout.expiresAt <= now) throw new AppointmentError(409, "checkout_too_close");
+      return appointment.checkout;
+    }
+    const expiresAt = Math.min(deposit ? appointment.depositDeadline ?? 0 : Infinity, now + CHECKOUT_WINDOW);
     if (expiresAt - now < 31 * MINUTE) throw new AppointmentError(409, "checkout_too_close");
     const kind = deposit ? "deposit" : "balance";
     const checkout: Checkout = {
@@ -845,8 +849,21 @@ export async function reconcileAppointments(db: Firestore) {
       if (appointment.checkout) {
         if (!config) throw new Error("stripe_unavailable");
         const checkout = appointment.checkout;
-        const session = checkout.id ? await stripeSession(config, checkout.id) : await createStripeSession(config, { id: doc.id, ...checkout });
-        await applyStripeSession(db, session);
+        if (checkout.id) {
+          await applyStripeSession(db, await stripeSession(config, checkout.id));
+        } else if (checkout.expiresAt <= now) {
+          const session = await findCheckoutAttempt(config, doc.id, checkout.attempt, checkout.expiresAt - CHECKOUT_WINDOW - MINUTE, checkout.expiresAt);
+          if (session) {
+            await applyStripeSession(db, session);
+          } else {
+            await db.runTransaction(async tx => {
+              const latest = (await tx.get(doc.ref)).data() as Appointment | undefined;
+              if (latest?.checkout?.attempt === checkout.attempt && !latest.checkout.id) {
+                tx.update(doc.ref, { checkout: null, reconcileAt: checkout.kind === "deposit" ? latest.depositDeadline : null });
+              }
+            });
+          }
+        }
       }
       await db.runTransaction(async tx => {
         const latest = (await tx.get(doc.ref)).data() as Appointment | undefined;

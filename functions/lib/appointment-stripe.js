@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.stripeConfig = stripeConfig;
 exports.createStripeSession = createStripeSession;
 exports.stripeSession = stripeSession;
+exports.findCheckoutAttempt = findCheckoutAttempt;
 exports.stripeMoneyChange = stripeMoneyChange;
 exports.stripeRefund = stripeRefund;
 exports.verifyStripeEvent = verifyStripeEvent;
@@ -35,7 +36,6 @@ function createStripeSession(config, input) {
     const { id, attempt, origin, kind, amount, expiresAt, disclosure } = input;
     return stripeRequest(config, "checkout/sessions", {
         mode: "payment",
-        "payment_method_types[0]": "card",
         "line_items[0][quantity]": "1",
         "line_items[0][price_data][currency]": "usd",
         "line_items[0][price_data][unit_amount]": String(amount),
@@ -55,6 +55,25 @@ function stripeSession(config, id) {
     if (!/^cs_test_\w+$/.test(id))
         throw new Error("invalid_stripe_session");
     return stripeRequest(config, `checkout/sessions/${id}`);
+}
+// A create request can succeed at Stripe before its session ID is saved in Firestore.
+async function findCheckoutAttempt(config, id, attempt, from, until) {
+    const query = new URLSearchParams({
+        "created[gte]": String(Math.floor(from / 1000)), "created[lte]": String(Math.ceil(until / 1000)), limit: "100",
+    });
+    for (;;) {
+        const page = await stripeRequest(config, `checkout/sessions?${query}`);
+        const match = page.data.find(session => session.livemode === false && session.metadata?.appointmentId === id &&
+            session.metadata.attemptId === attempt);
+        if (match)
+            return match;
+        if (page.has_more === false)
+            return null;
+        const cursor = page.data[page.data.length - 1]?.id;
+        if (!cursor || query.get("starting_after") === cursor)
+            throw new Error("invalid_stripe_page");
+        query.set("starting_after", cursor);
+    }
 }
 async function stripeMoneyChange(config, event) {
     const id = event.data.object.id;
