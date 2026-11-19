@@ -1,4 +1,4 @@
-import { appointmentsEnabled, auth, db } from "/scripts/firebase-client.js";
+import { appointmentsEnabled, auth, db } from "/scripts/firebase-client.js?v=20261119";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -1703,7 +1703,10 @@ function bindEvents() {
         await signInWithPopup(auth, new GoogleAuthProvider());
       } catch (error) {
         console.error("Sign in failed", error);
-        setStatus("Sign in failed. Check Google Auth settings.", "error");
+        const hint = error.code === "auth/popup-blocked"
+          ? "Allow the Google sign-in popup in your browser and try again."
+          : "Google sign-in could not finish. Try again.";
+        setStatus(hint, "error");
       }
     });
   }
@@ -1834,6 +1837,7 @@ async function handleAuth(user) {
     els.authHint.textContent = `Signed in as ${user.email || user.uid}`;
   }
 
+  if (els.authView) els.authView.hidden = true;
   try {
     setStatus("Checking admin access...");
     state.isAdmin = await checkAdmin(user.uid);

@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/quote.css">
   <link rel="stylesheet" href="/styles/appointments.css">
 <link rel="stylesheet" href="/styles/workspace.css">
+<link rel="stylesheet" href="/styles/booking.css">
 </head>
 <body class="quote-page appointment-app owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="appointments"></nav></header>
   <main class="wrap">
@@ -28,13 +29,19 @@
         <section id="view-queue" class="panel" aria-labelledby="recent-heading">
           <h2 id="recent-heading">Recent appointments</h2>
           <label class="field"><span>Filter</span><select id="filter-appointments">
-            <option value="all">All recent</option><option value="today">Today</option><option value="pending_approval">Pending approval</option>
+            <option value="all">Recent, excluding cancellations</option><option value="today">Today</option><option value="pending_approval">Pending approval</option>
             <option value="awaiting_deposit">Awaiting deposit</option><option value="confirmed">Confirmed</option>
-            <option value="in_progress">In progress</option><option value="due">Balance due</option>
+            <option value="in_progress">In progress</option><option value="due">Balance due</option><option value="cancelled">Canceled</option>
           </select></label>
           <button class="btn secondary" id="export-payments" type="button">Export payment ledger</button>
           <p id="list-status" role="status"></p>
           <div id="appointments-list"></div>
+        </section>
+        <section id="view-detail" class="panel" aria-labelledby="owner-detail-heading" hidden>
+          <a class="back-action" id="back-to-queue" href="/admin/appointments">Back to queue</a>
+          <h2 id="owner-detail-heading" tabindex="-1">Appointment details</h2>
+          <p id="detail-status" role="status"></p>
+          <div id="owner-detail"></div>
         </section>
         <section hidden id="view-new" class="panel" aria-labelledby="create-heading">
           <h2 id="create-heading">New appointment</h2>
@@ -50,10 +57,26 @@
               <label class="field"><span>Service</span><input name="service" required maxlength="150"></label>
               <label class="field"><span>Vehicle</span><input name="vehicle" maxlength="150"></label>
             </div>
-            <div class="appointment-fields">
-              <label class="field"><span>Start time (Eastern)</span><input name="start" type="datetime-local" required></label>
-              <label class="field"><span>Duration (minutes)</span><input name="durationMinutes" type="number" min="15" max="10080" step="1" required></label>
+            <label class="field"><span>Duration (minutes)</span><input name="durationMinutes" type="number" min="15" max="10080" step="1" value="60" required></label>
+            <div id="owner-slot-calendar" class="owner-slot-calendar">
+              <div class="month-nav">
+                <h2 id="owner-month-title">Available dates</h2>
+                <div>
+                  <button type="button" aria-label="Previous month" disabled><span aria-hidden="true" class="chevron previous"></span></button>
+                  <button type="button" aria-label="Next month" disabled><span aria-hidden="true" class="chevron"></span></button>
+                </div>
+              </div>
+              <p id="owner-calendar-status" role="status">Checking availability.</p>
+              <button id="owner-calendar-retry" class="btn secondary" type="button" hidden>Try again</button>
+              <div class="weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+              <div class="month-grid" role="group" aria-labelledby="owner-month-title"></div>
+              <section class="time-section">
+                <h3 id="owner-slot-heading">Available times</h3>
+                <p class="slot-note" role="status"></p>
+                <div class="time-grid" role="group" aria-labelledby="owner-slot-heading"></div>
+              </section>
             </div>
+            <label class="field"><span>Start time (Eastern)</span><input name="start" type="datetime-local" required><small>Choose a slot above or enter a custom time.</small></label>
             <label class="field"><span>Estimated total ($)</span><input name="estimate" type="number" min="0" max="100000" step="0.01" inputmode="decimal" placeholder="Optional"></label>
             <label class="field"><span>Preparation instructions for the customer</span><textarea name="preparation" rows="2" maxlength="1500"></textarea></label>
             <label class="field"><span>Deposit</span>

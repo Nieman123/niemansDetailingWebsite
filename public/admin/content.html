@@ -15,8 +15,24 @@
     <h1>Site content</h1>
     <p id="cms-status" role="status">Checking access…</p>
     <button class="btn primary" id="cms-sign-in" type="button" hidden>Sign in with Google</button>
+    <form id="vacation-form" class="panel" hidden>
+      <h2>Vacation notice</h2>
+      <p>Schedule a notice on the website while you're away.</p>
+      <label class="appointment-checkbox"><input name="enabled" type="checkbox"> Show notice during these dates</label>
+      <div class="appointment-fields">
+        <label class="field"><span>Start date</span><input name="startDate" type="date" required></label>
+        <label class="field"><span>End date</span><input name="endDate" type="date" required></label>
+      </div>
+      <label class="field"><span>Headline</span><input name="headline" maxlength="90" required></label>
+      <label class="field"><span>Message</span><textarea name="message" maxlength="420" rows="3" required></textarea></label>
+      <aside id="vacation-preview" class="appointment-notice" aria-label="Notice preview" hidden>
+        <strong id="vacation-preview-heading"></strong><p id="vacation-preview-message"></p>
+      </aside>
+      <button type="submit" class="btn primary" disabled>Save vacation notice</button>
+      <p id="vacation-status" role="status"></p>
+    </form>
     <form id="cms-form" class="panel" hidden>
-      <h2>Homepage</h2><label class="field"><span>Homepage headline</span><input name="headline" maxlength="140"></label>
+      <h2>Site copy</h2><p>Clear a field to restore the original site copy. Additional FAQ copy is optional.</p><h3>Homepage</h3><label class="field"><span>Homepage headline</span><input name="headline" maxlength="140"></label>
       <label class="field"><span>Homepage introduction</span><textarea name="introduction" maxlength="1300" rows="3"></textarea></label>
       <h2>Customer information</h2><label class="field"><span>Booking notice</span><textarea name="bookingNotice" maxlength="500" rows="2"></textarea></label>
       <label class="field"><span>Contact note</span><textarea name="contactNote" maxlength="700" rows="2"></textarea></label>

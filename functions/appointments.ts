@@ -286,13 +286,16 @@ async function createAppointment(db: Firestore, uid: string, body: Record<string
   const ref = db.collection("appointments").doc(id);
   const previous = await readAppointment(db, id);
   if (previous) return adminDetails(id, previous);
+  const bufferMinutes = body.useCalendarSlot === true ? (await getSettings(db)).bufferMinutes : undefined;
   const requested = buildAppointment(body, uid, Date.now());
+  if (bufferMinutes !== undefined) requested.bufferMinutes = bufferMinutes;
   if (requested.status === "confirmed") await assertCalendarOpen(requested);
   return db.runTransaction(async tx => {
     const existing = (await tx.get(ref)).data() as Appointment | undefined;
     if (existing) return adminDetails(id, existing);
     const now = Date.now();
     const appointment = buildAppointment(body, uid, now);
+    if (bufferMinutes !== undefined) appointment.bufferMinutes = bufferMinutes;
     const client = appointment.clientId ? db.collection("clients").doc(appointment.clientId) : null;
     const lead = appointment.leadId ? db.collection("leads").doc(appointment.leadId) : null;
     if ((client && !(await tx.get(client)).exists) || (lead && !(await tx.get(lead)).exists)) {
@@ -584,9 +587,17 @@ async function getSettings(db: Firestore) {
   return ((await settingsDoc(db).get()).data() as BookingSettings | undefined) ?? emptyBookingSettings;
 }
 
-async function getAvailability(db: Firestore, body: Record<string, unknown>) {
-  const settings = await getSettings(db);
-  const service = settings.services.find(item => item.id === body.serviceId);
+async function getAvailability(db: Firestore, body: Record<string, unknown>, owner = false) {
+  const configured = await getSettings(db);
+  const settings = owner ? { ...configured, enabled: true, minimumHours: body.deposit === "required" ? 0.6 : 0 } : configured;
+  let service = settings.services.find(item => item.id === body.serviceId);
+  if (owner) {
+    const duration = body.durationMinutes;
+    if (typeof duration !== "number" || !Number.isInteger(duration) || duration < 15 || duration > 7 * 1440) {
+      throw new AppointmentError(400, "invalid_time");
+    }
+    service = { id: "", name: "", cents: 0, duration };
+  }
   const date = text(body.date, 10);
   if (!service || !settings.enabled) return { slots: [] };
   const now = Date.now();
@@ -999,6 +1010,13 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
       const uid = await adminUid(db, auth, req, action.startsWith("cms-"));
       if (action.startsWith("cms-")) result = await manageSiteContent(db, uid, action, body);
       else if (action === "context") result = await appointmentContext(db, body);
+      else if (action === "admin-availability") result = await getAvailability(db, body, true);
+      else if (action === "owner-detail") {
+        const id = identifier(body.id)!;
+        const appointment = await readAppointment(db, id);
+        if (!appointment) throw new AppointmentError(404, "record_not_found");
+        result = adminDetails(id, appointment);
+      }
       else if (action === "create") result = await createAppointment(db, uid, body);
       else if (action === "booking-settings") result = await getSettings(db);
       else if (action === "save-booking-settings") {

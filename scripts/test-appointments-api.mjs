@@ -36,6 +36,8 @@ const stranger = await signUp();
 const asOwner = (action, data = {}) => post(action, data, owner.idToken);
 await db.collection('adminUsers').doc(owner.localId).set({ label: 'Test owner' });
 assert.equal((await post('list', {})).status, 401);
+assert.equal((await post('owner-detail', { id: 'a'.repeat(64) })).status, 401);
+assert.equal((await post('admin-availability', { month: '2026-11', durationMinutes: 60 })).status, 401);
 assert.equal((await post('list', {}, stranger.idToken)).status, 403);
 assert.equal((await post('list', {}, owner.idToken, 'https://unrelated.example')).status, 403);
 
@@ -168,30 +170,39 @@ globalThis.fetch = (url, init) => {
   }
   return originalFetch(url,init);
 };
-async function guest(action, body) {
+async function callWithCalendar(action, body, token) {
   let response;
-  await paymentLifecycle.handleAppointments(db,admin.auth(),{method:'POST',body,is:()=>true,get:()=>undefined,rawBody:Buffer.from(JSON.stringify(body))},
+  await paymentLifecycle.handleAppointments(db,admin.auth(),{method:'POST',body,is:()=>true,get:name=>token && name === "Authorization" ? "Bearer " + token : undefined,rawBody:Buffer.from(JSON.stringify(body))},
     {status(){return this;},json(value){response=value;}},action);
   return response;
 }
 try {
   const month = new Date(Date.now() + 10 * 86400000).toISOString().slice(0,7);
-  const available = await guest('availability',{serviceId:'full',month});
+  const available = await callWithCalendar('availability',{serviceId:'full',month});
   assert(available.result.slots.length);
   assert.equal(calendarReads,1);
   const phoneBooking = {name:'Phone customer',phone:'828-555-0199',start:available.result.slots[0],serviceId:'full',accepted:true,token:'b'.repeat(64)};
-  assert.equal((await guest('book',{...phoneBooking,phone:''})).error,'invalid_details');
-  assert.equal((await guest('book',{...phoneBooking,postalCode:'99999'})).error,'outside_service_area');
-  const booked = await guest('book',phoneBooking);
+  assert.equal((await callWithCalendar('book',{...phoneBooking,phone:''})).error,'invalid_details');
+  assert.equal((await callWithCalendar('book',{...phoneBooking,postalCode:'99999'})).error,'outside_service_area');
+  const booked = await callWithCalendar('book',phoneBooking);
   assert.equal(booked.result.status,'awaiting_deposit');
   const stored = (await db.collection('appointments').doc(booked.result.id).get()).data();
   assert.deepEqual([stored.email,stored.address,stored.phone],['','','+18285550199']);
-  assert.equal((await guest('book',phoneBooking)).result.id,booked.result.id);
-  assert.equal((await guest('book',{...phoneBooking,token:'c'.repeat(64)})).error,'existing_booking_hold');
+  assert.equal((await callWithCalendar('book',phoneBooking)).result.id,booked.result.id);
+  assert.equal((await callWithCalendar('book',{...phoneBooking,token:'c'.repeat(64)})).error,'existing_booking_hold');
   const expected = Object.fromEntries(['name','phone','email','vehicle','address'].map(key=>[key,stored[key]]));
   const patch = {id:booked.result.id,...expected,address:'Test service address',vehicle:'Sedan',expected};
   assert.equal((await asOwner('update-contact',patch)).result.address,patch.address);
   assert.equal((await asOwner('update-contact',patch)).error,'status_changed');
+  const detail = await asOwner('owner-detail', { id: booked.result.id });
+  assert.equal(detail.result.address, patch.address);
+  assert.equal((await post('owner-detail', { id: booked.result.id }, stranger.idToken)).status, 403);
+  await db.collection('appointmentSettings').doc('booking').update({ enabled: false });
+  assert.deepEqual((await callWithCalendar('availability',{serviceId:'full',month})).result.slots, []);
+  const ownerTimes = await callWithCalendar('admin-availability', { month, durationMinutes: 90, deposit: 'waived' }, owner.idToken);
+  assert(ownerTimes.result.slots.length);
+  assert(!ownerTimes.result.slots.includes(phoneBooking.start));
+  console.log('PASS: Owner-only appointment details and calendar with public booking paused.');
   console.log('PASS: Month availability, phone-only booking, retry, hold protection and owner contact updates.');
 } finally { globalThis.fetch = originalFetch; }
 await admin.app().delete();

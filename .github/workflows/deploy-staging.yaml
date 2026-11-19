@@ -130,6 +130,12 @@ jobs:
           assert.match(config.headers.get('content-type') ?? '', /javascript/);
           assert.ok((await config.text()).includes(`"projectId": "${projectId}"`));
 
+          const defaults = await request('/scripts/site-copy-defaults.json');
+          assert.equal(defaults.status, 200);
+          const siteCopy = await defaults.json();
+          assert.match(siteCopy.headline, /Asheville/);
+          assert.ok(siteCopy.bookingNotice);
+
           const schedule = await request('/schedule');
           assert.equal(schedule.status, 200);
           assert.ok(!(await schedule.text()).includes('calendar.google.com/calendar/appointments'));

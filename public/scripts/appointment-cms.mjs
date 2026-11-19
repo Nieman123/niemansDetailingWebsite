@@ -1,5 +1,6 @@
 import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { loadVacation } from "./admin-vacation.mjs";
 import { appointmentRequest } from "./appointment-utils.mjs";
 
 const id = name => document.getElementById(name);
@@ -8,12 +9,18 @@ const status = id("cms-status");
 const picker = id("cms-revision");
 let revision = "";
 let busy = false;
+let originalCopy = {};
+let publishedCopy = {};
+let accessVersion = 0;
 const fields = [...form.querySelectorAll("input[name], textarea[name]")];
 const request = async (action, body = {}) => appointmentRequest(action, body, await auth.currentUser?.getIdToken());
-const content = () => Object.fromEntries(fields.map(field => [field.name, field.value]));
+const content = () => Object.fromEntries(fields.map(field => [field.name, field.value.trim() === originalCopy[field.name] ? "" : field.value]));
 function loadDraft(draft) {
   revision = draft?.revision || "";
-  for (const field of fields) field.value = draft?.content?.[field.name] || "";
+  for (const field of fields) {
+    const effective = draft?.content?.[field.name] ?? publishedCopy[field.name];
+    field.value = effective || originalCopy[field.name] || "";
+  }
 }
 function run(handler) {
   return async event => {
@@ -27,7 +34,14 @@ function run(handler) {
 }
 
 async function read() {
-  const snapshot = await request("cms-read");
+  const version = accessVersion;
+  const [snapshot, defaults] = await Promise.all([
+    request("cms-read"),
+    fetch("/scripts/site-copy-defaults.json").then(response => response.ok ? response.json() : {}).catch(() => ({})),
+  ]);
+  if (version !== accessVersion) return;
+  originalCopy = defaults;
+  publishedCopy = snapshot.published?.content || {};
   loadDraft(snapshot.draft);
   picker.replaceChildren(new Option("Choose a revision", ""), ...snapshot.revisions.map(version =>
     new Option(new Date(version.publishedAt).toLocaleString("en-US", { timeZone: "America/New_York" }), version.id)));
@@ -61,14 +75,22 @@ id("cms-preview").onclick = () => {
   panel.hidden = false; panel.tabIndex = -1; panel.focus();
 };
 
-if (!appointmentsEnabled) status.textContent = "Site content editing is available on staging.";
-else {
-  id("cms-sign-in").onclick = run(() => signInWithPopup(auth, new GoogleAuthProvider()));
-  onAuthStateChanged(auth, async user => {
-    form.hidden = true;
-    id("cms-sign-in").hidden = !!user;
-    if (!user) { status.textContent = "Sign in to edit site content."; return; }
-    try { await read(); status.textContent = ""; form.hidden = false; }
-    catch { status.textContent = "This account couldn't access the content editor."; }
-  });
-}
+id("cms-sign-in").onclick = run(() => signInWithPopup(auth, new GoogleAuthProvider()));
+onAuthStateChanged(auth, async user => {
+  const version = ++accessVersion;
+  form.hidden = true;
+  form.reset();
+  id("cms-draft-preview").hidden = true;
+  id("cms-sign-in").hidden = !!user;
+  loadVacation(user).catch(() => {});
+  if (!user) { status.textContent = "Sign in to edit site content."; return; }
+  if (!appointmentsEnabled) { status.textContent = "Site copy editing is available on staging."; return; }
+  try {
+    await read();
+    if (version !== accessVersion) return;
+    status.textContent = "";
+    form.hidden = false;
+  } catch {
+    if (version === accessVersion) status.textContent = "This account couldn't open the site copy editor. Reload to try again.";
+  }
+});

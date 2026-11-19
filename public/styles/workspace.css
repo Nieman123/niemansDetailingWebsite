@@ -33,12 +33,7 @@
 .owner-app fieldset {min-width:0;margin:18px 0;padding:14px;border:1px solid var(--border);border-radius:8px;}
 .service-row {display:grid;grid-template-columns:1.5fr 1fr .7fr .8fr auto;align-items:end;gap:8px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px;}
 .appointment-record {padding:0 0 8px;}
-.appointment-record>summary {display:flex;align-items:center;justify-content:space-between;min-height:75px;gap:12px;list-style:none;}
-.appointment-record>summary::after {content:"";width:9px;height:9px;border:solid #d6c7e9;border-width:0 2px 2px 0;transform:rotate(45deg);margin-right:5px;flex:none;}
 .appointment-record[open]>summary::after {transform:rotate(225deg);}
-.appointment-record>summary::-webkit-details-marker {display:none;}
-.appointment-record>summary h3 {font-size:1.1rem;margin:0;}
-.appointment-record>summary p {margin:4px 0 0;font-size:.91rem;}
 .appointment-record>details {border-top:1px solid var(--border);padding-block:4px;}
 .owner-app summary {min-height:48px;cursor:pointer;}
 .contact-line {display:flex;align-items:center;gap:8px 18px;flex-wrap:wrap;margin-bottom:12px;}
@@ -81,7 +76,24 @@
 
 .work-title {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
 .work-title h1 {margin:8px 0;}
-.appointment-record>summary>span:nth-child(2) {flex:1;}
 .date-mark {align-self:center;display:grid;text-align:center;line-height:1.12;padding:7px 5px;min-width:45px;border:1px solid #59555f;border-radius:7px;}
 .date-mark>span:first-child {color:#d7c8ed;text-transform:uppercase;font-size:.70rem;font-weight:700;letter-spacing:.04em;}
 .date-mark>span+span {font-size:1.35rem;font-weight:650;font-variant-numeric:tabular-nums;}
+
+.owner-app .appointment-queue-row {
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:14px;
+  padding:14px 8px; border-top:1px solid var(--border); text-decoration:none; color:var(--text);
+}
+.appointment-queue-row:is(:hover,:focus-visible) { background:var(--surface-raised); }
+.appointment-queue-row::after { content:""; width:8px; height:8px; border:solid var(--brand-2); border-width:2px 2px 0 0; transform:rotate(45deg); margin-right:5px; }
+.appointment-queue-row > span:nth-child(2) { display:grid; gap:3px; }
+.appointment-queue-row strong { line-height:1.3; }
+.appointment-queue-row > span:nth-child(2) > span { color:var(--muted); font-size:.92rem; }
+.appointment-queue-row > span:nth-child(2) > .queue-status { color:var(--brand-2); }
+.owner-app #back-to-queue { display:inline-flex; min-height:48px; align-items:center; }
+.owner-record section, .owner-record details { margin-top:14px; border-top:1px solid var(--border); }
+.owner-record details > summary { font-weight:650; }
+.owner-slot-calendar { margin-block:18px; max-width:610px; }
+.owner-slot-calendar .month-nav { margin-top:0; }
+.owner-slot-calendar .time-grid button { background:var(--bg); }
+.site-copy-override { white-space:pre-wrap; }

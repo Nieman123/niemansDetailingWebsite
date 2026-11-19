@@ -621,7 +621,7 @@
 <body class="owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="clients"></nav></header>
   <div id="admin-status">Initializing...</div>
 
-  <div id="auth-view" class="auth-container">
+  <div id="auth-view" class="auth-container" hidden>
     <h1>Nieman's Client Manager</h1>
     <p class="muted" style="max-width:620px;">Sign in with your Google account to manage client contacts, booking history, and follow-up reminders.</p>
     <button id="sign-in-btn" class="btn btn-primary" type="button">Sign in with Google</button>
@@ -941,7 +941,14 @@
     </main>
   </div>
 
-  <script type="module" src="/scripts/admin-clients.js?v=20261013"></script>
+  <script type="module">
+    import("/scripts/admin-clients.js?v=20261119").catch(error => {
+      console.error("Client manager initialization failed", error);
+      const status = document.getElementById("admin-status");
+      status.textContent = "Could not load the Client Manager. Reload to try again.";
+      status.dataset.type = "error";
+    });
+  </script>
 <script type="module" src="/scripts/workspace.mjs"></script>
 </body>
 
