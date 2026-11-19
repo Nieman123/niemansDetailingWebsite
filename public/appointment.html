@@ -8,10 +8,10 @@
   <title>Your appointment | Nieman's Detailing</title>
   <link rel="stylesheet" href="/quote.css">
   <link rel="stylesheet" href="/styles/appointments.css">
-</head>
+<link rel="stylesheet" href="/styles/booking.css"></head>
 <body class="quote-page appointment-app appointment-customer">
+<header class="customer-bar"><a href="/" aria-label="Nieman’s Detailing home"><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"></a><a href="/schedule">Schedule a detail</a></header>
   <main class="wrap">
-    <p class="business-name">Nieman’s Detailing</p>
     <h1>Your appointment</h1>
     <p id="appointment-status" class="appointment-notice" role="status">Opening appointment…</p>
     <article id="appointment-details" class="panel" hidden>
@@ -48,6 +48,7 @@
         </form>
         <p><button class="btn secondary" id="cancel-appointment" type="button">Cancel appointment</button></p>
       </section>
+      <p id="save-link-hint" hidden>Keep a copy of your private appointment link so you can return to check your booking.</p>
       <div class="appointment-actions">
         <button class="quiet" id="save-appointment-account" type="button">Save to my account</button>
         <button class="quiet" id="copy-appointment-link" type="button">Copy appointment link</button>

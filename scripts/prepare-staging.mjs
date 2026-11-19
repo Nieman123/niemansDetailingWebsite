@@ -54,21 +54,10 @@ function preparePages(directory) {
         if (relative !== href) node.attr(attribute, relative.startsWith('/') ? relative : `/${relative}`);
       });
       $('meta[name="firebase-api-key"]').remove();
-      if (file === path.join(publicDir, 'schedule.html')) {
-        $('#scheduler').replaceWith('<p><a href="/book">Check available appointments and reserve a time</a> · <a href="/account">Manage an appointment</a></p>');
-        $('link[href*="calendar.google.com"]').remove();
-        if ($.html().includes('calendar.google.com/calendar/appointments')) {
-          throw new Error('The production Google scheduler is still present in staging.');
-        }
-      }
-      if (file === path.join(publicDir, 'thank-you.html')) {
-        $('a[href="/schedule"]').attr('href', '/book');
-      }
       const contentKeys = {
         'index.html': 'headline introduction serviceAreas testimonials contactNote serviceDescriptions',
         'faq.html': 'faq',
         'schedule.html': 'bookingNotice',
-        'book.html': 'bookingNotice',
       }[path.relative(publicDir, file)];
       if (contentKeys) {
         const section = $('<section class="panel" hidden></section>').attr('data-site-content', contentKeys);
@@ -83,6 +72,7 @@ function preparePages(directory) {
 }
 
 cpSync('public', publicDir, { recursive: true, force: false, errorOnExist: true });
+cpSync('templates/schedule.html', path.join(publicDir, 'schedule.html'));
 preparePages(publicDir);
 await sharp('assets/images/touch/chrome-touch-icon-192x192.png')
   .resize(360, 360, { fit: 'contain', background: '#0b1330' })
@@ -93,6 +83,7 @@ writeFileSync(path.join(publicDir, 'scripts', 'firebase-config.mjs'),
 
 const firebase = JSON.parse(readFileSync('firebase.json', 'utf8'));
 firebase.hosting.public = publicDir;
+firebase.hosting.redirects.unshift(...['/book', '/book.html'].map(source => ({ source, destination: '/schedule', type: 301 })));
 delete firebase.hosting.predeploy;
 firebase.hosting.headers[0].headers.push({ key: 'X-Robots-Tag', value: 'noindex, nofollow' });
 firebase.storage = { rules: 'storage.staging.rules' };

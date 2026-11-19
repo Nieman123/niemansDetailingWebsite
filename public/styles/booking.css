@@ -1,0 +1,83 @@
+/* The public booking flow uses a daylight surface for use beside the vehicle. */
+.appointment-customer, .booking-page {
+  color-scheme: light; --bg:#f5f4f0; --card:#fff; --surface:#fff; --surface-raised:#f1f0ed;
+  --text:#222323; --muted:#525459; --line:#ceced1; --brand:#433462; --brand-2:#443360; --focus:#7052ae;
+  background:var(--bg); color:var(--text); font:400 1rem/1.55 system-ui,sans-serif;
+}
+.customer-bar { background:#1d1d22; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:0 max(5vw,16px); min-height:66px; }
+.customer-bar img { display:block; width:min(185px,42vw); height:auto; }
+.appointment-app .customer-bar a { color:#fff; font-size:.9rem; font-weight:600; display:inline-flex; align-items:center; min-height:48px; }
+.booking-shell { width:min(1020px,100%); margin:auto; padding:38px 24px 60px; }
+.booking-shell h1,.appointment-customer h1 {font-size:clamp(2.15rem,5vw,3.45rem); letter-spacing:-.04em; line-height:1.06; margin:0 0 .6rem; color:#242329;}
+.booking-intro {margin:0 0 1.7rem; color:var(--muted);}
+.booking-layout { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(245px, .85fr); gap:clamp(18px,3vw,42px); align-items:start; }
+.booking-work,.appointment-customer .panel {background:#fff; border:1px solid #d4d2cc; border-radius:16px; padding:clamp(18px,3vw,32px); box-shadow:none; min-width:0;}
+.booking-page .field {margin:0 0 16px;}
+.appointment-app :is(input:not([type=checkbox]),select,textarea) { min-width:0; max-width:100%; font-size:1rem; }
+.booking-page .field :is(input,select),.appointment-customer .field input {background:#fff; color:var(--text); border:1px solid #99999f; border-radius:8px; min-height:48px;}
+.booking-page h2,.appointment-customer h2 {font-size:1.5rem;letter-spacing:-.03em;line-height:1.25;}
+.booking-page h3 {font-size:1.15rem; margin:0;}
+.month-nav,.month-nav>div {display:flex; align-items:center; gap:5px;}
+.month-nav {justify-content:space-between; border-top:1px solid #e2e0dc; margin-top:22px; padding:18px 0 10px;}
+.month-nav h2 {margin:0;}
+.month-nav button,.month-grid button,.time-grid button {font:inherit;cursor:pointer; color:inherit; min-height:48px;}
+.month-nav button {border:0; background:none; border-radius:8px; width:48px;}
+.month-nav button:hover:not(:disabled),.month-grid button:hover:not(:disabled) {background:#e9e2fa;}
+.month-nav button:disabled {opacity:.25;cursor:default;}
+.chevron {display:inline-block; width:10px; height:10px; border:solid currentColor; border-width:2px 2px 0 0; transform:rotate(45deg);}
+.chevron.previous {transform:rotate(-135deg);}
+.weekdays,.month-grid {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:center;}
+.weekdays {font-size:.82rem;color:var(--muted);font-weight:600;padding:6px 0;}
+.month-grid {gap:3px; font-variant-numeric:tabular-nums;}
+.month-grid button {position:relative; border:0; border-radius:8px; background:#f2eef8; color:#40305c; font-weight:650; padding:0 0 3px;}
+.month-grid button:not(:disabled)::after,.calendar-key::before {content:"";width:4px;height:4px;background:currentColor;border-radius:50%;}
+.month-grid button:not(:disabled)::after {position:absolute;bottom:6px;left:calc(50% - 2px);}
+.month-grid button:disabled {background:transparent; color:#77777d; font-weight:400;cursor:default;}
+.month-grid button[aria-pressed=true],.month-grid button[aria-pressed=true]:hover {background:#44355f;color:white;}
+.calendar-key,.slot-note {color:var(--muted);font-size:.9rem; margin:10px 0;}
+.calendar-key::before {display:inline-block;vertical-align:middle;margin-right:7px;background:#503c70;}
+.time-section {border-top:1px solid var(--line);margin-top:20px;padding-top:20px;}
+.time-grid {display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;}
+.time-grid button {background:white;border:1px solid #a9a3b1;border-radius:7px;font-weight:600;}
+.time-grid button:hover,.time-grid button[aria-pressed=true] {background:#eee9f7;border-color:var(--brand);}
+.booking-summary {align-self:start;background:#26262b;color:#fff;border-radius:14px;overflow:hidden;}
+.booking-summary img {width:100%;height:clamp(120px,15vw,170px);display:block;object-fit:cover;object-position:center 47%;}
+.booking-summary>div {padding:22px;}
+.booking-summary h2 {font-size:1.1rem;color:#ddd6ef;margin:0 0 19px;}
+.booking-summary strong {font-size:1.6rem;line-height:1.2;letter-spacing:-.03em;}
+.booking-summary p {margin:6px 0 12px;color:#e0dfe4;}
+.booking-summary dl {display:grid;grid-template-columns:1fr auto; gap:8px;margin-top:20px;padding-top:18px;border-top:1px solid #58575d;}
+.booking-summary dd {margin:0;font-weight:700;font-variant-numeric:tabular-nums;}
+.booking-summary dl+p {font-size:.9rem;margin-bottom:0;}
+.booking-footer {display:flex;gap:22px;border-top:1px solid var(--line);margin-top:28px;padding-top:10px;}
+.booking-footer a,.contact-line a {display:inline-flex;align-items:center;min-height:48px;}
+.booking-page .btn.primary,.appointment-customer .btn.primary {color:#fff;background:#44355f;border-color:#44355f;box-shadow:none;}
+.appointment-customer .btn.secondary,.booking-page .btn.secondary {background:#edebf0;color:#352e42;border:1px solid #d2cdd9;}
+.appointment-app .back-action {color:var(--brand);text-decoration:underline;margin-bottom:14px;padding-inline:0;}
+.optional-details,.appointment-customer details,.appointment-customer #appointment-details>section {border-top:1px solid var(--line);margin:14px 0;padding-block:8px;}
+.optional-details summary,.appointment-customer details summary {font-weight:650;min-height:48px;}
+.optional-details small {font-weight:400; color:var(--muted);}
+.appointment-customer .wrap {max-width:760px;padding:42px 20px 64px;}
+.appointment-customer .appointment-notice {border:0;background:#e8e3f2;color:#40305e;}
+.appointment-customer .appointment-summary {row-gap:12px;}
+.appointment-customer #payment-policy {font-size:.95rem;line-height:1.6;color:var(--muted);}
+.appointment-app [role=status]:empty {display:none;}
+.appointment-app a {text-underline-offset:.2em;}
+.appointment-app :focus-visible,.owner-app :focus-visible {outline:3px solid var(--focus,#bfabff); outline-offset:3px;}
+@media(max-width:690px){
+  .booking-shell {padding:28px 14px 44px;}
+  .booking-layout {grid-template-columns:minmax(0,1fr);gap:16px;}
+  .booking-intro {margin-bottom:18px;}
+  .booking-work {padding:16px 12px;}
+  .booking-summary img {display:none;}
+  .booking-summary>div {padding:17px 20px;}
+  .booking-summary h2 {margin-bottom:8px;}
+  .booking-summary strong {font-size:1.15rem;}
+  .month-grid {gap:1px;}
+  .booking-page #contact-step .btn.primary,.appointment-customer #pay-appointment {width:100%;}
+  .appointment-customer .wrap {padding-top:30px;}
+}
+@media(prefers-reduced-motion:no-preference){#contact-step:not([hidden]) {animation:contact-enter .18s ease-out;} @keyframes contact-enter {from{transform:translateY(4px);opacity:.85}to{transform:none;opacity:1}}}
+
+.mobile-facts {display:none;}
+@media(max-width:690px){.mobile-facts{display:block;color:var(--muted);font-weight:550;font-size:.91rem}.booking-summary{display:none}.service-select{margin-bottom:6px}}

@@ -19,7 +19,7 @@ const messages = {
   sign_in_required: "Sign in to manage appointments.",
   record_not_found: "The selected client or lead could not be found.",
   invalid_identifier: "The selected client or lead link is invalid.",
-  invalid_details: "Enter a name, service, address, and at least one valid contact method.",
+  invalid_details: "Enter a name and either a valid US phone number or email address.",
   invalid_time: "Choose a future appointment with a duration from 15 minutes to seven days.",
   invalid_price: "Enter a valid estimated total.",
   time_unavailable: "This overlaps a confirmed appointment. Choose another time.",
@@ -105,8 +105,50 @@ function shareActions(record, url) {
   return section;
 }
 
+const contactKeys = ["name", "phone", "email", "vehicle", "address"];
+function contactEditor(record) {
+  const panel = document.createElement("details");
+  const title = Object.assign(document.createElement("summary"), {textContent:"Customer and service address"});
+  const editor = document.createElement("form");
+  editor.className = "appointment-fields";
+  const expected = {};
+  for (const key of contactKeys) {
+    const label = document.createElement("label");
+    label.className = "field";
+    const caption = Object.assign(document.createElement("span"), {textContent: key === "address" ? "Service address and ZIP" : key[0].toUpperCase() + key.slice(1)});
+    expected[key] = record[key] ?? "";
+    const input = Object.assign(document.createElement("input"), {name:key, value:expected[key], required:key === "name", type:key === "email" ? "email" : key === "phone" ? "tel" : "text"});
+    input.maxLength = ({name:150,phone:48,email:250,vehicle:150,address:400})[key];
+    label.append(caption,input); editor.append(label);
+  }
+  const save = Object.assign(document.createElement("button"), {type:"submit", className:"btn primary", textContent:"Save customer details"});
+  const feedback = document.createElement("p");
+  feedback.setAttribute("role","status");
+  editor.append(save,feedback);
+  editor.onsubmit = async event => {
+    event.preventDefault();
+    save.disabled = true;
+    try {
+      await ownerRequest("update-contact",{id:record.id, expected, ...Object.fromEntries(new FormData(editor))});
+      await refreshList(); listStatus.textContent = "Customer details saved.";
+    } catch (error) {feedback.textContent = explain(error);}
+    finally {save.disabled = false;}
+  };
+  panel.append(title,editor);
+  return panel;
+}
+
+function showView(name) {
+  for (const button of workspace.querySelectorAll("[data-view]")) {
+    const active = button.dataset.view === name;
+    button.setAttribute("aria-pressed", String(active));
+    byId("view-" + button.dataset.view).hidden = !active;
+  }
+}
+for (const button of workspace.querySelectorAll("[data-view]")) button.onclick = () => showView(button.dataset.view);
+
 function renderRecord(record) {
-  const card = Object.assign(document.createElement("article"), { className: "appointment-record" });
+  const card = Object.assign(document.createElement("details"), { className: "appointment-record" });
   const status = (statusLabels[record.status] ?? record.status) +
     (record.paidDeposit ? ` · ${appointmentMoney(record.paidDeposit)} deposit received` : record.depositCents ? "" : " · No deposit");
   const heading = Object.assign(document.createElement("h3"), { textContent: `${record.name} · ${record.service}` });
@@ -172,7 +214,30 @@ function renderRecord(record) {
       await ownerRequest("no-show", { id: record.id, reason }); await refreshList();
     }));
   }
-  card.append(heading, summary, actions, share);
+  card.dataset.record = record.id;
+  const handle = document.createElement("summary");
+  const identity = document.createElement("span");
+  identity.append(heading,summary);
+  const dateMark = Object.assign(document.createElement("span"), {className:"date-mark"});
+  dateMark.setAttribute("aria-hidden","true");
+  for (const part of ["month","day"]) {
+    const text = new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",[part]: part === "month" ? "short" : "numeric"}).format(record.start);
+    dateMark.append(Object.assign(document.createElement("span"), {textContent:text}));
+  }
+  handle.append(dateMark,identity);
+  const contact = document.createElement("div");
+  contact.className = "contact-line";
+  if (record.phone) {
+    const sms = Object.assign(document.createElement("a"), { href:"sms:" + record.phone, textContent:"Text customer" });
+    const call = Object.assign(document.createElement("a"), { href:"tel:" + record.phone, textContent:record.phone });
+    contact.append(sms,call);
+  }
+  if (record.address) contact.append(Object.assign(document.createElement("span"),{textContent:record.address}));
+  if (record.status === "pending_approval") {
+    const approve = [...actions.children].find(button => button.textContent === "Approve appointment");
+    if (approve) { approve.className = "btn primary"; actions.prepend(approve); }
+  }
+  card.append(handle,contact,actions,share,contactEditor(record));
   if (record.calendarFailed) card.append(Object.assign(document.createElement("p"), { textContent: "Calendar sync failed and will retry." }));
   if (record.refundState) card.append(Object.assign(document.createElement("p"), { textContent: `Deposit refund: ${record.refundState}` }));
   if (record.paymentReview) card.append(Object.assign(document.createElement("p"), { textContent: `Stripe ${record.paymentReview.kind} needs review · ${appointmentMoney(record.paymentReview.amount)} · ${record.paymentReview.stripeObjectId}` }));
@@ -192,8 +257,9 @@ async function refreshList() {
     const visible = filter === "all" ? records : filter === "today" ?
       records.filter(record => east.format(record.start) === east.format(Date.now()) && record.status !== "cancelled").sort((a, b) => a.start - b.start) :
       filter === "due" ? records.filter(record => record.balanceCents > 0) : records.filter(record => record.status === filter);
-    list.replaceChildren(...visible.map(renderRecord));
-    listStatus.textContent = records.length ? "" : "No appointments yet.";
+    const expanded = new Set([...list.querySelectorAll("details[data-record][open]")].map(row => row.dataset.record));
+    list.replaceChildren(...visible.map(record => { const row = renderRecord(record); row.open = expanded.has(record.id); return row; }));
+    listStatus.textContent = visible.length ? "" : records.length ? "No appointments match this filter." : "Your first appointment will appear here.";
   } catch (error) {
     if (session === scope) listStatus.textContent = explain(error);
   }
@@ -224,6 +290,8 @@ form.addEventListener("submit", async event => {
     history.replaceState(null, "", location.pathname);
     formStatus.textContent = record.status === "confirmed" ? "Appointment confirmed. Generate a link under Recent appointments." : "Appointment draft saved.";
     await refreshList();
+    showView("queue");
+    listStatus.textContent = formStatus.textContent;
   } catch (error) {
     if (session === scope) formStatus.textContent = explain(error);
   } finally {
@@ -275,6 +343,7 @@ if (!appointmentsEnabled) {
     fillForm(prefill);
     authStatus.hidden = true;
     workspace.hidden = false;
+    showView(params.has("client") || params.has("lead") ? "new" : "queue");
     setupBookingSettings(byId("booking-settings"), ownerRequest, explain);
     await refreshList();
   });

@@ -5,11 +5,13 @@ const status = byId("appointment-status");
 const message = byId("appointment-message");
 const returned = new URLSearchParams(location.search).get("checkout");
 let fragment = location.hash;
-if (!fragment && returned) {
+if (!fragment) {
   try { fragment = sessionStorage.getItem("appointmentCheckoutReturn") ?? ""; } catch {}
 }
 const link = /^#([a-f0-9]{64})\.([a-f0-9]{64})$/.exec(fragment);
-if (location.hash || returned) history.replaceState(null, "", location.pathname);
+if (link) {
+  try { sessionStorage.setItem("appointmentCheckoutReturn", fragment); history.replaceState(null, "", location.pathname); } catch {}
+}
 
 const appointmentStatuses = {
   awaiting_deposit: "This time is on hold while the deposit is due.",
@@ -40,7 +42,9 @@ function render() {
   if (appointment.hasRescheduleRequest) status.textContent += " Your request for a new time is awaiting review.";
   byId("appointment-service").textContent = service;
   byId("appointment-time").textContent = appointmentTime(appointment);
-  byId("appointment-address").textContent = address;
+  byId("appointment-address").textContent = address || "Nieman will text you to confirm the address.";
+  byId("save-link-hint").hidden = appointment.hasEmail;
+  byId("save-appointment-account").hidden = !appointment.hasEmail;
   byId("appointment-vehicle").textContent = vehicle;
   byId("vehicle-label").hidden = byId("appointment-vehicle").hidden = !vehicle;
   const price = finalCents ?? estimateCents;

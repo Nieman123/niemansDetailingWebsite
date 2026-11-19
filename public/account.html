@@ -8,10 +8,10 @@
   <title>My appointments | Nieman's Detailing</title>
   <link rel="stylesheet" href="/quote.css">
   <link rel="stylesheet" href="/styles/appointments.css">
-</head>
+<link rel="stylesheet" href="/styles/booking.css"></head>
 <body class="quote-page appointment-app appointment-customer">
+<header class="customer-bar"><a href="/" aria-label="Nieman’s Detailing home"><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"></a><a href="/schedule">Schedule a detail</a></header>
   <main class="wrap">
-    <p class="business-name">Nieman’s Detailing</p>
     <h1>My appointments</h1>
     <p id="account-status" role="status">Loading…</p>
     <section id="account-sign-in" class="panel" hidden>
@@ -31,7 +31,7 @@
       </details>
     </section>
     <section id="account-dashboard" class="panel" hidden>
-      <div class="appointment-actions"><a class="btn primary" href="/book">Book another detail</a><button class="quiet" id="account-sign-out" type="button">Sign out</button></div>
+      <div class="appointment-actions"><a class="btn primary" href="/schedule">Book another detail</a><button class="quiet" id="account-sign-out" type="button">Sign out</button></div>
       <div id="my-appointments"></div>
       <details><summary>Set or update a password</summary>
         <form id="set-password">

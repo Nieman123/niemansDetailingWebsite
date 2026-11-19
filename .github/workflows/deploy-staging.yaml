@@ -134,6 +134,23 @@ jobs:
           assert.equal(schedule.status, 200);
           assert.ok(!(await schedule.text()).includes('calendar.google.com/calendar/appointments'));
 
+          const legacy = await fetch(origin + '/book', { redirect: 'manual' });
+          assert([301,302,307,308].includes(legacy.status));
+          assert.equal(new URL(legacy.headers.get('location'), origin).pathname, '/schedule');
+          const publicBooking = async (action, data = {}) => {
+            const response = await request('/api/appointments/' + action, { method: 'POST',
+              headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify(data) });
+            assert.equal(response.status, 200);
+            return (await response.json()).result;
+          };
+          const options = await publicBooking('booking-options');
+          if (options.enabled && options.services.length) {
+            const month = new Date().toISOString().slice(0, 7);
+            const availability = await publicBooking('availability', { month, serviceId: options.services[0].id });
+            assert(Array.isArray(availability.slots));
+            console.log('Verified live monthly booking availability on staging.');
+          }
+
           const response = await request('/api/createLead', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Origin: origin },
@@ -161,7 +178,7 @@ jobs:
           });
           assert.equal(unauthorized.status, 401);
           assert.equal((await unauthorized.json()).error, 'sign_in_required');
-          for (const [path, marker] of [['/book', 'Book mobile detailing'], ['/account', 'My appointments'], ['/admin/content', 'Site content']]) {
+          for (const [path, marker] of [['/schedule', 'Schedule your detail'], ['/account', 'My appointments'], ['/admin/content', 'Site content']]) {
             const surface = await request(path);
             assert.equal(surface.status, 200);
             assert.ok((await surface.text()).includes(marker), path);

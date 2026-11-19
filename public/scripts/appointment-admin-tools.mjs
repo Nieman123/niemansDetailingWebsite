@@ -219,18 +219,43 @@ export function rescheduleWorkspace(record, request, refresh, report) {
 }
 
 export function setupBookingSettings(form, request, report) {
-  if (form.dataset.bound) return;
+  if (form.dataset.bound) { form.dispatchEvent(new Event("reload-settings")); return; }
   form.dataset.bound = "1";
   const status = form.querySelector("[role=status]");
   const fields = form.elements;
   let revision;
+  const rows = document.getElementById("service-rows");
+  function addServiceRow(service = {}) {
+    const row = document.createElement("div");
+    row.className = "service-row";
+    const definitions = [["name", "Service name", "text"], ["id", "Service code", "text"], ["duration", "Minutes", "number"], ["price", "Price ($)", "number"]];
+    for (const [key, title, type] of definitions) {
+      const label = document.createElement("label");
+      label.className = "field";
+      const span = document.createElement("span");
+      span.textContent = title;
+      const input = document.createElement("input");
+      Object.assign(input, {type, required: true, value: key === "price" ? (service.cents == null ? "" : (service.cents / 100).toFixed(2)) : service[key] ?? ""});
+      input.dataset.key = key;
+      if (key === "id") { input.pattern = "[a-z][a-z0-9_\\-]{0,30}"; input.placeholder = "full"; input.title = "Start with a lowercase letter. Use the quote service code to carry over estimates."; }
+      if (key === "duration") { input.min = "30"; input.max = "720"; }
+      if (key === "price") { input.min = "50"; input.max = "100000"; input.step = ".01"; }
+      label.append(span, input); row.append(label);
+    }
+    const remove = Object.assign(document.createElement("button"), {type: "button", className: "quiet", textContent: "Remove service"});
+    remove.onclick = () => row.remove();
+    row.append(remove); rows.append(row);
+    return row;
+  }
+  document.getElementById("add-service").onclick = () => addServiceRow().querySelector("input").focus();
   function load(settings) {
     for (const name of ["open", "close", "minimumHours", "horizonDays", "bufferMinutes"]) fields[name].value = settings[name];
     fields.enabled.checked = settings.enabled;
     for (const input of form.querySelectorAll('[name="weekday"]')) input.checked = settings.days.includes(Number(input.value));
     fields.blockedDates.value = settings.blockedDates.join(", ");
     fields.postalCodes.value = settings.postalCodes.join(", ");
-    fields.services.value = settings.services.map(service => `${service.id} | ${service.name} | ${service.duration} | ${(service.cents / 100).toFixed(2)}`).join("\n");
+    rows.replaceChildren();
+    settings.services.forEach(addServiceRow);
     revision = settings.revision;
   }
   const button = form.querySelector("button[type=submit]");
@@ -244,10 +269,9 @@ export function setupBookingSettings(form, request, report) {
     button.disabled = true;
     const parseList = value => value.split(/[,\s]+/).filter(Boolean);
     const input = Object.fromEntries(new FormData(form));
-    const services = input.services.split(/\r?\n/).filter(line => line.trim()).map(line => {
-      const [id, name, duration, price, extra] = line.split("|").map(part => part.trim());
-      if (extra !== undefined || !id || !name || !duration || !price) return null;
-      return { id, name, duration: Number(duration), cents: cents(price) };
+    const services = [...rows.children].map(row => {
+      const values = Object.fromEntries([...row.querySelectorAll("input")].map(input => [input.dataset.key, input.value.trim()]));
+      return { id: values.id, name: values.name, duration: Number(values.duration), cents: cents(values.price) };
     });
     try {
       const result = await request("save-booking-settings", {
@@ -261,5 +285,6 @@ export function setupBookingSettings(form, request, report) {
     } catch (error) { status.textContent = report(error); }
     finally { button.disabled = false; }
   });
+  form.addEventListener("reload-settings", refresh);
   void refresh();
 }

@@ -22,7 +22,7 @@ function run(handler) {
     busy = true;
     try { await handler(event); }
     catch (error) { status.textContent = error.code === "content_changed" ? "A newer draft exists. Reload to see it." : "The change couldn't be saved."; }
-    finally { busy = false; }
+    finally { busy = false; document.getElementById("cms-feedback").textContent = status.textContent; }
   };
 }
 
@@ -57,7 +57,8 @@ id("cms-preview").onclick = () => {
     value.textContent = field.value;
     panel.append(title, value);
   }
-  panel.hidden = false;
+  if (!panel.children.length) panel.append("Add content to a field to see a preview.");
+  panel.hidden = false; panel.tabIndex = -1; panel.focus();
 };
 
 if (!appointmentsEnabled) status.textContent = "Site content editing is available on staging.";

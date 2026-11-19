@@ -712,9 +712,10 @@
       }
     }
   </style>
+<link rel="stylesheet" href="/styles/workspace.css">
 </head>
 
-<body>
+<body class="owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="index"></nav></header>
   <div id="admin-status">Initializing...</div>
 
   <div id="auth-view" class="auth-container">
@@ -737,11 +738,7 @@
         <button id="refresh-leads-btn" type="button" class="btn btn-ghost">Refresh</button>
       </div>
 
-      <div style="display:grid; gap:8px;">
-        <a class="btn btn-primary" href="/admin/blog">Open Blog Admin</a>
-        <a class="btn btn-ghost" href="/admin/clients">Open Client Manager</a>
-        <a class="btn btn-ghost" href="/admin/appointments" data-appointment-nav hidden>Appointments</a>
-      </div>
+      
 
       <section class="filters">
         <div>
@@ -835,7 +832,7 @@
 
     <main class="main">
       <div class="main-content">
-        <section id="vacation-settings-card" class="detail-card vacation-card" aria-labelledby="vacation-settings-title">
+        <details class="work-disclosure"><summary>Vacation settings</summary><section id="vacation-settings-card" class="detail-card vacation-card" aria-labelledby="vacation-settings-title">
           <header class="funnel-head">
             <div>
               <h3 id="vacation-settings-title">Vacation Mode</h3>
@@ -888,9 +885,9 @@
           <div class="save-row">
             <button id="save-vacation-settings-btn" type="button" class="btn btn-primary">Save Vacation Mode</button>
           </div>
-        </section>
+        </section></details>
 
-        <section id="quote-funnel-card" class="detail-card funnel-card">
+        <details class="work-disclosure"><summary>Quote performance</summary><section id="quote-funnel-card" class="detail-card funnel-card">
           <header class="funnel-head">
             <div>
               <h3>Quote Page Funnel</h3>
@@ -914,7 +911,7 @@
           </section>
 
           <section id="quote-funnel-chart" class="funnel-chart" aria-label="Quote funnel step performance"></section>
-        </section>
+        </section></details>
 
         <div id="lead-detail-placeholder" class="empty-state">
           Select a lead on the left to view details, contact options, and internal follow-up controls.
@@ -984,6 +981,7 @@
   </div>
 
   <script type="module" src="/scripts/admin-dashboard.js?v=20261013"></script>
+<script type="module" src="/scripts/workspace.mjs"></script>
 </body>
 
 </html>

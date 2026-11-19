@@ -2,7 +2,12 @@ import { appointmentRequest } from "./appointment-utils.mjs";
 
 const status = document.getElementById("maintenance-status");
 const form = document.getElementById("maintenance-form");
-const link = /^#([a-f0-9]{64})\.([a-f0-9]{64})$/.exec(location.hash);
+let fragment = location.hash;
+try {
+  if (fragment) sessionStorage.setItem("maintenanceInvite",fragment);
+  else fragment = sessionStorage.getItem("maintenanceInvite") || "";
+} catch {}
+const link = /^#([a-f0-9]{64})\.([a-f0-9]{64})$/.exec(fragment);
 if (location.hash) history.replaceState(null, "", location.pathname);
 if (!link) status.textContent = "Open the invitation Nieman sent you.";
 else {

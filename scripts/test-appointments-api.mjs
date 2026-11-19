@@ -145,4 +145,53 @@ await post('cms-publish', { content: { headline: 'Published headline' }, revisio
 assert.equal((await post('site-content', {})).result.headline, 'Published headline');
 
 console.log('PASS: appointment authorization, lead/client prefill, capture reconciliation, ledger idempotency, reservations, private links, cancellation, check clearance, one maintenance invitation, and content roles.');
+
+
+// Exercise the public booking entry point with real emulator transactions and test calendars.
+process.env.FUNCTIONS_EMULATOR = 'true';
+process.env.APPOINTMENT_STRIPE_CONFIG = JSON.stringify({secretKey:'sk_test_fixture',webhookSecret:'whsec_fixture'});
+process.env.APPOINTMENT_GOOGLE_CONFIG = JSON.stringify({
+  clientId:'demo',clientSecret:'demo',refreshToken:'demo',detailingId:'detail',personalId:'personal',plutoId:'pluto'
+});
+process.env.HOSTING_ORIGIN = 'https://' + projectId + '.web.app';
+process.env.APPOINTMENT_INTEGRATIONS_PROJECT = projectId;
+const publicSettings = {enabled:true,services:[{id:'full',name:'Full Detail',duration:60,cents:30000}],days:[0,1,2,3,4,5,6],
+  open:'09:00',close:'17:00',minimumHours:1,horizonDays:45,bufferMinutes:30,blockedDates:[],postalCodes:['28803'],revision:'test'};
+await db.collection('appointmentSettings').doc('booking').set(publicSettings);
+const originalFetch = globalThis.fetch;
+let calendarReads = 0;
+globalThis.fetch = (url, init) => {
+  if (String(url) === 'https://oauth2.googleapis.com/token') return Promise.resolve(Response.json({access_token:'demo',expires_in:3600}));
+  if (String(url).endsWith('/freeBusy')) {
+    calendarReads++;
+    return Promise.resolve(Response.json({calendars:{detail:{busy:[]},personal:{busy:[]},pluto:{busy:[]}}}));
+  }
+  return originalFetch(url,init);
+};
+async function guest(action, body) {
+  let response;
+  await paymentLifecycle.handleAppointments(db,admin.auth(),{method:'POST',body,is:()=>true,get:()=>undefined,rawBody:Buffer.from(JSON.stringify(body))},
+    {status(){return this;},json(value){response=value;}},action);
+  return response;
+}
+try {
+  const month = new Date(Date.now() + 10 * 86400000).toISOString().slice(0,7);
+  const available = await guest('availability',{serviceId:'full',month});
+  assert(available.result.slots.length);
+  assert.equal(calendarReads,1);
+  const phoneBooking = {name:'Phone customer',phone:'828-555-0199',start:available.result.slots[0],serviceId:'full',accepted:true,token:'b'.repeat(64)};
+  assert.equal((await guest('book',{...phoneBooking,phone:''})).error,'invalid_details');
+  assert.equal((await guest('book',{...phoneBooking,postalCode:'99999'})).error,'outside_service_area');
+  const booked = await guest('book',phoneBooking);
+  assert.equal(booked.result.status,'awaiting_deposit');
+  const stored = (await db.collection('appointments').doc(booked.result.id).get()).data();
+  assert.deepEqual([stored.email,stored.address,stored.phone],['','','+18285550199']);
+  assert.equal((await guest('book',phoneBooking)).result.id,booked.result.id);
+  assert.equal((await guest('book',{...phoneBooking,token:'c'.repeat(64)})).error,'existing_booking_hold');
+  const expected = Object.fromEntries(['name','phone','email','vehicle','address'].map(key=>[key,stored[key]]));
+  const patch = {id:booked.result.id,...expected,address:'Test service address',vehicle:'Sedan',expected};
+  assert.equal((await asOwner('update-contact',patch)).result.address,patch.address);
+  assert.equal((await asOwner('update-contact',patch)).error,'status_changed');
+  console.log('PASS: Month availability, phone-only booking, retry, hold protection and owner contact updates.');
+} finally { globalThis.fetch = originalFetch; }
 await admin.app().delete();

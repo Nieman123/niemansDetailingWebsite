@@ -72,7 +72,7 @@ The workflow runs on pushes to `staging`. Once the workflow also exists on the d
 1. Open `https://<staging-project-id>.web.app/admin`, sign in with Google, and copy your UID from **Authentication → Users** in Firebase Console. The dashboard will show Access Denied until you add the next document.
 2. In staging Firestore, create the `adminUsers` collection and a document whose ID equals that UID. A field such as `label: "Nieman"` is fine. Access is granted by the document ID. Refresh `/admin`.
 3. Submit a synthetic quote at `/quote` and confirm it appears in staging admin and Firestore. Exercise `/ceramic-quote` and `/thank-you` too. Telegram delivery is disabled in staging.
-4. Verify `/schedule` points to `/book` and `/account`. The live Google booking embed is excluded from the staging bundle.
+4. Verify that `/schedule` shows the monthly appointment picker and that old `/book` links redirect there. The live Google booking embed is excluded from the staging bundle.
 5. Optionally create a test blog post with a sample cover image. Staging's static blog reflects published posts after the next staging deploy.
 
 The workflow also checks the staging SDK config, `/quote`, `/schedule`, `/admin/appointments`, and intentionally unauthorized or invalid API requests. Hosting sends `X-Robots-Tag: noindex, nofollow`. The staging URL itself is public, so use synthetic customer details and media.
@@ -101,12 +101,12 @@ The existing GitHub deploy variables and service account deploy Firebase. Store 
 - **Email**. Provide a Resend test key and an allowed sender for the account. Use only test inboxes in `testRecipients`. Email is optional if sharing links manually. The scheduled worker retries delivery. [Resend API](https://resend.com/docs/api-reference/emails/send-email)
 - **Firebase Auth**. Enable Email/Password and Email link sign-in alongside Google. Add the staging Hosting domain to authorized domains. Open customer links in a private window so the test does not sign the admin out. [Firebase email-link authentication](https://firebase.google.com/docs/auth/web/email-link-auth)
 
-After setup, save business hours, ZIPs, and services under **Business hours and online booking** in `/admin/appointments`. For a synthetic Full Detail test use a line such as `full | Full Detail | 180 | 300.00` and choose the weekdays and time range you want to test. Enable public booking after the Stripe and Calendar credentials are configured.
+After setup, save business hours, ZIPs, and services in the **Settings** tab in `/admin/appointments`. For a synthetic Full Detail test enter service code `full`, name `Full Detail`, 180 minutes and a price of $300 and choose the weekdays and time range you want to test. Enable public booking after the Stripe and Calendar credentials are configured.
 
 ## Staging acceptance checks
 
 1. Complete a normal test-card deposit from an owner-generated link and verify direct confirmation. Check the $50 receipt in Stripe and the appointment in the staging Detailing calendar.
-2. Book from `/quote` → `/thank-you` → `/book`, pay the deposit, then approve the request. Block part of a test day separately on each calendar and verify those times do not appear.
+2. Book from `/quote` → `/thank-you` → `/schedule`, pay the deposit, then approve the request. Block part of a test day separately on each calendar and verify those times do not appear.
 3. Cancel an unapproved paid request and an approved request with at least 96 hours' notice. Check that the test refund reaches Stripe. Cancel another confirmed request inside 96 hours and verify the deposit is retained. Reschedule an inside-cutoff job and verify a later cancellation still retains it.
 4. Close a test job. Confirm that the approved final total deducts any deposit. Record and reverse a cash payment, then pay a remaining balance with a test card. Export the ledger and compare each payment and refund to Stripe.
 5. Save a customer appointment to an account after verifying the same email. Sign in using email link and Google, try a different account, and check that it cannot claim the appointment.

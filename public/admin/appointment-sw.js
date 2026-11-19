@@ -1,4 +1,4 @@
-const CACHE = "detailing-admin-shell-v1";
+const CACHE = "detailing-admin-shell-v2";
 const OFFLINE = "/admin/appointment-offline.html";
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.add(OFFLINE)));

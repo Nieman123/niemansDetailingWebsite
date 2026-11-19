@@ -41,7 +41,17 @@ function identifier(value, optional = false) {
         throw new AppointmentError(400, "invalid_identifier");
     return value;
 }
-function buildAppointment(body, uid, now) {
+function appointmentContact(body, requirePhone) {
+    const name = text(body.name, 150);
+    const address = text(body.address, 400);
+    const email = text(body.email, 250);
+    const digits = text(body.phone, 48).replace(/\D/g, "");
+    if (!name || (requirePhone || !email || text(body.phone, 48)) && !/^1?\d{10}$/.test(digits) ||
+        email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+        throw new AppointmentError(400, "invalid_details");
+    return { name, email, address, phone: digits ? "+1" + digits.slice(-10) : "", vehicle: text(body.vehicle, 150) };
+}
+function buildAppointment(body, uid, now, requirePhone = false) {
     const start = body.start;
     const minutes = body.durationMinutes;
     if (typeof start !== "number" || !Number.isSafeInteger(start) || start % 60000 !== 0 || start <= now || start > now + 2 * 366 * DAY ||
@@ -52,23 +62,16 @@ function buildAppointment(body, uid, now) {
     if (estimate !== null && (typeof estimate !== "number" || !Number.isSafeInteger(estimate) || estimate < 0 || estimate > 10000000)) {
         throw new AppointmentError(400, "invalid_price");
     }
-    const name = text(body.name, 150);
+    const contact = appointmentContact(body, requirePhone);
     const service = text(body.service, 150);
-    const address = text(body.address, 400);
-    const email = text(body.email, 250);
-    const rawPhone = text(body.phone, 48);
-    const digits = rawPhone.replace(/\D/g, "");
-    if (!name || !service || !address || (!email && !rawPhone) || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
-        (rawPhone && !/^1?\d{10}$/.test(digits))) {
+    if (!service)
         throw new AppointmentError(400, "invalid_details");
-    }
     if (body.deposit !== "required" && body.deposit !== "waived")
         throw new AppointmentError(400, "invalid_deposit");
     const waived = body.deposit === "waived";
     return {
         clientId: identifier(body.clientId, true), leadId: identifier(body.leadId, true),
-        name, service, address, email, phone: digits ? `+1${digits.slice(-10)}` : "",
-        vehicle: text(body.vehicle, 150), preparation: text(body.preparation, 1500),
+        ...contact, service, preparation: text(body.preparation, 1500),
         start, end: start + minutes * 60000, estimateCents: estimate,
         depositCents: waived ? 0 : DEPOSIT_CENTS, status: waived ? "confirmed" : "draft",
         createdAt: now, createdBy: uid,
@@ -116,7 +119,7 @@ async function assertCalendarOpen(appointment, except) {
 function customerDetails(appointment) {
     const { service, vehicle, address, preparation, start, end, estimateCents, depositCents, status } = appointment;
     const paidDeposit = appointment.refund?.state === "succeeded" ? 0 : appointment.paidDeposit ?? 0;
-    return { service, vehicle, address, preparation, start, end, estimateCents, depositCents, status, paidDeposit,
+    return { service, vehicle, address, preparation, start, end, estimateCents, depositCents, status, paidDeposit, hasEmail: !!appointment.email,
         refundState: appointment.refund?.state ?? null,
         paymentPending: hasPendingCheck(appointment),
         finalCents: appointment.finalCents ?? null, balanceCents: remainingBalance(appointment),
@@ -262,6 +265,15 @@ async function changeAppointment(db, uid, id, action, body) {
         if (!appointment)
             throw new AppointmentError(404, "record_not_found");
         const now = Date.now();
+        if (action === "update-contact") {
+            const contact = appointmentContact(body, false);
+            const expected = body.expected;
+            if (!expected || Object.keys(contact).some(key => expected[key] !== appointment[key])) {
+                throw new AppointmentError(409, "status_changed");
+            }
+            tx.update(ref, { ...contact, ...calendarUpdate(now) });
+            return adminDetails(id, { ...appointment, ...contact });
+        }
         if (action === "offer-alternate") {
             if (!newStart || appointment.status !== "pending_approval" || appointment.start <= now || appointment.start !== previous.start) {
                 throw new AppointmentError(409, "status_changed");
@@ -528,12 +540,22 @@ async function getAvailability(db, body) {
     const date = text(body.date, 10);
     if (!service || !settings.enabled)
         return { slots: [] };
-    const candidates = (0, appointment_booking_1.bookingSlots)(settings, date, service, Date.now());
+    const now = Date.now();
+    let dates = [date];
+    if (body.month !== undefined) {
+        if (typeof body.month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(body.month))
+            throw new AppointmentError(400, "invalid_date");
+        const month = body.month;
+        const first = Date.parse(month + "-01T12:00:00Z");
+        dates = Array.from({ length: 31 }, (_, index) => new Date(first + index * DAY).toISOString().slice(0, 10))
+            .filter(day => day.startsWith(month));
+    }
+    const candidates = dates.flatMap(day => (0, appointment_booking_1.bookingSlots)(settings, day, service, now));
     if (!candidates.length)
         return { slots: [] };
     const lower = candidates[0] - settings.bufferMinutes * MINUTE;
     const upper = candidates[candidates.length - 1] + (settings.bufferMinutes + service.duration) * MINUTE;
-    const [config, ...days] = await Promise.all([(0, appointment_calendar_1.calendarConfig)(), ...reservationDays(db, { id: "", start: lower, end: upper }).map(ref => ref.get())]);
+    const [config, days] = await Promise.all([(0, appointment_calendar_1.calendarConfig)(), db.getAll(...reservationDays(db, { id: "", start: lower, end: upper }))]);
     if (!config)
         throw new AppointmentError(503, "calendar_unavailable");
     const google = await (0, appointment_calendar_1.busyWindows)(config, lower, upper).catch(() => { throw new AppointmentError(503, "calendar_unavailable"); });
@@ -559,7 +581,8 @@ async function publicBooking(db, auth, req, body) {
     const service = settings.services.find(item => item.id === body.serviceId);
     if (!settings.enabled || !service || !(await (0, appointment_stripe_1.stripeConfig)()))
         throw new AppointmentError(503, "booking_unavailable");
-    if (!settings.postalCodes.includes(text(body.postalCode, 5)))
+    const postalCode = text(body.postalCode, 10);
+    if (postalCode && !settings.postalCodes.includes(postalCode))
         throw new AppointmentError(400, "outside_service_area");
     const token = body.token;
     if (typeof token !== "string" || !HASH.test(token) || body.accepted !== true)
@@ -572,15 +595,12 @@ async function publicBooking(db, auth, req, body) {
     }
     const customer = await authenticatedCustomer(auth, req);
     const email = customer?.email ?? text(body.email, 250);
-    if (!email)
-        throw new AppointmentError(400, "invalid_details");
-    const postalCode = text(body.postalCode, 5);
     const appointment = buildAppointment({
         ...body, address: `${text(body.address, 390)} ${postalCode}`,
         clientId: null, leadId: null, email, service: service.name,
         durationMinutes: service.duration, estimateCents: service.cents, deposit: "required",
-    }, customer?.uid ?? "guest", Date.now());
-    if (!text(body.address, 390) || !(0, appointment_booking_1.bookingSlots)(settings, (0, appointment_booking_1.easternDate)(appointment.start), service, Date.now()).includes(appointment.start)) {
+    }, customer?.uid ?? "guest", Date.now(), true);
+    if (!(0, appointment_booking_1.bookingSlots)(settings, (0, appointment_booking_1.easternDate)(appointment.start), service, Date.now()).includes(appointment.start)) {
         throw new AppointmentError(409, "time_unavailable");
     }
     appointment.bufferMinutes = settings.bufferMinutes;
@@ -595,7 +615,10 @@ async function publicBooking(db, auth, req, body) {
     }
     await assertCalendarOpen(appointment);
     const ref = db.collection("appointments").doc(id);
-    const throttle = db.collection("appointmentBookingHolds").doc(digest(email.toLowerCase()));
+    const holds = db.collection("appointmentBookingHolds");
+    const throttles = [holds.doc(digest(appointment.phone))];
+    if (email)
+        throttles.push(holds.doc(digest(email.toLowerCase())));
     return db.runTransaction(async (tx) => {
         const existing = (await tx.get(ref)).data();
         if (existing) {
@@ -608,8 +631,9 @@ async function publicBooking(db, auth, req, body) {
             throw new AppointmentError(409, "time_unavailable");
         }
         const now = Date.now();
-        const hold = await tx.get(throttle);
-        if ((hold.get("until") ?? 0) > now && hold.get("appointmentId") !== id) {
+        for (const hold of await tx.getAll(...throttles)) {
+            if ((hold.get("until") ?? 0) <= now || hold.get("appointmentId") === id)
+                continue;
             const held = await tx.get(db.collection("appointments").doc(hold.get("appointmentId")));
             if (held.get("status") === "awaiting_deposit")
                 throw new AppointmentError(409, "existing_booking_hold");
@@ -623,7 +647,8 @@ async function publicBooking(db, auth, req, body) {
             ...(customer ? { customerUid: customer.uid } : {}),
         };
         tx.create(ref, { ...record, bookingChannel: "public", acceptedAt: now });
-        tx.set(throttle, { until: deadline, appointmentId: id });
+        for (const throttle of throttles)
+            tx.set(throttle, { until: deadline, appointmentId: id });
         (0, appointment_email_1.queueAppointmentEmail)(db, tx, `request-${id}`, email, "Continue your detailing appointment request", `Open your appointment to pay the deposit and follow its status: ${checkoutOrigin()}/appointment#${id}.${token}`);
         return { id, ...customerDetails(record) };
     });
@@ -1024,7 +1049,7 @@ async function handleAppointments(db, auth, req, res, action) {
                 });
                 result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents", ...rows].join("\r\n") };
             }
-            else if (["cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite"].includes(action)) {
+            else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite"].includes(action)) {
                 result = await changeAppointment(db, uid, identifier(body.id), action, body);
             }
             else
