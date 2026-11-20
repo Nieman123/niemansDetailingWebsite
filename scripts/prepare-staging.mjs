@@ -110,7 +110,11 @@ function preparePages(directory) {
 cpSync('public', publicDir, { recursive: true, force: false, errorOnExist: true });
 cpSync('templates/schedule.html', path.join(publicDir, 'schedule.html'));
 preparePages(publicDir);
-writeFileSync(path.join(publicDir, 'scripts', 'site-copy-defaults.json'), JSON.stringify(siteCopy));
+const publishing = path.join(publicDir, 'admin', 'content.html');
+const $publishing = load(readFileSync(publishing, 'utf8'));
+const serializedCopy = JSON.stringify(siteCopy).replace(/</g, '\\u003c');
+$publishing('body').append('<script id="site-copy-defaults" type="application/json">' + serializedCopy + '</script>');
+writeFileSync(publishing, $publishing.html());
 await sharp('assets/images/touch/chrome-touch-icon-192x192.png')
   .resize(360, 360, { fit: 'contain', background: '#0b1330' })
   .extend({ top: 76, bottom: 76, left: 76, right: 76, background: '#0b1330' })

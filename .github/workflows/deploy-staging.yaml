@@ -130,11 +130,29 @@ jobs:
           assert.match(config.headers.get('content-type') ?? '', /javascript/);
           assert.ok((await config.text()).includes(`"projectId": "${projectId}"`));
 
-          const defaults = await request('/scripts/site-copy-defaults.json');
-          assert.equal(defaults.status, 200);
-          const siteCopy = await defaults.json();
+          let defaults;
+          for (let attempt = 0; attempt < 7; attempt++) {
+            if (attempt) await new Promise(resolve => setTimeout(resolve, 5_000));
+            const publishing = await request('/admin/content?deployment=' + Date.now());
+            const page = await publishing.text();
+            defaults = page.match(/<script id="site-copy-defaults" type="application\/json">([^<]+)<\/script>/);
+            if (publishing.ok && defaults) break;
+          }
+          assert.ok(defaults, 'Publishing editor should include the original site copy');
+          const siteCopy = JSON.parse(defaults[1]);
           assert.match(siteCopy.headline, /Asheville/);
           assert.ok(siteCopy.bookingNotice);
+
+          for (const [path, marker] of [
+            ['/scripts/slot-picker.mjs', 'export function slotPicker'],
+            ['/scripts/admin-vacation.mjs', 'export async function loadVacation'],
+            ['/scripts/admin-clients.js?v=20261119', 'async function handleAuth'],
+          ]) {
+            const asset = await request(path);
+            assert.equal(asset.status, 200, path);
+            assert.match(asset.headers.get('content-type') ?? '', /javascript/, path);
+            assert.ok((await asset.text()).includes(marker), path);
+          }
 
           const schedule = await request('/schedule');
           assert.equal(schedule.status, 200);

@@ -9,7 +9,7 @@ const status = id("cms-status");
 const picker = id("cms-revision");
 let revision = "";
 let busy = false;
-let originalCopy = {};
+const originalCopy = JSON.parse(document.getElementById("site-copy-defaults")?.textContent || "{}");
 let publishedCopy = {};
 let accessVersion = 0;
 const fields = [...form.querySelectorAll("input[name], textarea[name]")];
@@ -35,12 +35,8 @@ function run(handler) {
 
 async function read() {
   const version = accessVersion;
-  const [snapshot, defaults] = await Promise.all([
-    request("cms-read"),
-    fetch("/scripts/site-copy-defaults.json").then(response => response.ok ? response.json() : {}).catch(() => ({})),
-  ]);
+  const snapshot = await request("cms-read");
   if (version !== accessVersion) return;
-  originalCopy = defaults;
   publishedCopy = snapshot.published?.content || {};
   loadDraft(snapshot.draft);
   picker.replaceChildren(new Option("Choose a revision", ""), ...snapshot.revisions.map(version =>
