@@ -620,9 +620,10 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="/styles/brand.css?v=20261120">
   <link rel="stylesheet" href="/styles/workspace.css">
+  <link rel="stylesheet" href="/styles/admin-records.css">
 </head>
 
-<body class="owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="clients"></nav></header>
+<body class="owner-app records-app" data-records="Clients"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="clients"></nav></header>
   <div id="admin-status">Initializing...</div>
 
   <div id="auth-view" class="auth-container" hidden>
@@ -641,25 +642,23 @@
   <div id="admin-view" class="layout" hidden>
     <aside class="sidebar">
       <div class="sidebar-head">
-        <h2>Client Manager</h2>
-        <button id="refresh-clients-btn" class="btn" type="button">Refresh</button>
-      </div>
-
-      
-
-      <div class="btn-group">
-        <button id="new-client-btn" class="btn" type="button">New Client</button>
-        <button id="import-md-btn" class="btn" type="button">Import .md Files</button>
+        <h2>Clients</h2>
+        <div class="records-head-actions">
+          <button id="refresh-clients-btn" class="btn btn-ghost records-refresh" type="button">Refresh</button>
+          <button id="new-client-btn" class="btn btn-primary" type="button">+ New</button>
+        </div>
       </div>
 
       <input id="import-md-input" type="file" accept=".md,text/markdown,text/plain" multiple hidden />
 
       <div class="filters">
-        <div>
-          <label for="client-search-input">Search</label>
-          <input id="client-search-input" type="text" placeholder="Name, phone, email, tags, notes" />
+        <div class="records-search">
+          <label for="client-search-input" class="sr-only">Search clients</label>
+          <input id="client-search-input" type="search" placeholder="Search name, phone, email, tags" />
         </div>
+        <div class="chip-filter" data-for="client-followup-filter" data-values="all,due,overdue,soon,unscheduled" data-labels="All,Due,Overdue,This week,No date" aria-label="Filter by follow-up"></div>
 
+        <details class="filter-drawer"><summary>More filters</summary>
         <div class="split">
           <div>
             <label for="client-status-filter">Status</label>
@@ -698,33 +697,37 @@
             </select>
           </div>
           <div style="display:flex; align-items:flex-end;">
-            <button id="clear-client-filters-btn" class="btn" type="button" style="width:100%;">Clear Filters</button>
+            <button id="clear-client-filters-btn" class="btn btn-ghost" type="button" style="width:100%;">Clear filters</button>
           </div>
         </div>
+        </details>
       </div>
 
       <div class="summary-grid" aria-label="Client summary">
         <div class="summary-card">
-          <span class="label">Total Clients</span>
+          <span class="label">Clients</span>
           <span id="summary-total-clients" class="value">0</span>
         </div>
         <div class="summary-card">
-          <span class="label">Follow-up Due</span>
+          <span class="label">Due</span>
           <span id="summary-due-clients" class="value">0</span>
         </div>
         <div class="summary-card">
-          <span class="label">Due in 7 Days</span>
+          <span class="label">This week</span>
           <span id="summary-soon-clients" class="value">0</span>
         </div>
         <div class="summary-card">
-          <span class="label">Unscheduled</span>
+          <span class="label">No date</span>
           <span id="summary-unscheduled-clients" class="value">0</span>
         </div>
       </div>
 
-      <div class="import-help">
-        <button id="export-csv-btn" class="btn btn-primary" type="button">Export Google Ads CSV</button>
-      </div>
+      <details class="filter-drawer records-tools"><summary>Import and export</summary>
+        <div class="btn-group">
+          <button id="import-md-btn" class="btn btn-ghost" type="button">Import .md files</button>
+          <button id="export-csv-btn" class="btn btn-ghost" type="button">Export Google Ads CSV</button>
+        </div>
+      </details>
 
       <section class="client-list-wrap" aria-label="Client list">
         <ul id="client-list" class="client-list"></ul>
@@ -782,10 +785,10 @@
             </div>
             <div class="detail-actions">
               <span id="client-id-pill" class="pill">New</span>
-              <a id="client-action-sms" class="btn" href="#">Text</a>
-              <a id="client-action-call" class="btn" href="#">Call</a>
-              <a id="client-action-email" class="btn" href="#">Email</a>
-              <button id="client-action-copy-link" class="btn" type="button">Copy Link</button>
+              <a id="client-action-sms" class="btn records-contact" href="#">Text</a>
+              <a id="client-action-call" class="btn records-contact" href="#">Call</a>
+              <a id="client-action-email" class="btn records-contact" href="#">Email</a>
+              <button id="client-action-copy-link" class="btn btn-ghost" type="button">Copy link</button>
               <a id="client-action-open-lead" class="btn" href="/admin/index" hidden>Open Lead</a>
               <a id="client-action-appointment" class="btn" href="/admin/appointments" hidden>Create appointment</a>
             </div>
@@ -818,8 +821,8 @@
             </div>
           </section>
 
-          <section class="detail-section">
-            <h4>Profile</h4>
+          <details class="detail-section records-fold" open data-mobile-collapsed>
+            <summary>Status and address</summary>
             <div class="form-grid-3">
               <div>
                 <label for="client-status-input">Status</label>
@@ -863,10 +866,10 @@
                 <input id="client-country-input" type="text" maxlength="2" placeholder="US" />
               </div>
             </div>
-          </section>
+          </details>
 
-          <section class="detail-section">
-            <h4>Follow-up Cadence</h4>
+          <details class="detail-section records-fold" open data-mobile-collapsed>
+            <summary>Follow-up schedule</summary>
             <div class="form-grid-3">
               <div>
                 <label for="client-repeat-months-input">Repeat Interval (Months)</label>
@@ -892,10 +895,10 @@
                 <input id="client-tags-input" type="text" maxlength="240" placeholder="detailing/client, ceramic" />
               </div>
             </div>
-          </section>
+          </details>
 
-          <section class="detail-section">
-            <h4>Bookings</h4>
+          <details class="detail-section records-fold" open data-mobile-collapsed>
+            <summary>Booking history</summary>
             <div class="booking-form">
               <div>
                 <label for="client-booking-date-input">Date</label>
@@ -920,10 +923,10 @@
               </div>
             </div>
             <ul id="client-bookings-list" class="booking-list" style="margin-top:10px;"></ul>
-          </section>
+          </details>
 
           <section class="detail-section">
-            <h4>Internal Notes</h4>
+            <h4>Notes</h4>
             <div class="form-grid">
               <div>
                 <label for="client-followup-note-input">Follow-up Note</label>
@@ -936,9 +939,9 @@
             </div>
           </section>
 
-          <div class="save-row">
-            <button id="delete-client-btn" class="btn btn-danger" type="button">Delete Client</button>
-            <button id="save-client-btn" class="btn btn-primary" type="button">Save Client</button>
+          <div class="save-row records-save">
+            <button id="delete-client-btn" class="btn btn-danger" type="button">Delete</button>
+            <button id="save-client-btn" class="btn btn-primary" type="button">Save client</button>
           </div>
         </section>
       </div>

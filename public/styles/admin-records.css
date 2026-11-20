@@ -1,0 +1,140 @@
+/* Leads and Clients: search-first directory, one-tap contact, and a full-screen record on phones. */
+
+/* ---------- Directory ---------- */
+.records-app .sidebar-head { gap: 12px; }
+.records-app .sidebar-head h2 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -.02em; }
+.records-app .records-head-actions { display: flex; gap: 8px; }
+.records-app .records-refresh { min-height: 40px; padding: 6px 14px; font-size: 14px; }
+.records-app .filters { display: grid; gap: 10px; padding: 0; border: 0; background: none; }
+.records-app .records-search input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%23a59fba%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Ccircle cx=%2711%27 cy=%2711%27 r=%277%27/%3E%3Cpath d=%27m20 20-3.5-3.5%27/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important; background-position: 15px 50% !important; background-size: 18px !important;
+  width: 100%; min-height: 50px; padding: 0 16px 0 44px; border-radius: 14px;
+  background: var(--nd-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a59fba' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 15px 50% / 18px;
+}
+
+.chip-filter { display: flex; gap: 8px; margin: 0 -2px; padding: 2px; overflow-x: auto; scrollbar-width: none; }
+.chip-filter::-webkit-scrollbar { display: none; }
+.chip-filter__chip {
+  flex: none; min-height: 40px; padding: 0 16px; border: 1.5px solid var(--nd-line-strong); border-radius: 999px;
+  background: transparent; color: var(--nd-text-2); font: 600 14px/1 var(--nd-font-sans); cursor: pointer;
+}
+.chip-filter__chip:hover { border-color: var(--nd-gold-line); color: var(--nd-text); }
+.chip-filter__chip[aria-pressed="true"] { border-color: var(--nd-purple); background: var(--nd-purple); color: #fff; }
+
+.records-app .filter-drawer { border: 1px solid var(--nd-line); border-radius: 14px; background: rgba(255, 255, 255, .02); }
+.records-app .filter-drawer > summary {
+  display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 14px; list-style: none;
+  color: var(--nd-text-2); font-size: 14px; font-weight: 600;
+}
+.records-app .filter-drawer > summary::-webkit-details-marker { display: none; }
+.records-app :is(.filter-drawer, .records-fold, .records-tech) > summary::after {
+  content: ""; flex: none; width: 8px; height: 8px; margin-left: 12px; border-right: 2px solid var(--nd-gold); border-bottom: 2px solid var(--nd-gold);
+  transform: translateY(-2px) rotate(45deg); transition: transform .2s ease;
+}
+.records-app :is(.filter-drawer, .records-fold, .records-tech)[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
+.records-app .filter-drawer[open] { border-color: var(--nd-gold-line); }
+.records-app .filter-drawer > :not(summary) { margin: 0 14px 14px; }
+.records-app .filter-drawer .split { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.records-app .filter-drawer label { display: block; margin-bottom: 4px; color: var(--nd-muted); font-size: 13px; }
+.records-app .filter-drawer select { width: 100%; }
+.records-app .filter-drawer .btn-group { display: grid; gap: 8px; }
+
+.records-app .summary-grid { padding: 0; border: 0; background: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.records-app .summary-card { display: grid; gap: 2px; min-width: 0; padding: 10px 12px; border: 1px solid var(--nd-line); border-radius: 12px; background: var(--nd-surface); }
+.records-app .summary-card .label { overflow: hidden; color: var(--nd-muted); font-size: 11px; letter-spacing: .06em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.records-app .summary-card .value { color: var(--nd-text); font-family: var(--nd-font-display); font-size: 22px; font-weight: 800; line-height: 1.1; }
+
+/* ---------- Record cards ---------- */
+.records-app :is(.lead-list, .client-list) { display: grid; grid-auto-rows: max-content; align-content: start; gap: 8px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
+.records-app .record-row {
+  display: flex; flex-shrink: 0; min-height: max-content; align-items: stretch; overflow: hidden; border: 1px solid var(--nd-line); border-radius: 16px;
+  background: var(--nd-surface); transition: border-color .15s ease;
+}
+.records-app .record-row:hover { border-color: var(--nd-line-strong); }
+.records-app .record-row:has(.lead-item-active, .client-item-active) { border-color: var(--nd-gold-line); background: linear-gradient(135deg, rgba(107, 63, 216, .2), var(--nd-surface) 70%); }
+.records-app :is(.lead-item, .client-item) {
+  display: grid; flex: 1; gap: 6px; min-width: 0; margin: 0; padding: 14px 16px; border: 0; border-radius: 0;
+  background: none; box-shadow: none; color: var(--nd-text); text-align: left; cursor: pointer;
+}
+.records-app :is(.lead-item, .client-item):hover, .records-app :is(.lead-item-active, .client-item-active) { background: none; border: 0; box-shadow: none; }
+.records-app :is(.lead-item-top, .client-item-top) { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+.records-app :is(.lead-item-name, .client-item-name) { overflow: hidden; font-family: var(--nd-font-display); font-size: 17px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.records-app :is(.lead-item-mid, .client-item-sub) { overflow: hidden; color: var(--nd-text-2); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.records-app :is(.lead-item-bottom, .client-item-bottom) { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--nd-muted); font-size: 13px; }
+.records-app .lead-item-bottom > span:first-child { color: var(--nd-gold); font-family: var(--nd-font-display); font-size: 16px; font-weight: 800; }
+.records-app .pill { flex: none; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: capitalize; }
+
+.record-quick { display: flex; flex-direction: column; border-left: 1px solid var(--nd-line); }
+.record-quick__btn { display: grid; flex: 1; place-items: center; width: 54px; min-height: 44px; color: var(--nd-text-2); text-decoration: none; }
+.record-quick__btn + .record-quick__btn { border-top: 1px solid var(--nd-line); }
+.record-quick__btn svg { width: 20px; height: 20px; }
+.record-quick__btn:hover, .record-quick__btn:focus-visible { background: var(--nd-purple-tint); color: var(--nd-gold); }
+
+/* ---------- Record detail ---------- */
+.records-app :is(#lead-detail-card, #client-detail-card) { gap: 18px; }
+.records-app .detail-header { display: grid; gap: 14px; padding-bottom: 16px; border-bottom: 1px solid var(--nd-line); }
+.records-app .detail-header h3 { margin: 0; font-size: clamp(26px, 4vw, 32px); font-weight: 800; letter-spacing: -.02em; }
+.records-app .detail-actions { display: flex; flex-wrap: wrap; flex-direction: row; align-items: stretch; justify-content: flex-start; gap: 8px; width: 100%; }
+.records-app .detail-actions .btn { flex: 0 1 auto; min-width: 110px; padding-inline: 18px; }
+.records-app .detail-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; margin: 0; text-align: center; }
+.records-app .detail-actions .pill { margin-right: 100%; grid-column: 1 / -1; justify-self: start; padding: 4px 12px; border: 1px solid var(--nd-gold-line); background: var(--nd-gold-tint); color: var(--nd-gold); font-size: 15px; text-transform: none; }
+.records-app .detail-actions .records-contact { border-color: var(--nd-purple); background: var(--nd-purple-tint); color: var(--nd-text); }
+.records-app .detail-actions [aria-disabled="true"] { opacity: .4; pointer-events: none; }
+.records-app .detail-section h4 { margin: 0 0 12px; color: var(--nd-gold); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+.records-app .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--nd-line); border-radius: 14px; background: var(--nd-line); }
+.records-app .detail-grid .row { display: grid; grid-template-columns: 1fr; gap: 3px; padding: 12px 14px; border: 0; background: var(--nd-surface); }
+.records-app .detail-grid .k { color: var(--nd-muted); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.records-app .detail-grid .v { color: var(--nd-text); font-size: 15px; overflow-wrap: anywhere; }
+.records-app :is(.records-fold, .records-tech) { border: 1px solid var(--nd-line); border-radius: 14px; padding: 0 16px; }
+.records-app :is(.records-fold, .records-tech)[open] { padding-bottom: 16px; }
+.records-app :is(.records-fold, .records-tech) > summary {
+  display: flex; align-items: center; justify-content: space-between; min-height: 54px; list-style: none;
+  color: var(--nd-gold); font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+}
+.records-app :is(.records-fold, .records-tech) > summary::-webkit-details-marker { display: none; }
+.records-app .records-tech pre { overflow-x: auto; padding: 12px; border-radius: 10px; background: var(--nd-bg); font-size: 13px; }
+.records-app .records-tech h4 { margin-top: 14px; }
+.records-app .records-save { display: flex; justify-content: space-between; gap: 10px; }
+.records-app .records-save .btn-primary { flex: 1; max-width: 320px; margin-left: auto; }
+
+.records-app #admin-status { transition: opacity .3s ease, transform .3s ease; }
+.records-app #admin-status.is-idle { opacity: 0; transform: translateY(8px); pointer-events: none; }
+
+/* ---------- Phones ---------- */
+@media (max-width: 800px) {
+  .records-app #admin-view .sidebar { gap: 12px; max-height: none; overflow: visible; padding: 16px; }
+  .records-app :is(.lead-list-wrap, .client-list-wrap) { flex: none; min-height: 0; max-height: none; overflow: visible; padding: 0; border: 0; border-radius: 0; background: none; }
+  .records-app #admin-status { right: 12px; bottom: calc(166px + env(safe-area-inset-bottom)); left: auto; }
+  .records-app .sidebar-footer { padding-top: 8px; font-size: 13px; }
+  .records-app .summary-card { padding: 8px 10px; }
+  .records-app .summary-card .value { font-size: 19px; }
+
+  /* The list is the home screen; the record opens on its own screen. */
+  .records-app:not([data-record-open]) #admin-view .main :is(#lead-detail-card, #client-detail-card, .empty-state, #import-summary) { display: none !important; }
+  .records-app:not([data-record-open]) #admin-view .main { padding: 0 16px 110px; background: var(--nd-bg-raised); }
+  .records-app[data-record-open] #admin-view .main { padding: 0 16px 24px; }
+  .records-app[data-record-open] .mobile-list-back {
+    position: sticky; top: 55px; z-index: 20; display: flex; width: calc(100% + 32px); min-height: 50px; margin: 0 -16px 14px; padding: 0 16px;
+    border: 0; border-bottom: 1px solid var(--nd-line); border-radius: 0; background: #0c0b15; color: var(--nd-gold); font-size: 16px;
+  }
+  .records-app :is(#lead-detail-card, #client-detail-card) { padding: 0; border: 0; background: none; }
+  .records-app .detail-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .records-app .detail-actions .btn { min-width: 0; }
+  .records-app .detail-actions .pill { margin-right: 0; }
+  .records-app #client-id-pill { display: none; }
+  .records-app .detail-actions .btn { padding: 8px 6px; font-size: 14px; }
+  .records-app .detail-grid { grid-template-columns: 1fr 1fr; }
+  .records-app .detail-grid .row:has(.v:is(:empty)) { display: none; }
+  .records-app :is(.form-grid, .form-grid-3, .booking-form) { grid-template-columns: 1fr !important; }
+  .records-app .records-save {
+    position: sticky; bottom: calc(84px + env(safe-area-inset-bottom)); z-index: 15; margin: 0 -16px; padding: 12px 16px;
+    border-top: 1px solid var(--nd-line); background: rgba(12, 11, 21, .94);
+  }
+  .records-app .records-save .btn { min-height: 50px; }
+  .records-app .records-save .btn-primary { max-width: none; }
+}
+@media (max-width: 380px) {
+  .records-app .summary-card .label { font-size: 10px; }
+  .records-app .detail-grid { grid-template-columns: 1fr; }
+}
