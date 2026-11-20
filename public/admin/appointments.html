@@ -56,7 +56,7 @@
               <label class="field"><span>Email</span><input name="email" type="email" maxlength="250"></label>
             </div>
             <p class="sub">Enter at least one contact method.</p>
-            <label class="field"><span>Service address</span><input name="address" maxlength="400" autocomplete="off"></label>
+            <label class="field"><span>Service address</span><input name="address" maxlength="400" autocomplete="off" data-address-autocomplete placeholder="Start typing an address"></label>
             <div class="appointment-fields">
               <label class="field"><span>Vehicle size <small>Optional</small></span><select name="vehicleType">
                 <option value="">Choose later</option><option value="sedan">Sedan / coupe</option><option value="suv_truck">SUV / truck</option>
@@ -121,6 +121,7 @@
     </div>
   </main>
   <script type="module" src="/scripts/admin-appointments.mjs"></script>
+  <script type="module" src="/scripts/address-autocomplete.mjs"></script>
   <script type="module" src="/scripts/appointment-install.mjs"></script>
 <script type="module" src="/scripts/workspace.mjs"></script>
 </body>

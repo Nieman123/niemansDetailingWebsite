@@ -844,7 +844,7 @@
             <div class="form-grid" style="margin-top:10px;">
               <div>
                 <label for="client-address-input">Street Address</label>
-                <input id="client-address-input" type="text" maxlength="180" placeholder="Street address" />
+                <input id="client-address-input" type="text" maxlength="180" placeholder="Start typing an address" data-address-autocomplete="street" data-city-field="#client-city-input" data-state-field="#client-state-input" data-zip-field="#client-zip-input" data-country-field="#client-country-input" />
               </div>
               <div>
                 <label for="client-city-input">City</label>
@@ -954,6 +954,7 @@
     });
   </script>
 <script type="module" src="/scripts/workspace.mjs"></script>
+  <script type="module" src="/scripts/address-autocomplete.mjs"></script>
 </body>
 
 </html>

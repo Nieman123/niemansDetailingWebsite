@@ -196,6 +196,7 @@ function contactEditor(record) {
     expected[key] = record[key] ?? "";
     const input = Object.assign(document.createElement("input"), {name:key, value:expected[key], required:key === "name", type:key === "email" ? "email" : key === "phone" ? "tel" : "text"});
     input.maxLength = ({name:150,phone:48,email:250,vehicle:150,address:400})[key];
+    if (key === "address") input.dataset.addressAutocomplete = "";
     label.append(caption,input); editor.append(label);
   }
   const save = Object.assign(document.createElement("button"), {type:"submit", className:"btn primary", textContent:"Save customer details"});

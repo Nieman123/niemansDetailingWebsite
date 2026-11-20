@@ -42,11 +42,11 @@
 <details class="optional-details"><summary>Add email, vehicle details or address <small>Optional</small></summary>
 <label class="field"><span>Email for appointment updates</span><input name="email" autocomplete="email" type="email" maxlength="250"></label>
 <label class="field"><span>Vehicle</span><input name="vehicle" maxlength="150" placeholder="Year, make and model"></label>
-<label class="field"><span>Service address</span><input name="address" autocomplete="street-address" maxlength="390"></label>
+<label class="field"><span>Service address</span><input name="address" autocomplete="street-address" maxlength="390" data-address-autocomplete placeholder="Start typing your address"></label>
 <label class="field"><span>ZIP code</span><input name="postalCode" autocomplete="postal-code" inputmode="numeric" pattern="[0-9]{5}" maxlength="5"></label></details>
 <details class="optional-details"><summary>Deposit and cancellation policy</summary><p id="public-policy"></p></details>
 <label class="appointment-checkbox"><input name="accepted" type="checkbox" required> I agree to the deposit and cancellation policy.</label>
 <p id="reserve-state" role="status"></p><button class="btn primary" type="submit">Continue to Payment</button></section>
 </div><aside id="schedule-summary" class="booking-summary" aria-label="Booking summary"><img src="/images/carpics/foam-640.webp" alt="" width="640" height="300"><div><h2>Your appointment</h2><strong id="summary-service"></strong><p id="summary-duration"></p><p id="summary-time">Choose a date and start time.</p>
 <dl><dt>Estimated total</dt><dd id="summary-price"></dd><dt>Deposit</dt><dd id="summary-deposit"></dd></dl><p>The deposit goes toward your total. Nieman reviews your request after payment and texts to confirm.</p></div></aside></div></form>
-<footer class="booking-footer"><a href="/quote">Get a quote</a><a href="sms:+18282733894">Text Nieman</a></footer></main><script type="module" src="/scripts/public-booking.mjs"></script></body></html>
+<footer class="booking-footer"><a href="/quote">Get a quote</a><a href="sms:+18282733894">Text Nieman</a></footer></main><script type="module" src="/scripts/public-booking.mjs"></script><script type="module" src="/scripts/address-autocomplete.mjs"></script></body></html>
