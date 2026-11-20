@@ -58,8 +58,10 @@ export function servicePicker(container, select, services, { valueFor = service 
     if (none) more.append(option(null, "chip"));
     drawer = Object.assign(document.createElement("details"), { className: "service-picker__drawer" });
     const summary = Object.assign(document.createElement("summary"), { className: "service-picker__label" });
-    summary.append(Object.assign(document.createElement("span"), { textContent: lead.length ? "Other services" : "Services" }),
-      Object.assign(document.createElement("span"), { className: "service-picker__count", textContent: String(rest.length + (none ? 1 : 0)) }));
+    // Safari ignores flex on <summary>, so the layout lives on an inner row.
+    const row = Object.assign(document.createElement("span"), { className: "service-picker__summary" });
+    row.append(Object.assign(document.createElement("span"), { textContent: lead.length ? "Other services" : "Services" }));
+    summary.append(row);
     drawer.append(summary, more);
     container.append(drawer);
   }
