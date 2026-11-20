@@ -30,6 +30,7 @@
   const render = () => {
     const base = lead.quoted_total === null ? null : lead.quoted_total - saved.reduce((sum, key) => sum + (lead.addon_prices[key] || 0), 0);
     const total = base === null ? null : base + selected.reduce((sum, key) => sum + lead.addon_prices[key], 0);
+    $('#booking-estimate').textContent = base === null ? '' : `${labels[lead.service]} estimate: ${money(base + saved.reduce((sum, key) => sum + (lead.addon_prices[key] || 0), 0))}`;
     $('#saved-quote').textContent = total === null ? 'Custom detail: pricing confirmed by text' : `${labels[lead.service]} estimate: ${money(total)}${same() ? '' : ' (unsaved)'}`;
     document.querySelectorAll('[data-addon]').forEach(button => {
       const key = button.dataset.addon;
@@ -79,6 +80,7 @@
       $('#thanks-kicker').textContent = 'Request received ✓';
       $('#thanks-title').textContent = 'You’re all set.';
       $('#thanks-message').textContent = 'I’ll personally text you to confirm pricing and find a time that works. Nieman';
+      if (document.body.dataset.bookingHandoff === 'true' && lead.quoted_total === null) $('#secondary-booking-link').hidden = true;
       if (lead.service === 'ceramic') {
         $('#thanks-title').textContent = 'Your ceramic quote is on its way.';
         $('#thanks-message').textContent = 'I’ll personally text you to review your paint, confirm your coating package and pricing, and find a time that works. Nieman';
@@ -86,6 +88,30 @@
         $('#ceramic-receipt').hidden = false;
         $('#ceramic-saved-quote').textContent = lead.quoted_total === null ? 'Ceramic coating: pricing confirmed by text' : `${packages[lead.coating_package]} estimate: ${money(lead.quoted_total)}`;
         return;
+      }
+      if (document.body.dataset.bookingHandoff === 'true' && lead.quoted_total !== null) {
+        const link = $('#choose-time');
+        link.href = '/schedule#' + new URLSearchParams(receipt);
+        $('#quote-booking').hidden = false;
+        $('#quote-skip').hidden = true;
+        $('#secondary-booking-link').hidden = true;
+        $('#thanks-message').textContent = 'Pick an available time to request your detail.';
+        link.addEventListener('click', async event => {
+          if (same()) return;
+          event.preventDefault();
+          if (saving) return;
+          saving = true;
+          render();
+          try {
+            lead = await api('save', selected);
+            saved = [...lead.addons];
+            selected = [...saved];
+            location.assign(link.href);
+          } catch {
+            $('#addon-status').textContent = "Your extras didn't save. Check your connection and try again.";
+            $('#addon-status').scrollIntoView({ block: 'nearest' });
+          } finally { saving = false; render(); }
+        });
       }
       $('#addon-section').hidden = false;
       render();

@@ -145,6 +145,7 @@ jobs:
 
           for (const [path, marker] of [
             ['/scripts/slot-picker.mjs', 'export function slotPicker'],
+            ['/scripts/booking-vehicles.mjs', 'export const vehicleLabels'],
             ['/scripts/admin-vacation.mjs', 'export async function loadVacation'],
             ['/scripts/admin-clients.js?v=20261119', 'async function handleAuth'],
           ]) {
@@ -167,8 +168,13 @@ jobs:
             assert.equal(response.status, 200);
             return (await response.json()).result;
           };
+          assert.equal(await publicBooking('quote-context', { quoteReceipt: { id: 'invalid', token: 'invalid' } }), null);
+          const thanks = await request('/thank-you');
+          assert.equal(thanks.status, 200);
+          assert.match(await thanks.text(), /data-booking-handoff="true"/);
           const options = await publicBooking('booking-options');
           if (options.enabled && options.services.length) {
+            assert.ok(['sedan', 'suv_truck', 'van_3row'].every(key => Number.isSafeInteger(options.services[0].vehiclePrices[key])));
             const month = new Date().toISOString().slice(0, 7);
             const availability = await publicBooking('availability', { month, serviceId: options.services[0].id });
             assert(Array.isArray(availability.slots));

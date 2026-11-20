@@ -31,7 +31,8 @@
 .owner-app .btn.secondary,.owner-app .btn-ghost {background:#2a2a32;color:#f2eef8;border:1px solid #55515d;}
 .owner-app .btn:hover:not(:disabled),.work-switch button:hover,.publish-nav a:hover {filter:brightness(1.13);}
 .owner-app fieldset {min-width:0;margin:18px 0;padding:14px;border:1px solid var(--border);border-radius:8px;}
-.service-row {display:grid;grid-template-columns:1.5fr 1fr .7fr .8fr auto;align-items:end;gap:8px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px;}
+.service-row { border-bottom:1px solid var(--border); padding:12px 0 8px; margin-bottom:10px; }
+.service-fields, .service-prices { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 .appointment-record {padding:0 0 8px;}
 .appointment-record[open]>summary::after {transform:rotate(225deg);}
 .appointment-record>details {border-top:1px solid var(--border);padding-block:4px;}
@@ -68,8 +69,7 @@
   .owner-app #post-form div[style*="grid-template-columns"] {grid-template-columns:minmax(0,1fr)!important;}
   .owner-app .work-switch {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;}
   .work-switch button {padding:5px 3px;font-size:.88rem;}
-  .service-row {grid-template-columns:repeat(2,minmax(0,1fr));}
-  .service-row .quiet {justify-self:start;}
+  .service-fields, .service-prices {grid-template-columns:minmax(0,1fr); gap:0;}
   .owner-app .detail-grid,.owner-app .main-content,.owner-app .detail-section {min-width:0;}
   .owner-app :is(input,textarea,select) {scroll-margin-bottom:80px;}
 }
@@ -95,5 +95,7 @@
 .owner-record details > summary { font-weight:650; }
 .owner-slot-calendar { margin-block:18px; max-width:610px; }
 .owner-slot-calendar .month-nav { margin-top:0; }
-.owner-slot-calendar .time-grid button { background:var(--bg); }
+.owner-app .owner-slot-calendar .time-grid button { background:#f4f1f8; border-color:#ddd8e5; color:#111; }
+.owner-app .owner-slot-calendar .time-grid button:hover { background:#e4d9f8; }
+.owner-app .owner-slot-calendar .time-grid button[aria-pressed="true"] { background:var(--brand); border-color:var(--brand); color:#111; }
 .site-copy-override { white-space:pre-wrap; }

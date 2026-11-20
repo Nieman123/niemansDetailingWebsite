@@ -7,7 +7,7 @@ import type { Response } from "express";
 import { deliverAppointmentEmails, queueAppointmentEmail } from "./appointment-email";
 import { ContentError, manageSiteContent, publicSiteContent } from "./appointment-content";
 import { busyWindows, calendarConfig, mirrorAppointment } from "./appointment-calendar";
-import { bookingSlots, easternDate, emptyBookingSettings, parseBookingSettings, type BookingSettings } from "./appointment-booking";
+import { bookingPrices, bookingSlots, bookingVehicle, easternDate, emptyBookingSettings, parseBookingSettings, type BookingSettings } from "./appointment-booking";
 import {
   createStripeSession, findCheckoutAttempt, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
   type StripeSession,
@@ -125,8 +125,7 @@ function buildAppointment(body: Record<string, unknown>, uid: string, now: numbe
     throw new AppointmentError(400, "invalid_price");
   }
   const contact = appointmentContact(body, requirePhone);
-  const service = text(body.service, 150);
-  if (!service) throw new AppointmentError(400, "invalid_details");
+  const service = text(body.service, 150) || "Detailing appointment";
   if (body.deposit !== "required" && body.deposit !== "waived") throw new AppointmentError(400, "invalid_deposit");
   const waived = body.deposit === "waived";
   return {
@@ -274,6 +273,7 @@ async function appointmentContext(db: Firestore, body: Record<string, unknown>) 
     phone: client?.phone_e164 || client?.phone || lead?.phone_normalized || lead?.phone || "",
     address: [client?.address, client?.city, [client?.state, client?.zip].filter(Boolean).join(" ")].filter(Boolean).join(", "),
     service: ({ quick: "Quick Once Over", full: "Full Detail", interior_only: "Interior Only", ceramic: "Ceramic Coating" } as Record<string, string>)[text(lead?.service, 50)] || "",
+    vehicleType: bookingVehicle(lead?.vehicle) ?? "",
     vehicle: lead?.vehicle_details || ({ sedan: "Sedan / coupe", suv_truck: "SUV / truck", van_3row: "Van / 3-row SUV" } as Record<string, string>)[text(lead?.vehicle, 50)] || "",
     estimateCents: typeof lead?.quoted_total === "number" ? Math.round(lead.quoted_total * 100) : null,
     deposit: client?.appointment_deposit_default === "waived" ? "waived" : "required",
@@ -633,6 +633,22 @@ async function authenticatedCustomer(auth: Auth, req: Request) {
   return { uid: user.uid, email: user.email.toLowerCase() };
 }
 
+async function bookingQuote(db: Firestore, receipt: unknown) {
+  if (!receipt || typeof receipt !== "object") return null;
+  const { id, token } = receipt as { id?: unknown; token?: unknown };
+  if (typeof id !== "string" || typeof token !== "string" || !HASH.test(id) || !HASH.test(token)) return null;
+  const lead = (await db.collection("leads").doc(id).get()).data();
+  if (!lead || lead.honeypot || lead.addon_token_hash !== digest(token) ||
+      !Number.isFinite(lead.addon_token_expires_at) || lead.addon_token_expires_at <= Date.now()) return null;
+  const name = text(lead.name, 150);
+  const phone = text(lead.phone_normalized || lead.phone, 48);
+  const digits = phone.replace(/\D/g, "");
+  const quote = Number.isFinite(lead.quoted_total) && lead.quoted_total >= 0 ? Math.round(lead.quoted_total * 100) : null;
+  return {
+    id, service: text(lead.service, 31), vehicle: bookingVehicle(lead.vehicle), estimateCents: quote,
+    phoneEnding: name && /^1?\d{10}$/.test(digits) ? digits.slice(-4) : null, name, phone,
+  };
+}
 async function publicBooking(db: Firestore, auth: Auth, req: Request, body: Record<string, unknown>) {
   const settings = await getSettings(db);
   const service = settings.services.find(item => item.id === body.serviceId);
@@ -649,23 +665,24 @@ async function publicBooking(db: Firestore, auth: Auth, req: Request, body: Reco
   }
   const customer = await authenticatedCustomer(auth, req);
   const email = customer?.email ?? text(body.email, 250);
+  const quote = await bookingQuote(db, body.quoteReceipt);
+  if (body.reuseQuoteContact === true && !quote?.phoneEnding) throw new AppointmentError(409, "quote_contact_expired");
+  const vehicleType = bookingVehicle(body.vehicleType);
+  const prices = bookingPrices(service);
+  if ((body.vehicleType && !vehicleType) || (!vehicleType && new Set(Object.values(prices)).size > 1)) {
+    throw new AppointmentError(400, "vehicle_required");
+  }
+  const quotedPrice = quote && quote.service === service.id && quote.vehicle === vehicleType ? quote.estimateCents : null;
   const appointment = buildAppointment({
     ...body, address: `${text(body.address, 390)} ${postalCode}`,
-    clientId: null, leadId: null, email, service: service.name,
-    durationMinutes: service.duration, estimateCents: service.cents, deposit: "required",
+    ...(body.reuseQuoteContact === true ? { name: quote!.name, phone: quote!.phone } : {}),
+    clientId: null, leadId: quote?.id ?? null, email, service: service.name,
+    durationMinutes: service.duration, estimateCents: quotedPrice ?? prices[vehicleType ?? "sedan"], deposit: "required",
   }, customer?.uid ?? "guest", Date.now(), true);
   if (!bookingSlots(settings, easternDate(appointment.start), service, Date.now()).includes(appointment.start)) {
     throw new AppointmentError(409, "time_unavailable");
   }
   appointment.bufferMinutes = settings.bufferMinutes;
-  const receipt = body.quoteReceipt as { id?: string; token?: string } | undefined;
-  if (HASH.test(receipt?.id ?? "") && HASH.test(receipt?.token ?? "")) {
-    const lead = (await db.collection("leads").doc(receipt!.id!).get()).data();
-    if (lead && !lead.honeypot && lead.addon_token_hash === digest(receipt!.token!) && lead.addon_token_expires_at > Date.now()) {
-      appointment.leadId = receipt!.id!;
-      if (lead.service === service.id && typeof lead.quoted_total === "number") appointment.estimateCents = Math.round(lead.quoted_total * 100);
-    }
-  }
   await assertCalendarOpen(appointment);
   const ref = db.collection("appointments").doc(id);
   const holds = db.collection("appointmentBookingHolds");
@@ -949,6 +966,11 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
     let result;
     if (action === "details") {
       result = await detailsFromLink(db, identifier(body.id)!, body.token);
+    } else if (action === "quote-context") {
+      const quote = await bookingQuote(db, body.quoteReceipt);
+      result = quote ? {
+        service: quote.service, vehicle: quote.vehicle ?? null, estimateCents: quote.estimateCents, phoneEnding: quote.phoneEnding,
+      } : null;
     } else if (action === "site-content") {
       result = await publicSiteContent(db);
     } else if (["maintenance-offer", "maintenance-enroll"].includes(action)) {
@@ -956,7 +978,7 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
     } else if (action === "booking-options") {
       const settings = await getSettings(db);
       const enabled = settings.enabled && !!await stripeConfig() && !!await calendarConfig();
-      result = { enabled, services: enabled ? settings.services : [], horizonDays: settings.horizonDays, depositPolicy: DEPOSIT_POLICY, depositCents: DEPOSIT_CENTS };
+      result = { enabled, services: enabled ? settings.services.map(service => ({ ...service, vehiclePrices: bookingPrices(service) })) : [], horizonDays: settings.horizonDays, depositPolicy: DEPOSIT_POLICY, depositCents: DEPOSIT_CENTS };
     } else if (action === "availability") {
       result = await getAvailability(db, body);
     } else if (action === "book") {
@@ -1018,8 +1040,10 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
         result = adminDetails(id, appointment);
       }
       else if (action === "create") result = await createAppointment(db, uid, body);
-      else if (action === "booking-settings") result = await getSettings(db);
-      else if (action === "save-booking-settings") {
+      else if (action === "booking-settings") {
+        const settings = await getSettings(db);
+        result = { ...settings, services: settings.services.map(service => ({ ...service, vehiclePrices: bookingPrices(service) })) };
+      } else if (action === "save-booking-settings") {
         const settings = parseBookingSettings(body);
         if (!settings) throw new AppointmentError(400, "invalid_booking_settings");
         if (settings.enabled) {

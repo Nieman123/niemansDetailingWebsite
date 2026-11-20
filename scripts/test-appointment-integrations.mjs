@@ -20,6 +20,10 @@ assert.equal(stripe.verifyStripeEvent(live, `t=${timestamp},v1=${sign(live)}`, s
 const service = { id: 'full', name: 'Full Detail', duration: 180, cents: 30_000 };
 const settings = { ...booking.emptyBookingSettings, enabled: true, days: [1], postalCodes: ['28803'], services: [service] };
 assert(booking.parseBookingSettings(settings));
+assert.deepEqual(booking.bookingPrices(service), { sedan:30000, suv_truck:35000, van_3row:40000 });
+const custom = { ...service, vehiclePrices: { sedan:31000, suv_truck:36500, van_3row:42500 } };
+assert.deepEqual(booking.bookingPrices(booking.parseBookingSettings({ ...settings, services:[custom] }).services[0]),custom.vehiclePrices);
+assert.equal(booking.parseBookingSettings({ ...settings, services:[{ ...custom, vehiclePrices:{sedan:31000} }] }),null);
 assert.equal(booking.parseBookingSettings({ ...settings, services: [service, service] }), null);
 assert.equal(booking.parseBookingSettings({ ...settings, services: [{ ...service, cents: 4999 }] }), null);
 assert.equal(booking.bookingSlots(settings, '2027-01-18', service, now)[0], Date.parse('2027-01-18T14:00:00Z'));

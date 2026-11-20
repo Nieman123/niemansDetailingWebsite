@@ -80,3 +80,7 @@
 
 .mobile-facts {display:none;}
 @media(max-width:690px){.mobile-facts{display:block;color:var(--muted);font-weight:550;font-size:.91rem}.booking-summary{display:none}.service-select{margin-bottom:6px}}
+
+.quote-contact { margin:16px 0; padding:12px 14px; border:1px solid var(--line); border-radius:8px; }
+.quote-contact p { margin:0; }
+.quote-contact .quiet, #use-quote-contact { color:var(--brand-2); text-decoration:underline; padding-inline:0; }

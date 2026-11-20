@@ -6,7 +6,24 @@ const formatter = new Intl.DateTimeFormat("en-CA", {
   hour: "2-digit", minute: "2-digit", hourCycle: "h23",
 });
 
-export type BookingService = { id: string; name: string; duration: number; cents: number };
+export const bookingVehicles = ["sedan", "suv_truck", "van_3row"] as const;
+export type BookingVehicle = typeof bookingVehicles[number];
+export type BookingService = {
+  id: string; name: string; duration: number; cents: number;
+  vehiclePrices?: Record<BookingVehicle, number>;
+};
+
+// Quotes already use these rates. Recognize the original Full Detail booking price until it is edited.
+export function bookingPrices(service: BookingService): Record<BookingVehicle, number> {
+  if (service.vehiclePrices) return service.vehiclePrices;
+  const sedan = service.cents;
+  if (service.id === "full" && sedan === 30_000) return { sedan, suv_truck: 35_000, van_3row: 40_000 };
+  return { sedan, suv_truck: sedan, van_3row: sedan };
+}
+
+export function bookingVehicle(value: unknown): BookingVehicle | undefined {
+  return bookingVehicles.find(vehicle => vehicle === value);
+}
 export type BookingSettings = {
   enabled: boolean;
   days: number[];
@@ -48,7 +65,15 @@ export function parseBookingSettings(input: Record<string, unknown>): Omit<Booki
     if (!row || typeof row.id !== "string" || !/^[a-z][a-z0-9_-]{0,30}$/.test(row.id) || ids.has(row.id) ||
       typeof row.name !== "string" || !row.name.trim() || row.name.length > 100 || !integer(row.duration, 30, 720) || !integer(row.cents, 5000, 10_000_000)) return null;
     ids.add(row.id);
-    catalog.push({ id: row.id, name: row.name.trim(), duration: row.duration, cents: row.cents });
+    let vehiclePrices: BookingService["vehiclePrices"];
+    if (row.vehiclePrices !== undefined) {
+      const prices = row.vehiclePrices;
+      if (!prices || typeof prices !== "object" || Array.isArray(prices) ||
+          !bookingVehicles.every(vehicle => integer(prices[vehicle], 5000, 10_000_000))) return null;
+      vehiclePrices = { sedan: prices.sedan, suv_truck: prices.suv_truck, van_3row: prices.van_3row };
+    }
+    catalog.push({ id: row.id, name: row.name.trim(), duration: row.duration, cents: vehiclePrices?.sedan ?? row.cents,
+      ...(vehiclePrices ? { vehiclePrices } : {}) });
   }
   return { enabled, days, open, close, minimumHours, horizonDays, bufferMinutes, blockedDates, postalCodes, services: catalog };
 }

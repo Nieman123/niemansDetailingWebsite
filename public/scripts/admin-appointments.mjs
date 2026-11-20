@@ -1,7 +1,8 @@
 import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { vehicleLabels } from "./booking-vehicles.mjs";
 import { easternInput, slotPicker } from "./slot-picker.mjs";
-import { appointmentMoney, appointmentRequest, appointmentTime, easternStart } from "./appointment-utils.mjs";
+import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect } from "./appointment-utils.mjs";
 import { clearJobNotes, hasUnsavedJobNotes, jobWorkspace, rescheduleWorkspace, setupBookingSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);
@@ -60,8 +61,11 @@ const messages = {
 };
 
 let context = {};
+let services = [];
+let autoEstimate = null;
 let requestId = crypto.randomUUID();
 let scope = 0;
+let authScope;
 let saving = false;
 
 const explain = error => messages[error.code] || "Something went wrong. Try again.";
@@ -69,7 +73,7 @@ const ownerRequest = async (action, body = {}) => appointmentRequest(action, bod
 const calendar = slotPicker(byId("owner-slot-calendar"), {
   status: byId("owner-calendar-status"), retry: byId("owner-calendar-retry"),
   getSlots(month) {
-    const durationMinutes = fields.durationMinutes.valueAsNumber;
+    const durationMinutes = Number(fields.durationMinutes.value);
     if (!fields.durationMinutes.validity.valid) return Promise.reject({ code: "invalid_time" });
     return ownerRequest("admin-availability", { month, durationMinutes, deposit: fields.deposit.value });
   },
@@ -87,6 +91,22 @@ const calendar = slotPicker(byId("owner-slot-calendar"), {
 function refreshCalendar() {
   if (pickerReady) calendar.load();
 }
+function syncEstimate() {
+  const service = services.find(item => item.name === fields.service.value);
+  const vehicleType = fields.vehicleType.value;
+  const prices = service?.vehiclePrices;
+  const price = vehicleType ? prices?.[vehicleType] : prices && new Set(Object.values(prices)).size === 1 ? prices.sedan : undefined;
+  if (fields.estimate.value && fields.estimate.value !== autoEstimate) return;
+  autoEstimate = price == null ? "" : (price / 100).toFixed(2);
+  fields.estimate.value = autoEstimate;
+}
+fields.service.onchange = () => {
+  const service = services.find(item => item.name === fields.service.value);
+  if (service) fillDurationSelect(fields.durationMinutes, service.duration);
+  syncEstimate();
+  refreshCalendar();
+};
+fields.vehicleType.onchange = syncEstimate;
 fields.durationMinutes.addEventListener("change", refreshCalendar);
 fields.start.addEventListener("input", () => {
   selectedSlot = null;
@@ -103,7 +123,14 @@ function syncDeposit() {
 
 function fillForm(prefill) {
   context = prefill;
-  for (const key of ["name", "email", "phone", "address", "service", "vehicle"]) fields[key].value = prefill[key] ?? "";
+  for (const key of ["name", "email", "phone", "address", "vehicle"]) fields[key].value = prefill[key] ?? "";
+  if (prefill.service && ![...fields.service.options].some(option => option.value === prefill.service)) {
+    fields.service.add(new Option(prefill.service, prefill.service));
+  }
+  fields.service.value = prefill.service || "";
+  fields.vehicleType.value = prefill.vehicleType || "";
+  autoEstimate = null;
+  fillDurationSelect(fields.durationMinutes, 60);
   fields.estimate.value = prefill.estimateCents == null ? "" : (prefill.estimateCents / 100).toFixed(2);
   fields.deposit.value = prefill.deposit || "required";
   byId("client-default").hidden = !prefill.clientId;
@@ -365,7 +392,7 @@ form.addEventListener("submit", async event => {
     try { start = easternStart(payload.start); }
     catch (error) { formStatus.textContent = error.message; return; }
     const record = await ownerRequest("create", {
-      ...payload, start, useCalendarSlot: selectedSlot === start, durationMinutes: Number(payload.durationMinutes),
+      ...payload, vehicle: payload.vehicle || vehicleLabels[payload.vehicleType] || "", start, useCalendarSlot: selectedSlot === start, durationMinutes: Number(payload.durationMinutes),
       estimateCents: payload.estimate ? Math.round(Number(payload.estimate) * 100) : null,
       saveClientDefault: !!context.clientId && fields.saveClientDefault.checked,
       clientId: context.clientId, leadId: context.leadId, requestId,
@@ -394,6 +421,8 @@ if (!appointmentsEnabled) {
   });
   onAuthStateChanged(auth, async user => {
     const session = ++scope;
+    authScope?.abort();
+    authScope = new AbortController();
     clearJobNotes();
     links.clear();
     list.replaceChildren();
@@ -427,14 +456,21 @@ if (!appointmentsEnabled) {
     const initialView = recordId ? "detail" : params.has("client") || params.has("lead") ? "new" : "queue";
     byId("back-to-queue").href = appointmentUrl();
     showView(initialView);
-    ownerRequest("booking-settings").then(settings => {
+    workspace.addEventListener("booking-settings-loaded", event => {
       if (session !== scope) return;
+      const settings = event.detail;
+      const previous = fields.service.value;
+      services = settings.services;
+      const labels = [...new Set(services.map(service => service.name))];
+      if (previous && !labels.includes(previous)) labels.push(previous);
+      fields.service.replaceChildren(new Option("Choose later", ""), ...labels.map(name => new Option(name, name)));
+      fields.service.value = previous;
+      const selectedService = services.find(service => service.name === previous);
+      if (!pickerReady && selectedService) fillDurationSelect(fields.durationMinutes, selectedService.duration);
       calendar.setHorizon(settings.horizonDays);
       pickerReady = true;
       if (!byId("view-new").hidden) refreshCalendar();
-    }).catch(error => {
-      if (session === scope) byId("owner-calendar-status").textContent = explain(error);
-    });
+    }, { signal: authScope.signal });
     setupBookingSettings(byId("booking-settings"), ownerRequest, explain);
     await refreshList();
   });

@@ -54,10 +54,14 @@
             <p class="sub">Enter at least one contact method.</p>
             <label class="field"><span>Service address</span><input name="address" maxlength="400" autocomplete="off"></label>
             <div class="appointment-fields">
-              <label class="field"><span>Service</span><input name="service" required maxlength="150"></label>
-              <label class="field"><span>Vehicle</span><input name="vehicle" maxlength="150"></label>
+              <label class="field"><span>Service <small>Optional</small></span><select name="service"><option value="">Choose later</option></select></label>
+              <label class="field"><span>Vehicle details <small>Optional</small></span><input name="vehicle" maxlength="150" placeholder="Year, make and model"></label>
             </div>
-            <label class="field"><span>Duration (minutes)</span><input name="durationMinutes" type="number" min="15" max="10080" step="1" value="60" required></label>
+            <label class="field"><span>Vehicle size <small>Optional</small></span><select name="vehicleType">
+              <option value="">Choose later</option><option value="sedan">Sedan / coupe</option><option value="suv_truck">SUV / truck</option>
+              <option value="van_3row">3-row SUV / full-size truck / van</option>
+            </select></label>
+            <label class="field"><span>Appointment length</span><select name="durationMinutes" required><option value="60">1 hour</option></select></label>
             <div id="owner-slot-calendar" class="owner-slot-calendar">
               <div class="month-nav">
                 <h2 id="owner-month-title">Available dates</h2>
@@ -115,7 +119,7 @@
             <label class="field"><span>Blocked dates (YYYY-MM-DD)</span><input name="blockedDates" placeholder="2026-12-25"></label>
           </div>
           <label class="field"><span>Service-area ZIP codes</span><input name="postalCodes" placeholder="28803, 28804"></label>
-          <fieldset><legend>Bookable services</legend><div id="service-rows"></div><button class="btn secondary" type="button" id="add-service">Add service</button></fieldset>
+          <fieldset><legend>Bookable services</legend><p>Set an estimate for each vehicle size. Use the same amount for flat-price services.</p><div id="service-rows"></div><button class="btn secondary" type="button" id="add-service">Add service</button></fieldset>
           <button class="btn primary" type="submit" disabled>Save booking settings</button>
           <p role="status"></p>
         </form>

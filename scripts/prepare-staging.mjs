@@ -66,6 +66,7 @@ function preparePages(directory) {
       });
       $('meta[name="firebase-api-key"]').remove();
       const name = path.relative(publicDir, file);
+      if (name === 'thank-you.html') $('body').attr('data-booking-handoff', 'true');
       const selectors = copySelectors[name];
       if (selectors) {
         for (const [key, selector] of Object.entries(selectors)) {

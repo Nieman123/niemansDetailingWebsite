@@ -1,4 +1,5 @@
-import { appointmentMoney, appointmentTime, easternStart } from "./appointment-utils.mjs";
+import { appointmentMoney, appointmentTime, easternStart, fillDurationSelect } from "./appointment-utils.mjs";
+import { vehicleLabels } from "./booking-vehicles.mjs";
 import { jobPhotosSection } from "./appointment-photos.mjs";
 
 export const statusLabels = {
@@ -228,20 +229,36 @@ export function setupBookingSettings(form, request, report) {
   function addServiceRow(service = {}) {
     const row = document.createElement("div");
     row.className = "service-row";
-    const definitions = [["name", "Service name", "text"], ["id", "Service code", "text"], ["duration", "Minutes", "number"], ["price", "Price ($)", "number"]];
-    for (const [key, title, type] of definitions) {
+    const info = document.createElement("div");
+    const pricing = document.createElement("div");
+    info.className = "service-fields";
+    pricing.className = "service-prices";
+    function control(parent, key, title, input) {
       const label = document.createElement("label");
       label.className = "field";
-      const span = document.createElement("span");
-      span.textContent = title;
-      const input = document.createElement("input");
-      Object.assign(input, {type, required: true, value: key === "price" ? (service.cents == null ? "" : (service.cents / 100).toFixed(2)) : service[key] ?? ""});
       input.dataset.key = key;
-      if (key === "id") { input.pattern = "[a-z][a-z0-9_\\-]{0,30}"; input.placeholder = "full"; input.title = "Start with a lowercase letter. Use the quote service code to carry over estimates."; }
-      if (key === "duration") { input.min = "30"; input.max = "720"; }
-      if (key === "price") { input.min = "50"; input.max = "100000"; input.step = ".01"; }
-      label.append(span, input); row.append(label);
+      input.required = true;
+      label.append(elm("span", title), input);
+      parent.append(label);
+      return input;
     }
+    const name = control(info, "name", "Service name", document.createElement("input"));
+    name.value = service.name || "";
+    name.maxLength = 100;
+    const code = control(info, "id", "Service code", document.createElement("input"));
+    code.value = service.id || "";
+    code.pattern = "[a-z][a-z0-9_\\-]{0,30}";
+    code.placeholder = "full";
+    code.title = "Use the same service code as the quote form to carry its estimate into booking.";
+    const length = control(info, "duration", "Appointment length", document.createElement("select"));
+    fillDurationSelect(length, service.duration || 60, 30, 720);
+    for (const [key, label] of Object.entries(vehicleLabels)) {
+      const price = control(pricing, key, label + " ($)", document.createElement("input"));
+      Object.assign(price, { type: "number", min: "50", max: "100000", step: ".01", inputMode: "decimal" });
+      const amount = service.vehiclePrices?.[key] ?? service.cents;
+      price.value = amount == null ? "" : (amount / 100).toFixed(2);
+    }
+    row.append(info, pricing);
     const remove = Object.assign(document.createElement("button"), {type: "button", className: "quiet", textContent: "Remove service"});
     remove.onclick = () => row.remove();
     row.append(remove); rows.append(row);
@@ -257,6 +274,7 @@ export function setupBookingSettings(form, request, report) {
     rows.replaceChildren();
     settings.services.forEach(addServiceRow);
     revision = settings.revision;
+    form.dispatchEvent(new CustomEvent("booking-settings-loaded", { bubbles: true, detail: settings }));
   }
   const button = form.querySelector("button[type=submit]");
   const refresh = async () => {
@@ -270,8 +288,9 @@ export function setupBookingSettings(form, request, report) {
     const parseList = value => value.split(/[,\s]+/).filter(Boolean);
     const input = Object.fromEntries(new FormData(form));
     const services = [...rows.children].map(row => {
-      const values = Object.fromEntries([...row.querySelectorAll("input")].map(input => [input.dataset.key, input.value.trim()]));
-      return { id: values.id, name: values.name, duration: Number(values.duration), cents: cents(values.price) };
+      const values = Object.fromEntries([...row.querySelectorAll("[data-key]")].map(input => [input.dataset.key, input.value.trim()]));
+      const vehiclePrices = Object.fromEntries(Object.keys(vehicleLabels).map(key => [key, cents(values[key])]));
+      return { id: values.id, name: values.name, duration: Number(values.duration), cents: vehiclePrices.sedan, vehiclePrices };
     });
     try {
       const result = await request("save-booking-settings", {

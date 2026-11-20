@@ -1,30 +1,38 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Schedule a detail | Nieman’s Detailing</title><link rel="stylesheet" href="/quote.css"><link rel="stylesheet" href="/styles/appointments.css"><link rel="stylesheet" href="/styles/booking.css"></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>Schedule a detail | Nieman’s Detailing</title><link rel="stylesheet" href="/quote.css"><link rel="stylesheet" href="/styles/appointments.css"><link rel="stylesheet" href="/styles/booking.css"></head>
 <body class="quote-page appointment-app booking-page">
 <header class="customer-bar"><a href="/" aria-label="Nieman’s Detailing home"><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"></a><a href="/account">My appointments</a></header>
 <main class="booking-shell"><h1>Schedule your detail</h1>
 <p class="booking-intro">Mobile detailing in the Asheville area. Choose a time that works for you.</p>
 <p id="booking-state" role="status">Checking availability…</p><button id="booking-retry" type="button" class="btn secondary" hidden>Try again</button>
 <form id="public-booking" hidden><div class="booking-layout"><div class="booking-work">
-<section id="pick-time"><label class="field service-select"><span>Service</span><select name="serviceId" required></select></label><p id="service-facts" class="mobile-facts"></p>
-<div class="month-nav"><h2 id="month-title"></h2><div><button type="button" id="prev-month" aria-label="Previous month"><span aria-hidden="true" class="chevron previous"></span></button><button type="button" id="next-month" aria-label="Next month"><span aria-hidden="true" class="chevron"></span></button></div></div>
+<section id="pick-time"><label class="field service-select"><span>Service</span><select name="serviceId" required></select></label>
+<label class="field" id="booking-vehicle"><span>Vehicle size</span><select name="vehicleType">
+  <option value="">Choose your vehicle</option>
+  <option value="sedan">Sedan / coupe</option>
+  <option value="suv_truck">SUV / truck</option>
+  <option value="van_3row">3-row SUV / full-size truck / van</option>
+</select></label><p id="vehicle-selection-hint" role="status"></p><p id="service-facts" class="mobile-facts"></p>
+<div id="schedule-calendar"><div class="month-nav"><h2 id="month-title"></h2><div><button type="button" id="prev-month" aria-label="Previous month"><span aria-hidden="true" class="chevron previous"></span></button><button type="button" id="next-month" aria-label="Next month"><span aria-hidden="true" class="chevron"></span></button></div></div>
 <div class="weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
 <div id="days" class="month-grid" role="group" aria-labelledby="month-title"></div>
 <p class="calendar-key">Dates with a dot have openings.</p>
-<section class="time-section"><h3 id="slot-heading">Available times</h3><p class="slot-note" id="slot-note" role="status"></p><div id="times" class="time-grid" role="group" aria-labelledby="slot-heading"></div></section>
+<section class="time-section"><h3 id="slot-heading">Available times</h3><p class="slot-note" id="slot-note" role="status"></p><div id="times" class="time-grid" role="group" aria-labelledby="slot-heading"></div></section></div>
 </section>
 <section id="contact-step" hidden><button class="quiet back-action" type="button" id="change-time">Change date or time</button>
-<h2 id="contact-heading" tabindex="-1">Your details</h2><strong id="contact-time"></strong><p id="contact-cost" class="mobile-facts"></p><p>Just your name and mobile number. Nieman can text you for the rest.</p>
+<h2 id="contact-heading" tabindex="-1">Review your booking</h2><strong id="contact-time"></strong><p id="contact-cost" class="mobile-facts"></p>
+<div id="quote-contact" class="quote-contact" hidden><p id="quote-contact-label"></p><button class="quiet" id="edit-quote-contact" type="button">Use different contact details</button></div>
+<div id="contact-fields"><button class="quiet" id="use-quote-contact" type="button" hidden>Use the number from my quote</button><p>Just your name and mobile number. Nieman can text you for the rest.</p>
 <div class="appointment-fields"><label class="field"><span>Name</span><input name="name" autocomplete="name" maxlength="150" required></label>
-<label class="field"><span>Mobile number</span><input name="phone" autocomplete="tel" type="tel" maxlength="48" required></label></div>
-<details class="optional-details"><summary>Add email, vehicle or address <small>Optional</small></summary>
+<label class="field"><span>Mobile number</span><input name="phone" autocomplete="tel" type="tel" maxlength="48" required></label></div></div>
+<details class="optional-details"><summary>Add email, vehicle details or address <small>Optional</small></summary>
 <label class="field"><span>Email for appointment updates</span><input name="email" autocomplete="email" type="email" maxlength="250"></label>
 <label class="field"><span>Vehicle</span><input name="vehicle" maxlength="150" placeholder="Year, make and model"></label>
 <label class="field"><span>Service address</span><input name="address" autocomplete="street-address" maxlength="390"></label>
 <label class="field"><span>ZIP code</span><input name="postalCode" autocomplete="postal-code" inputmode="numeric" pattern="[0-9]{5}" maxlength="5"></label></details>
 <details class="optional-details"><summary>Deposit and cancellation policy</summary><p id="public-policy"></p></details>
 <label class="appointment-checkbox"><input name="accepted" type="checkbox" required> I agree to the deposit and cancellation policy.</label>
-<p id="reserve-state" role="status"></p><button class="btn primary" type="submit">Reserve time and continue to deposit</button></section>
-</div><aside class="booking-summary" aria-label="Booking summary"><img src="/images/carpics/foam-640.webp" alt="" width="640" height="300"><div><h2>Your appointment</h2><strong id="summary-service"></strong><p id="summary-duration"></p><p id="summary-time">Choose a date and start time.</p>
+<p id="reserve-state" role="status"></p><button class="btn primary" type="submit">Continue to Payment</button></section>
+</div><aside id="schedule-summary" class="booking-summary" aria-label="Booking summary"><img src="/images/carpics/foam-640.webp" alt="" width="640" height="300"><div><h2>Your appointment</h2><strong id="summary-service"></strong><p id="summary-duration"></p><p id="summary-time">Choose a date and start time.</p>
 <dl><dt>Estimated total</dt><dd id="summary-price"></dd><dt>Deposit</dt><dd id="summary-deposit"></dd></dl><p>The deposit goes toward your total. Nieman reviews your request after payment.</p></div></aside></div></form>
 <footer class="booking-footer"><a href="/quote">Get a quote</a><a href="sms:+18282733894">Text Nieman</a></footer></main><script type="module" src="/scripts/public-booking.mjs"></script></body></html>

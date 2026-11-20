@@ -101,7 +101,7 @@ The existing GitHub deploy variables and service account deploy Firebase. Store 
 - **Email**. Provide a Resend test key and an allowed sender for the account. Use only test inboxes in `testRecipients`. Email is optional if sharing links manually. The scheduled worker retries delivery. [Resend API](https://resend.com/docs/api-reference/emails/send-email)
 - **Firebase Auth**. Enable Email/Password and Email link sign-in alongside Google. Add the staging Hosting domain to authorized domains. Open customer links in a private window so the test does not sign the admin out. [Firebase email-link authentication](https://firebase.google.com/docs/auth/web/email-link-auth)
 
-After setup, save business hours, ZIPs, and services in the **Settings** tab in `/admin/appointments`. For a synthetic Full Detail test enter service code `full`, name `Full Detail`, 180 minutes and a price of $300 and choose the weekdays and time range you want to test. Enable public booking after the Stripe and Calendar credentials are configured.
+After setup, save business hours, ZIPs, and services in the **Settings** tab in `/admin/appointments`. For a synthetic Full Detail test enter service code `full`, name `Full Detail`, 3 hours and vehicle prices of $300 for sedan, $350 for SUV or truck, and $400 for 3-row SUV, full-size truck, or van and choose the weekdays and time range you want to test. Enable public booking after the Stripe and Calendar credentials are configured.
 
 ## Staging acceptance checks
 

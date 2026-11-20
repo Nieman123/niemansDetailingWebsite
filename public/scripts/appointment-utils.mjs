@@ -25,6 +25,24 @@ export function easternStart(value) {
 export const appointmentTime = ({ start, end }) => `${friendlyDate.formatRange(start, end)} Eastern`;
 export const appointmentMoney = cents => dollars.format(cents / 100);
 
+export function durationLabel(total) {
+  if (total % 1440 === 0) return total / 1440 + (total === 1440 ? " day" : " days");
+  const hours = Math.floor(total / 60);
+  const minutes = total % 60;
+  return [hours && hours + (hours === 1 ? " hour" : " hours"), minutes && minutes + " min"].filter(Boolean).join(" ");
+}
+
+export function fillDurationSelect(select, selected, min = 15, max = 10080) {
+  const presets = [
+    ...Array.from({ length: 32 }, (_, index) => (index + 1) * 15),
+    540, 600, 660, 720,
+    ...Array.from({ length: 7 }, (_, index) => (index + 1) * 1440),
+  ];
+  const durations = [...new Set([...presets, selected])].filter(value => value >= min && value <= max).sort((a, b) => a - b);
+  select.replaceChildren(...durations.map(value => new Option(durationLabel(value), String(value))));
+  select.value = String(selected);
+}
+
 export async function appointmentRequest(action, body = {}, bearer) {
   const headers = { "Content-Type": "application/json" };
   if (bearer) headers.Authorization = `Bearer ${bearer}`;

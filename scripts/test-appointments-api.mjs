@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import admin from 'firebase-admin';
 import paymentLifecycle from '../functions/lib/appointments.js';
 
@@ -181,11 +181,13 @@ try {
   const available = await callWithCalendar('availability',{serviceId:'full',month});
   assert(available.result.slots.length);
   assert.equal(calendarReads,1);
-  const phoneBooking = {name:'Phone customer',phone:'828-555-0199',start:available.result.slots[0],serviceId:'full',accepted:true,token:'b'.repeat(64)};
+  const phoneBooking = {name:'Phone customer',phone:'828-555-0199',start:available.result.slots[0],serviceId:'full',vehicleType:'suv_truck',accepted:true,token:'b'.repeat(64)};
+  assert.equal((await callWithCalendar('book',{...phoneBooking,vehicleType:''})).error,'vehicle_required');
   assert.equal((await callWithCalendar('book',{...phoneBooking,phone:''})).error,'invalid_details');
   assert.equal((await callWithCalendar('book',{...phoneBooking,postalCode:'99999'})).error,'outside_service_area');
   const booked = await callWithCalendar('book',phoneBooking);
   assert.equal(booked.result.status,'awaiting_deposit');
+  assert.equal(booked.result.estimateCents,35000);
   const stored = (await db.collection('appointments').doc(booked.result.id).get()).data();
   assert.deepEqual([stored.email,stored.address,stored.phone],['','','+18285550199']);
   assert.equal((await callWithCalendar('book',phoneBooking)).result.id,booked.result.id);
@@ -203,6 +205,30 @@ try {
   assert(ownerTimes.result.slots.length);
   assert(!ownerTimes.result.slots.includes(phoneBooking.start));
   console.log('PASS: Owner-only appointment details and calendar with public booking paused.');
+  await db.collection('appointmentSettings').doc('booking').update({ enabled: true });
+  const quoteReceipt = { id:'a'.repeat(64),token:'d'.repeat(64) };
+  const quoteRef = db.collection('leads').doc(quoteReceipt.id);
+  await quoteRef.set({
+    addon_token_hash:createHash('sha256').update(quoteReceipt.token).digest('hex'),
+    addon_token_expires_at:Date.now() + 60_000,
+    name:'Saved Quote Customer',phone_normalized:'+18285550221',service:'full',vehicle:'van_3row',quoted_total:475,
+  });
+  const preview = await callWithCalendar('quote-context',{quoteReceipt});
+  assert.deepEqual(preview.result,{service:'full',vehicle:'van_3row',estimateCents:47500,phoneEnding:'0221'});
+  const quoteDraft = { ...phoneBooking, name:'',phone:'',token:'f'.repeat(64),reuseQuoteContact:true,quoteReceipt,vehicleType:'van_3row' };
+  const fresh = await callWithCalendar('availability',{serviceId:'full',month});
+  quoteDraft.start = fresh.result.slots[0];
+  const fromQuote = await callWithCalendar('book',quoteDraft);
+  assert.equal(fromQuote.result.estimateCents,47500);
+  const storedQuote = (await db.collection('appointments').doc(fromQuote.result.id).get()).data();
+  assert.equal(storedQuote.name,'Saved Quote Customer');
+  assert.equal(storedQuote.phone,'+18285550221');
+  await quoteRef.update({addon_token_expires_at:Date.now()-1});
+  assert.equal((await callWithCalendar('quote-context',{quoteReceipt})).result,null);
+  assert.equal((await callWithCalendar('book',{...quoteDraft,token:'e'.repeat(64)})).error,'quote_contact_expired');
+  assert.equal((await asOwner('create',{...appointment, requestId:randomUUID(), deposit:'required', service:'', saveClientDefault:false})).result.service,
+    'Detailing appointment');
+  console.log('PASS: Vehicle pricing, masked quote preview, contact reuse, expired receipt fallback and optional admin service.');
   console.log('PASS: Month availability, phone-only booking, retry, hold protection and owner contact updates.');
 } finally { globalThis.fetch = originalFetch; }
 await admin.app().delete();

@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.emptyBookingSettings = void 0;
+exports.emptyBookingSettings = exports.bookingVehicles = void 0;
+exports.bookingPrices = bookingPrices;
+exports.bookingVehicle = bookingVehicle;
 exports.parseBookingSettings = parseBookingSettings;
 exports.easternDate = easternDate;
 exports.bookingSlots = bookingSlots;
@@ -11,6 +13,19 @@ const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", hourCycle: "h23",
 });
+exports.bookingVehicles = ["sedan", "suv_truck", "van_3row"];
+// Quotes already use these rates. Recognize the original Full Detail booking price until it is edited.
+function bookingPrices(service) {
+    if (service.vehiclePrices)
+        return service.vehiclePrices;
+    const sedan = service.cents;
+    if (service.id === "full" && sedan === 30000)
+        return { sedan, suv_truck: 35000, van_3row: 40000 };
+    return { sedan, suv_truck: sedan, van_3row: sedan };
+}
+function bookingVehicle(value) {
+    return exports.bookingVehicles.find(vehicle => vehicle === value);
+}
 exports.emptyBookingSettings = {
     enabled: false, days: [], open: "09:00", close: "17:00", minimumHours: 24, horizonDays: 45,
     bufferMinutes: 30, blockedDates: [], postalCodes: [], services: [], revision: "",
@@ -37,7 +52,16 @@ function parseBookingSettings(input) {
             typeof row.name !== "string" || !row.name.trim() || row.name.length > 100 || !integer(row.duration, 30, 720) || !integer(row.cents, 5000, 10000000))
             return null;
         ids.add(row.id);
-        catalog.push({ id: row.id, name: row.name.trim(), duration: row.duration, cents: row.cents });
+        let vehiclePrices;
+        if (row.vehiclePrices !== undefined) {
+            const prices = row.vehiclePrices;
+            if (!prices || typeof prices !== "object" || Array.isArray(prices) ||
+                !exports.bookingVehicles.every(vehicle => integer(prices[vehicle], 5000, 10000000)))
+                return null;
+            vehiclePrices = { sedan: prices.sedan, suv_truck: prices.suv_truck, van_3row: prices.van_3row };
+        }
+        catalog.push({ id: row.id, name: row.name.trim(), duration: row.duration, cents: vehiclePrices?.sedan ?? row.cents,
+            ...(vehiclePrices ? { vehiclePrices } : {}) });
     }
     return { enabled, days, open, close, minimumHours, horizonDays, bufferMinutes, blockedDates, postalCodes, services: catalog };
 }
