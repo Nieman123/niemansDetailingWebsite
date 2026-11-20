@@ -1934,3 +1934,4 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--nd-purple, #6b
 #step-2 .btn.secondary { background: transparent; color: var(--nd-text, #f5f2fb); border-color: var(--nd-line-strong, rgba(232, 224, 255, 0.2)); }
 #step-2 .btn.secondary:hover { background: var(--nd-surface-3, #282346); }
 .call-fab { background: var(--nd-purple, #6b3fd8); color: #fff; }
+a.btn { text-decoration: none; }
