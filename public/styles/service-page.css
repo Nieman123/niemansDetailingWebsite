@@ -195,12 +195,12 @@
 .service-actions .btn-primary { min-width: 200px; }
 
 /* Older markup uses .btn-secondary for outline buttons. */
-.btn-secondary, .nd a.btn-secondary {
+.nd .btn-secondary, .nd a.btn-secondary {
   background: rgba(255, 255, 255, 0.04);
   border-color: var(--nd-line-strong);
   color: var(--nd-text);
 }
-.btn-secondary:hover, .nd a.btn-secondary:hover { border-color: var(--nd-gold-line); color: var(--nd-text); background: rgba(255, 255, 255, 0.07); }
+.nd .btn-secondary:hover, .nd a.btn-secondary:hover { border-color: var(--nd-gold-line); color: var(--nd-text); background: rgba(255, 255, 255, 0.07); }
 
 .related-services { margin-top: clamp(40px, 5vw, 56px); }
 .related-services h2 { margin: 0 0 16px; font-size: 22px; font-weight: 700; }

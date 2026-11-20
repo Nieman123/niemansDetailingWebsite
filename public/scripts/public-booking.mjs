@@ -23,6 +23,14 @@ const errors = {
   booking_unavailable: "Online booking is paused. Text Nieman for help."
 };
 
+function showStep(current) {
+  el("booking-steps").querySelectorAll("li").forEach((item, index) => {
+    item.classList.toggle("is-done", index < current);
+    item.classList.toggle("is-current", index === current);
+    if (index === current) item.setAttribute("aria-current", "step"); else item.removeAttribute("aria-current");
+  });
+}
+
 function setQuoteContact(reuse) {
   reuseQuoteContact = reuse;
   el("quote-contact").hidden = !reuse;
@@ -88,6 +96,7 @@ el("change-time").onclick = () => {
   if (saving) return;
   el("contact-step").hidden = true;
   el("pick-time").hidden = false;
+  showStep(0);
   calendar.focusTime();
 };
 fields.serviceId.onchange = loadMonth;
@@ -129,6 +138,7 @@ async function begin() {
         start = null;
         el("pick-time").hidden = false;
         el("contact-step").hidden = true;
+        showStep(0);
         showSummary();
       },
       onSelect(value) {
@@ -142,6 +152,7 @@ async function begin() {
         el("contact-time").textContent = el("summary-time").textContent;
         el("pick-time").hidden = true;
         el("contact-step").hidden = false;
+        showStep(1);
         el("contact-heading").focus();
       },
     });
@@ -168,6 +179,7 @@ form.onsubmit = async event => {
     }, bearer);
     const fragment = "#" + result.id + "." + token;
     el("reserve-state").textContent = "Opening payment.";
+    showStep(2);
     try {
       sessionStorage.setItem("appointmentCheckoutReturn", fragment);
       const { url } = await appointmentRequest("checkout", { id: result.id, token, accepted: true });

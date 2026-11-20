@@ -33,6 +33,10 @@ const errors = {
   status_changed: "The appointment status changed. Reopen your link for the latest details.",
   cancellation_terms_changed: "The cancellation terms changed. Reopen the appointment to review the latest terms.",
 };
+const statusLabels = {
+  awaiting_deposit: "Deposit due", pending_approval: "Awaiting approval", confirmed: "Confirmed",
+  in_progress: "In progress", completed: "Complete", cancelled: "Cancelled", no_show: "No-show",
+};
 let appointment;
 let busy = false;
 
@@ -42,6 +46,11 @@ function render() {
   if (appointment.hasRescheduleRequest) status.textContent += " Your request for a new time is awaiting review.";
   byId("appointment-service").textContent = service;
   byId("appointment-time").textContent = appointmentTime(appointment);
+  byId("appointment-when").textContent = appointmentTime(appointment);
+  const badge = byId("appointment-badge");
+  badge.textContent = statusLabels[appointment.status] || "";
+  badge.dataset.status = appointment.status;
+  badge.hidden = !badge.textContent;
   byId("appointment-address").textContent = address || "Nieman will text you to confirm the address.";
   byId("save-link-hint").hidden = appointment.hasEmail;
   byId("save-appointment-account").hidden = !appointment.hasEmail;

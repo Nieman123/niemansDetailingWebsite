@@ -793,6 +793,12 @@
 
   // Boot
   captureUTMs();
+  // Homepage price tiles link here with ?vehicle= so the first step is already answered.
+  const presetVehicle = new URLSearchParams(location.search).get('vehicle');
+  if (!ceramic && presetVehicle && Object.prototype.hasOwnProperty.call(VEHICLES, presetVehicle)) {
+    state.vehicle = presetVehicle;
+    saveState(state);
+  }
   hydrateSelections();
   wire();
   wireCallFab();

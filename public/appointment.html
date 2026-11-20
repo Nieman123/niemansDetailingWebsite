@@ -6,18 +6,25 @@
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
   <title>Your appointment | Nieman's Detailing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/brand.css?v=20261120">
   <link rel="stylesheet" href="/quote.css">
   <link rel="stylesheet" href="/styles/appointments.css">
 <link rel="stylesheet" href="/styles/booking.css"></head>
 <body class="quote-page appointment-app appointment-customer">
-<header class="customer-bar"><a href="/" aria-label="Nieman’s Detailing home"><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"></a><a href="/schedule">Schedule a detail</a></header>
+<header class="customer-bar"><a href="/" aria-label="Nieman’s Detailing home"><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing" width="300" height="30"></a>
+<nav aria-label="Help"><a href="sms:+18282733894"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Text Nieman</a><a class="hide-sm" href="/account">My appointments</a></nav></header>
   <main class="wrap">
-    <h1>Your appointment</h1>
+    <p class="booking-eyebrow">Your appointment</p>
     <p id="appointment-status" class="appointment-notice" role="status">Opening appointment…</p>
     <article id="appointment-details" class="panel" hidden>
-      <h2 id="appointment-service"></h2>
+      <span id="appointment-badge" class="status-pill" hidden></span>
+      <h1 id="appointment-service"></h1>
+      <p id="appointment-when" class="appointment-when"></p>
       <dl class="appointment-summary">
-        <dt>When</dt><dd id="appointment-time"></dd>
+        <dt hidden>When</dt><dd id="appointment-time" hidden></dd>
         <dt>Where</dt><dd id="appointment-address"></dd>
         <dt id="vehicle-label">Vehicle</dt><dd id="appointment-vehicle"></dd>
         <dt id="estimate-label">Estimated total</dt><dd id="appointment-estimate"></dd>
@@ -55,7 +62,7 @@
       </div>
       <p id="appointment-message" role="status"></p>
     </article>
-    <p><a href="/account">My appointments</a> · <a href="sms:+18282733894">Text Nieman</a></p>
+    <p class="appointment-help"><a href="/account">My appointments</a><a href="sms:+18282733894">Text Nieman</a><a href="tel:+18282733894">Call (828) 273-3894</a></p>
   </main>
   <script type="module" src="/scripts/appointment-page.mjs"></script>
 </body>

@@ -181,7 +181,7 @@ body.nd {
 
 /* ---------- Buttons ---------- */
 
-.btn {
+.nd .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -196,29 +196,29 @@ body.nd {
   transition: background-color .18s var(--nd-ease), border-color .18s var(--nd-ease), color .18s var(--nd-ease), transform .18s var(--nd-ease), box-shadow .18s var(--nd-ease);
   -webkit-tap-highlight-color: transparent;
 }
-.btn:active { transform: translateY(1px); }
-.btn svg { width: 20px; height: 20px; flex-shrink: 0; }
-.btn[disabled], .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; transform: none; }
+.nd .btn:active { transform: translateY(1px); }
+.nd .btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+.nd .btn[disabled], .nd .btn[aria-disabled="true"] { opacity: .5; cursor: not-allowed; transform: none; }
 
-.btn-primary, .nd a.btn-primary { background: var(--nd-purple); color: #fff; box-shadow: 0 8px 24px rgba(107, 63, 216, 0.35); }
-.btn-primary:hover, .nd a.btn-primary:hover { background: var(--nd-purple-hover); color: #fff; }
-.btn-primary:active { background: var(--nd-purple-press); }
+.nd .btn-primary, .nd a.btn-primary { background: var(--nd-purple); color: #fff; box-shadow: 0 8px 24px rgba(107, 63, 216, 0.35); }
+.nd .btn-primary:hover, .nd a.btn-primary:hover { background: var(--nd-purple-hover); color: #fff; }
+.nd .btn-primary:active { background: var(--nd-purple-press); }
 
-.btn-gold, .nd a.btn-gold { background: linear-gradient(180deg, var(--nd-gold-hover), var(--nd-gold)); color: #1a1408; box-shadow: 0 8px 24px rgba(228, 187, 92, 0.22); }
-.btn-gold:hover, .nd a.btn-gold:hover { background: var(--nd-gold-hover); color: #1a1408; }
+.nd .btn-gold, .nd a.btn-gold { background: linear-gradient(180deg, var(--nd-gold-hover), var(--nd-gold)); color: #1a1408; box-shadow: 0 8px 24px rgba(228, 187, 92, 0.22); }
+.nd .btn-gold:hover, .nd a.btn-gold:hover { background: var(--nd-gold-hover); color: #1a1408; }
 
-.btn-ghost, .nd a.btn-ghost { background: rgba(255, 255, 255, 0.04); border-color: var(--nd-line-strong); color: var(--nd-text); }
-.btn-ghost:hover, .nd a.btn-ghost:hover { border-color: var(--nd-gold-line); color: var(--nd-text); background: rgba(255, 255, 255, 0.07); }
+.nd .btn-ghost, .nd a.btn-ghost { background: rgba(255, 255, 255, 0.04); border-color: var(--nd-line-strong); color: var(--nd-text); }
+.nd .btn-ghost:hover, .nd a.btn-ghost:hover { border-color: var(--nd-gold-line); color: var(--nd-text); background: rgba(255, 255, 255, 0.07); }
 
-.btn-quiet, .nd a.btn-quiet { background: transparent; color: var(--nd-purple-text); padding-inline: 8px; min-height: 44px; }
-.btn-quiet:hover, .nd a.btn-quiet:hover { color: var(--nd-gold); }
+.nd .btn-quiet, .nd a.btn-quiet { background: transparent; color: var(--nd-purple-text); padding-inline: 8px; min-height: 44px; }
+.nd .btn-quiet:hover, .nd a.btn-quiet:hover { color: var(--nd-gold); }
 
-.btn-danger, .nd a.btn-danger { background: transparent; border-color: rgba(255, 138, 128, 0.4); color: var(--nd-danger); }
-.btn-danger:hover { background: var(--nd-danger-tint); color: var(--nd-danger); }
+.nd .btn-danger, .nd a.btn-danger { background: transparent; border-color: rgba(255, 138, 128, 0.4); color: var(--nd-danger); }
+.nd .btn-danger:hover { background: var(--nd-danger-tint); color: var(--nd-danger); }
 
-.btn-lg { min-height: 56px; padding: 16px 28px; font-size: 17px; border-radius: 14px; }
-.btn-sm { min-height: 40px; padding: 8px 14px; font-size: 14px; border-radius: 10px; }
-.btn-block { width: 100%; }
+.nd .btn-lg { min-height: 56px; padding: 16px 28px; font-size: 17px; border-radius: 14px; }
+.nd .btn-sm { min-height: 40px; padding: 8px 14px; font-size: 14px; border-radius: 10px; }
+.nd .btn-block { width: 100%; }
 
 .btn-row { display: flex; flex-wrap: wrap; gap: 12px; }
 
@@ -237,7 +237,7 @@ body.nd {
 
 /* ---------- Cards, chips, badges ---------- */
 
-.card {
+.nd .card {
   background: linear-gradient(180deg, var(--nd-surface), var(--nd-bg-raised));
   border: 1px solid var(--nd-line);
   border-radius: var(--nd-radius-lg);
@@ -578,7 +578,7 @@ body.menu-open { overflow: hidden; }
 
 /* ---------- Small screens ---------- */
 
-.btn { white-space: nowrap; }
+.nd .btn { white-space: nowrap; }
 body.nd { overflow-x: clip; }
 @media (max-width: 520px) {
   :root { --nd-header-h: 60px; }
