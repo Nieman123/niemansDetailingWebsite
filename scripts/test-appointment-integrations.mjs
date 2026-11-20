@@ -109,5 +109,13 @@ try {
   assert.equal(await lookup(), null);
   globalThis.fetch = async () => ({ ok: false, status: 503 });
   await assert.rejects(lookup, /stripe_request_503/);
+
+  // Refunds for non-card payment methods come back with pyr_ ids and must still be pollable.
+  const polled = [];
+  globalThis.fetch = async url => { polled.push(new URL(url).pathname); return { ok: true, json: async () => ({ id: 'pyr_test123', status: 'succeeded', amount: 5000 }) }; };
+  assert.equal((await stripe.stripeRefund(config, { id: 'a', intent: 'pi_test', cents: 5000, refundId: 'pyr_test123' })).status, 'succeeded');
+  assert.equal((await stripe.stripeRefund(config, { id: 'a', intent: 'pi_test', cents: 5000, refundId: 're_test123' })).status, 'succeeded');
+  assert.deepEqual(polled, ['/v1/refunds/pyr_test123', '/v1/refunds/re_test123']);
+  assert.throws(() => stripe.stripeRefund(config, { id: 'a', intent: 'pi_test', cents: 5000, refundId: '../charges' }), /invalid_refund_id/);
 } finally { globalThis.fetch = previous; }
 console.log('PASS: Stripe signature and replay checks, stable Checkout requests, provider-verified refund and dispute references, and public booking policy validation.');

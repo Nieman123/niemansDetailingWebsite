@@ -82,7 +82,8 @@ async function findCheckoutAttempt(config, id, attempt, from, until) {
 async function stripeMoneyChange(config, event) {
     const id = event.data.object.id;
     const isRefund = event.type === "charge.refunded";
-    if (!(isRefund ? /^ch_\w+$/ : /^dp_\w+$/).test(id))
+    // Non-card payment methods report charges with a py_ prefix.
+    if (!(isRefund ? /^(ch|py)_\w+$/ : /^dp_\w+$/).test(id))
         return null;
     const object = await stripeRequest(config, `${isRefund ? "charges" : "disputes"}/${id}`);
     if (object.livemode !== false || object.currency !== "usd" || !/^pi_\w+$/.test(object.payment_intent))
@@ -98,7 +99,8 @@ async function stripeMoneyChange(config, event) {
 }
 function stripeRefund(config, input) {
     if (input.refundId) {
-        if (!/^re_\w+$/.test(input.refundId))
+        // Card refunds use re_; other payment methods (Link, Cash App, and so on) use prefixes such as pyr_.
+        if (!/^[a-z]{2,6}_[A-Za-z0-9]+$/.test(input.refundId))
             throw new Error("invalid_refund_id");
         return stripeRequest(config, `refunds/${input.refundId}`);
     }
