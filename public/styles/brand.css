@@ -77,6 +77,8 @@ body.nd {
 
 .nd img, .nd picture, .nd video, .nd svg { max-width: 100%; }
 .nd img { height: auto; display: block; }
+/* The production image build wraps <img> in <picture> for AVIF/WebP; keep layout rules targeting the img. */
+.nd picture { display: contents; }
 
 .nd h1, .nd h2, .nd h3, .nd h4 {
   font-family: var(--nd-font-display);
