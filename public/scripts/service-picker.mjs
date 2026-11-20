@@ -40,6 +40,8 @@ export function servicePicker(container, select, services, { valueFor = service 
     input.addEventListener("change", () => {
       select.value = input.value;
       select.dispatchEvent(new Event("change", { bubbles: true }));
+      const drawer = input.closest("details");
+      if (drawer) drawer.open = true;
     });
     return label;
   }
@@ -47,15 +49,24 @@ export function servicePicker(container, select, services, { valueFor = service 
   const leadGroup = Object.assign(document.createElement("div"), { className: "service-picker__lead" });
   leadGroup.append(...lead.map(service => option(service, "lead")));
   container.append(leadGroup);
+  // Niche services sit in a collapsed drawer so the featured package leads; it opens on its own
+  // whenever one of them is the current choice.
+  let drawer = null;
   if (rest.length || none) {
     const more = Object.assign(document.createElement("div"), { className: "service-picker__more" });
     more.append(...rest.map(service => option(service, "chip")));
     if (none) more.append(option(null, "chip"));
-    container.append(Object.assign(document.createElement("p"), { className: "service-picker__label", textContent: lead.length ? "Other services" : "Services" }), more);
+    drawer = Object.assign(document.createElement("details"), { className: "service-picker__drawer" });
+    const summary = Object.assign(document.createElement("summary"), { className: "service-picker__label" });
+    summary.append(Object.assign(document.createElement("span"), { textContent: lead.length ? "Other services" : "Services" }),
+      Object.assign(document.createElement("span"), { className: "service-picker__count", textContent: String(rest.length + (none ? 1 : 0)) }));
+    drawer.append(summary, more);
+    container.append(drawer);
   }
 
   const sync = () => {
     for (const input of container.querySelectorAll("input")) input.checked = input.value === select.value;
+    if (drawer && drawer.querySelector(".service-picker__more input:checked")) drawer.open = true;
   };
   sync();
   return {
