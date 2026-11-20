@@ -171,7 +171,9 @@ jobs:
           # The reconciliation job runs every 5 minutes, and job photos need Storage rules, so both
           # deploy only once appointments are on.
           if [ "$ENABLE_APPOINTMENTS" = true ]; then targets="$targets,functions:appointmentMaintenance,storage"; fi
-          firebase deploy --non-interactive --config "${FIREBASE_DEPLOY_CONFIG:-firebase.json}" --project "$FIREBASE_PROJECT_ID" --only "$targets"
+          # --force accepts the retry policy on notifyLeadAddonUpdate, which the CLI otherwise refuses
+          # without a prompt. With --only it never deletes functions outside the listed targets.
+          firebase deploy --non-interactive --force --config "${FIREBASE_DEPLOY_CONFIG:-firebase.json}" --project "$FIREBASE_PROJECT_ID" --only "$targets"
 
       - name: Deploy Hosting
         run: firebase deploy --non-interactive --config "${FIREBASE_DEPLOY_CONFIG:-firebase.json}" --project "$FIREBASE_PROJECT_ID" --only hosting
