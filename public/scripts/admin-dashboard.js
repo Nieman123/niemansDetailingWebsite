@@ -144,6 +144,15 @@ function parseDate(value) {
   return null;
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function leadCreatedDate(lead) {
   return parseDate(lead.created_at) || parseDate(lead.ts);
 }

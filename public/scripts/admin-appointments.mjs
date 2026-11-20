@@ -246,6 +246,7 @@ function renderRow(record) {
   const name = Object.assign(document.createElement("strong"), { textContent: record.name + " · " + record.service });
   const when = Object.assign(document.createElement("span"), { textContent: appointmentTime(record) });
   const state = Object.assign(document.createElement("span"), { className: "queue-status", textContent: recordStatus(record) });
+  state.dataset.status = record.status;
   identity.append(name, when, state);
   row.append(dateMark, identity);
   return row;
