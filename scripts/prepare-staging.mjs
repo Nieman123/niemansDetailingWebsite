@@ -73,6 +73,9 @@ function preparePages(directory) {
       if (!isProduction) $('meta[name="firebase-api-key"]').remove();
       const name = path.relative(publicDir, file);
       if (name === 'thank-you.html') $('body').attr('data-booking-handoff', 'true');
+      if (!isProduction && name === path.join('admin', 'appointments.html')) {
+        $('#workspace').prepend('<p class="appointment-notice">Staging preview. Use test customer details and Stripe test cards.</p>');
+      }
       const selectors = copySelectors[name];
       if (selectors) {
         for (const [key, selector] of Object.entries(selectors)) {

@@ -52,7 +52,7 @@ const messages = {
   stripe_config_unavailable: "The booking API could not load a valid APPOINTMENT_STRIPE_CONFIG. Check its latest Secret Manager version and the runtime service account’s access.",
   calendar_config_unavailable: "Stripe configuration loaded. Check APPOINTMENT_GOOGLE_CONFIG, including three distinct calendar IDs and the runtime service account’s access.",
   booking_unavailable: "Stripe and all three calendars must be configured to enable public booking.",
-  checkout_active: "A Stripe Checkout Session is active. Wait for reconciliation before changing payments or cancelling.",
+  checkout_active: "The customer just opened a payment page. Try again in a few minutes.",
   checkout_too_close: "Choose a time at least 36 minutes away to accept a deposit.",
   status_changed: "This appointment changed. Refresh the list and try again.",
   scope_acceptance_required: "Record the agreed scope changes and confirm customer approval for the price increase.",

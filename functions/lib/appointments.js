@@ -17,7 +17,9 @@ const DEPOSIT_CENTS = 5000;
 const ID = /^[\w-]{1,128}$/;
 const HASH = /^[a-f0-9]{64}$/;
 const MINUTE = 60000;
+// Stripe requires a session to stay open at least 30 minutes, so the app ends it itself after the hold.
 const CHECKOUT_WINDOW = 35 * MINUTE;
+const CHECKOUT_HOLD = 10 * MINUTE;
 const POLICY_VERSION = "deposit-v1";
 const DEPOSIT_POLICY = "The $50 deposit applies toward service. Before approval, you can cancel for a full refund. After confirmation, cancel at least 96 hours before the appointment for a refund. Inside 96 hours or for a no-show, the deposit is nonrefundable. An approved reschedule carries your deposit forward without resetting a forfeiture that already applies. If we cancel, you may request a refund or agree to another time.";
 const MANUAL_METHODS = new Set(["cash", "check", "venmo", "cash_app", "other"]);
@@ -255,9 +257,20 @@ async function createAppointment(db, uid, body) {
 async function changeAppointment(db, uid, id, action, body) {
     const ref = db.collection("appointments").doc(id);
     const stripe = action === "issue-link" ? await (0, appointment_stripe_1.stripeConfig)() : null;
-    const previous = await readAppointment(db, id);
+    let previous = await readAppointment(db, id);
     if (!previous)
         throw new AppointmentError(404, "record_not_found");
+    if (action === "cancel" && previous.checkout?.id) {
+        // Cancelling ends an open payment page first. A payment that already went through is recorded
+        // before the cancellation, so its refund follows the normal deposit rules.
+        const config = await (0, appointment_stripe_1.stripeConfig)();
+        if (config) {
+            await applyStripeSession(db, await (0, appointment_stripe_1.releaseStripeSession)(config, previous.checkout.id));
+            previous = await readAppointment(db, id);
+            if (!previous)
+                throw new AppointmentError(404, "record_not_found");
+        }
+    }
     let newStart;
     if (action === "reschedule" || action === "offer-alternate") {
         newStart = validMoveStart(body.start ?? previous.rescheduleRequest?.start);
@@ -778,10 +791,10 @@ async function openCheckout(db, id, body) {
             throw new AppointmentError(409, "checkout_too_close");
         const kind = deposit ? "deposit" : "balance";
         const checkout = {
-            attempt: (0, node_crypto_1.randomBytes)(16).toString("hex"), kind, expiresAt, amount, origin,
+            attempt: (0, node_crypto_1.randomBytes)(16).toString("hex"), kind, expiresAt, amount, origin, holdUntil: now + CHECKOUT_HOLD,
             disclosure: deposit ? DEPOSIT_POLICY : "Pay the outstanding balance for your completed detail.",
         };
-        tx.update(ref, { checkout, reconcileAt: expiresAt,
+        tx.update(ref, { checkout, reconcileAt: checkout.holdUntil,
             ...(deposit ? { policyVersion: POLICY_VERSION, acceptedPolicy: DEPOSIT_POLICY, acceptedAt: now } : {}),
         });
         return checkout;
@@ -885,7 +898,13 @@ async function reconcileAppointments(db) {
                     throw new Error("stripe_unavailable");
                 const checkout = appointment.checkout;
                 if (checkout.id) {
-                    await applyStripeSession(db, await (0, appointment_stripe_1.stripeSession)(config, checkout.id));
+                    const holdOver = (checkout.holdUntil ?? checkout.expiresAt) <= now;
+                    await applyStripeSession(db, holdOver ? await (0, appointment_stripe_1.releaseStripeSession)(config, checkout.id) : await (0, appointment_stripe_1.stripeSession)(config, checkout.id));
+                }
+                else if (checkout.expiresAt > now) {
+                    // The session ID was never saved, so it can only be found once Stripe's own expiry has passed.
+                    await doc.ref.update({ reconcileAt: checkout.expiresAt });
+                    continue;
                 }
                 else if (checkout.expiresAt <= now) {
                     const session = await (0, appointment_stripe_1.findCheckoutAttempt)(config, doc.id, checkout.attempt, checkout.expiresAt - CHECKOUT_WINDOW - MINUTE, checkout.expiresAt);

@@ -130,6 +130,26 @@ try {
   assert.deepEqual(polled, ['/v1/refunds/pyr_test123', '/v1/refunds/re_test123']);
   assert.throws(() => stripe.stripeRefund(config, { id: 'a', intent: 'pi_test', cents: 5000, refundId: '../charges' }), /invalid_refund_id/);
 } finally { globalThis.fetch = previous; }
+// An abandoned payment page is ended early; if Stripe says it already finished, its current state is used.
+{
+  const previousFetch = globalThis.fetch;
+  const calls = [];
+  const config = { secretKey: 'sk_test_sample', webhookSecret: secret };
+  try {
+    globalThis.fetch = async (url, { method }) => { calls.push(`${method} ${new URL(url).pathname}`);
+      return { ok: true, json: async () => ({ id: 'cs_test_hold', status: 'expired' }) }; };
+    assert.equal((await stripe.releaseStripeSession(config, 'cs_test_hold')).status, 'expired');
+    assert.deepEqual(calls, ['POST /v1/checkout/sessions/cs_test_hold/expire']);
+    calls.length = 0;
+    globalThis.fetch = async (url, { method }) => { calls.push(`${method} ${new URL(url).pathname}`);
+      return method === 'POST' ? { ok: false, status: 400, json: async () => ({ error: { code: 'checkout_session_complete' } }) }
+        : { ok: true, json: async () => ({ id: 'cs_test_hold', status: 'complete' }) }; };
+    assert.equal((await stripe.releaseStripeSession(config, 'cs_test_hold')).status, 'complete');
+    assert.deepEqual(calls, ['POST /v1/checkout/sessions/cs_test_hold/expire', 'GET /v1/checkout/sessions/cs_test_hold']);
+    await assert.rejects(stripe.releaseStripeSession(config, '../charges'), /invalid_stripe_session/);
+  } finally { globalThis.fetch = previousFetch; }
+}
+
 // Production runs with APPOINTMENTS_MODE=live: only live keys, sessions and events are accepted there,
 // and test ones are rejected, so neither environment can act on the other's payments.
 const secrets = await import('../functions/lib/appointment-secrets.js');
@@ -148,4 +168,4 @@ try {
   delete process.env.FUNCTIONS_EMULATOR;
 }
 assert.equal(stripe.isSessionId('cs_live_abc'), false);
-console.log('PASS: Stripe signature and replay checks, stable Checkout requests, provider-verified refund and dispute references, and public booking policy validation, plus live/test mode separation.');
+console.log('PASS: Stripe signature and replay checks, stable Checkout requests, provider-verified refund and dispute references, and public booking policy validation, releasing abandoned checkouts, plus live/test mode separation.');

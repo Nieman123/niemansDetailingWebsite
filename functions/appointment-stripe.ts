@@ -106,6 +106,17 @@ export function isSessionId(id: string) {
   return (liveMode() ? /^cs_live_\w+$/ : /^cs_test_\w+$/).test(id);
 }
 
+// Ends an open session early so an abandoned payment page stops holding the appointment.
+// Stripe refuses to expire a session that already completed or expired; then return its current state.
+export async function releaseStripeSession(config: StripeConfig, id: string) {
+  if (!isSessionId(id)) throw new Error("invalid_stripe_session");
+  try {
+    return await stripeRequest<StripeSession>(config, `checkout/sessions/${id}/expire`, {});
+  } catch {
+    return stripeSession(config, id);
+  }
+}
+
 export function stripeSession(config: StripeConfig, id: string) {
   if (!isSessionId(id)) throw new Error("invalid_stripe_session");
   return stripeRequest<StripeSession>(config, `checkout/sessions/${id}`);
