@@ -3,6 +3,7 @@ import { createHmac } from 'node:crypto';
 import stripe from '../functions/lib/appointment-stripe.js';
 import booking from '../functions/lib/appointment-booking.js';
 import calendarSync from '../functions/lib/appointment-calendar.js';
+import emailTemplate from '../functions/lib/appointment-email-template.js';
 
 const now = Date.parse('2027-01-17T13:00:00Z');
 const timestamp = Math.trunc(now / 1000);
@@ -167,5 +168,15 @@ try {
   delete process.env.APPOINTMENTS_MODE;
   delete process.env.FUNCTIONS_EMULATOR;
 }
+{
+  const content = { eyebrow: 'Confirmed', heading: "You're on the schedule", paragraphs: ['Detail <b>confirmed</b> & ready.'],
+    details: [['Address', '12 Elm St & Co']], action: { label: 'Open', url: 'https://example.test/appointment#a.b' }, note: 'Before I arrive: clear the seats' };
+  const html = emailTemplate.emailHtml(content, 'Subject');
+  for (const piece of ['Detail &lt;b&gt;confirmed&lt;/b&gt; &amp; ready.', '12 Elm St &amp; Co', 'href="https://example.test/appointment#a.b"', 'ND-logo-white-transparentbg-horizontal.png']) {
+    assert.ok(html.includes(piece), piece);
+  }
+  const text = emailTemplate.emailText(content);
+  for (const piece of ['Address: 12 Elm St & Co', 'Open: https://example.test/appointment#a.b', '(828) 273-3894']) assert.ok(text.includes(piece), piece);
+}
 assert.equal(stripe.isSessionId('cs_live_abc'), false);
-console.log('PASS: Stripe signature and replay checks, stable Checkout requests, provider-verified refund and dispute references, and public booking policy validation, releasing abandoned checkouts, plus live/test mode separation.');
+console.log('PASS: Stripe signature and replay checks, stable Checkout requests, provider-verified refund and dispute references, and public booking policy validation, releasing abandoned checkouts, branded email rendering, plus live/test mode separation.');

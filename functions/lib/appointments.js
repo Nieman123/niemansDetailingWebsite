@@ -8,6 +8,7 @@ const node_crypto_1 = require("node:crypto");
 const firebase_functions_1 = require("firebase-functions");
 const appointment_email_1 = require("./appointment-email");
 const appointment_secrets_1 = require("./appointment-secrets");
+const appointment_email_template_1 = require("./appointment-email-template");
 const appointment_content_1 = require("./appointment-content");
 const appointment_calendar_1 = require("./appointment-calendar");
 const appointment_booking_1 = require("./appointment-booking");
@@ -174,7 +175,12 @@ function prepareMaintenanceInvite(db, tx, id, appointment, through, sendEmail) {
     const url = `${checkoutOrigin()}/maintenance#${id}.${token}`;
     tx.update(db.collection("appointments").doc(id), { maintenanceInvite: { hash, through }, maintenanceInvitedAt: Date.now() });
     if (sendEmail)
-        (0, appointment_email_1.queueAppointmentEmail)(db, tx, `maintenance-${id}-${hash.slice(0, 16)}`, appointment.email, "Monthly maintenance detailing invitation", `Review and request monthly detailing by ${through}: ${url}\n\nEach visit is paid separately.`, { appointmentId: id, inviteHash: hash });
+        (0, appointment_email_1.queueAppointmentEmail)(db, tx, `maintenance-${id}-${hash.slice(0, 16)}`, appointment.email, "Your monthly maintenance invitation", {
+            eyebrow: "Monthly maintenance", heading: "Keep it looking this good",
+            paragraphs: [`Thanks for trusting me with your ${appointment.vehicle || "vehicle"}. You're invited to monthly maintenance details that keep it fresh between full details.`,
+                `Review the plan and request your visits by ${through}.`],
+            action: { label: "See monthly maintenance", url }, note: "Each visit is paid separately.",
+        }, { appointmentId: id, inviteHash: hash });
     return url;
 }
 function queueOptedInMaintenance(db, tx, id, appointment) {
@@ -299,7 +305,11 @@ async function changeAppointment(db, uid, id, action, body) {
             }
             const offer = { start: newStart, offeredAt: now, expiresAt: Math.min(appointment.start, newStart, now + DAY) };
             tx.update(ref, { alternateOffer: offer, alternateOfferedBy: uid });
-            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `alternate-${id}-${now}`, appointment.email, "A different time for your detail", "Nieman proposed a different time for your detail. Open your appointment link to review the offer.");
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `alternate-${id}-${now}`, appointment.email, "A different time for your detail", {
+                eyebrow: "New time offered", heading: "Can we try a different time?",
+                paragraphs: ["Your requested time didn't work out, so I've offered another one. Open your appointment link to accept it.", LINK_HINT],
+                details: emailFacts(appointment, newStart),
+            });
             return adminDetails(id, { ...appointment, alternateOffer: offer });
         }
         if (action === "reschedule") {
@@ -318,7 +328,11 @@ async function changeAppointment(db, uid, id, action, body) {
             };
             tx.create(ref.collection("history").doc(), { kind: "reschedule", from: appointment.start, to: moved.start, at: now, by: uid });
             tx.update(ref, update);
-            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `moved-${id}-${update.calendarSequence}`, appointment.email, "Your detailing appointment time changed", "Your appointment has moved. Open your appointment link to see the updated time and calendar options.");
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `moved-${id}-${update.calendarSequence}`, appointment.email, "Your detailing appointment time changed", {
+                eyebrow: "Rescheduled", heading: "Your appointment has a new time",
+                paragraphs: ["Your detail has moved. Here's the updated time.", LINK_HINT],
+                details: emailFacts(moved),
+            });
             return adminDetails(id, { ...appointment, ...update, rescheduleRequest: undefined });
         }
         if (action === "reject-reschedule") {
@@ -344,7 +358,11 @@ async function changeAppointment(db, uid, id, action, body) {
             }
             const update = { status: "confirmed", confirmedAt: now, confirmedBy: uid, depositLockedAt: depositLock(appointment, now), reconcileAt: null, ...calendarUpdate(now) };
             tx.update(ref, update);
-            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `approved-${id}`, appointment.email, "Your detailing appointment is confirmed", "Your appointment is confirmed. Open your appointment link to review the time, preparation notes, and Add to calendar options.");
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `approved-${id}`, appointment.email, "Your detailing appointment is confirmed", {
+                eyebrow: "Confirmed", heading: "You're on the schedule",
+                paragraphs: ["Your detail is confirmed. I come to you, so just make sure the vehicle is accessible.", LINK_HINT],
+                details: emailFacts(appointment), ...preparationNote(appointment),
+            });
             return adminDetails(id, { ...appointment, ...update });
         }
         if (action === "no-show") {
@@ -464,7 +482,11 @@ async function changeAppointment(db, uid, id, action, body) {
         tx.update(ref, { linkHash: digest(token), linkExpiresAt: appointment.end + 30 * DAY, linkUpdatedAt: now, linkUpdatedBy: uid });
         if (body.sendEmail === true) {
             const url = `${checkoutOrigin()}/appointment#${id}.${token}`;
-            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `share-${id}-${now}`, appointment.email, "Your detailing appointment details", `View the details and status of your ${appointment.service} appointment here: ${url}`);
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `share-${id}-${now}`, appointment.email, "Your detailing appointment details", {
+                eyebrow: "Your appointment", heading: "Here's your appointment",
+                paragraphs: ["Open your appointment to see its status, add it to your calendar, pay a balance, or request a change."],
+                details: emailFacts(appointment), action: { label: "Open my appointment", url },
+            });
         }
         return { token };
     });
@@ -495,7 +517,11 @@ async function acceptAlternate(db, id, body) {
         };
         tx.create(ref.collection("history").doc(), { kind: "accepted_alternate", from: appointment.start, to: moved.start, at: now, by: "customer_link" });
         tx.update(ref, update);
-        (0, appointment_email_1.queueAppointmentEmail)(db, tx, `approved-${id}`, appointment.email, "Your detailing appointment is confirmed", "Your new appointment time is confirmed. Open your appointment link to review the time, preparation notes, and Add to calendar options.");
+        (0, appointment_email_1.queueAppointmentEmail)(db, tx, `approved-${id}`, appointment.email, "Your detailing appointment is confirmed", {
+            eyebrow: "Confirmed", heading: "Your new time is locked in",
+            paragraphs: ["Thanks for being flexible. Your detail is confirmed for the new time.", LINK_HINT],
+            details: emailFacts(moved), ...preparationNote(appointment),
+        });
         return customerDetails({ ...appointment, ...update, alternateOffer: undefined, rescheduleRequest: undefined });
     });
 }
@@ -696,7 +722,12 @@ async function publicBooking(db, auth, req, body) {
         tx.create(ref, { ...record, bookingChannel: "public", acceptedAt: now });
         for (const throttle of throttles)
             tx.set(throttle, { until: deadline, appointmentId: id });
-        (0, appointment_email_1.queueAppointmentEmail)(db, tx, `request-${id}`, email, "Continue your detailing appointment request", `Open your appointment to pay the deposit and follow its status: ${checkoutOrigin()}/appointment#${id}.${token}`);
+        (0, appointment_email_1.queueAppointmentEmail)(db, tx, `request-${id}`, email, "Finish booking your detail", {
+            eyebrow: "Almost booked", heading: "Lock in your time with the deposit",
+            paragraphs: [`Thanks, ${record.name.split(" ")[0] || "there"}! Pay the ${emailMoney(record.depositCents)} deposit to hold your spot. It goes toward the cost of your detail.`,
+                "Keep this email. The button below is your link to check status, add the appointment to your calendar, or request a change."],
+            details: emailFacts(record), action: { label: "Pay deposit and view appointment", url: `${checkoutOrigin()}/appointment#${id}.${token}` },
+        });
         return { id, ...customerDetails(record) };
     });
 }
@@ -739,8 +770,27 @@ async function cancelAppointment(db, tx, id, appointment, actor, override, reaso
         depositLockedAt: locked, reconcileAt: null,
         ...(refund ? { refund, refundAt: now } : {}), ...calendarUpdate(now), };
     tx.update(db.collection("appointments").doc(id), update);
-    (0, appointment_email_1.queueAppointmentEmail)(db, tx, `cancel-${id}`, appointment.email, "Your detailing appointment was cancelled", refund ? "Your appointment was cancelled and your deposit refund has been requested." : "Your detailing appointment was cancelled. Contact Nieman if you need to book a different time.");
+    (0, appointment_email_1.queueAppointmentEmail)(db, tx, `cancel-${id}`, appointment.email, "Your detailing appointment was cancelled", {
+        eyebrow: "Cancelled", heading: "Your appointment was cancelled",
+        paragraphs: [refund ? "Your appointment is cancelled and your deposit refund has been requested. Refunds usually reach your account within 5 to 10 business days."
+                : "Your appointment is cancelled. If you'd like a different time, book again anytime or call or text me."],
+        details: emailFacts(appointment), action: { label: "Book a new time", url: `${(0, appointment_email_template_1.emailSiteOrigin)()}/quote` },
+    });
     return { ...appointment, ...update };
+}
+const emailWhenFormat = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
+});
+const emailMoney = (cents) => `${(cents / 100).toFixed(2)}`;
+const LINK_HINT = "Use the appointment link from your booking email to see everything, add it to your calendar, or request a change.";
+const preparationNote = (appointment) => appointment.preparation ? { note: `Before I arrive: ${appointment.preparation}` } : {};
+// The appointment at a glance, for the details card in customer emails.
+function emailFacts(appointment, start = appointment.start) {
+    const facts = [
+        ["Service", appointment.service], ["When", emailWhenFormat.format(start)],
+        ["Vehicle", appointment.vehicle], ["Address", appointment.address],
+    ];
+    return facts.filter(([, value]) => !!value);
 }
 function checkoutOrigin() {
     const origin = process.env.HOSTING_ORIGIN ?? "";
@@ -842,7 +892,12 @@ async function applyStripeSession(db, session) {
             const paid = { ...appointment, payments: [...(appointment.payments ?? []), entry] };
             tx.update(ref, { checkout: null, reconcileAt: null, payments: paid.payments });
             queueOptedInMaintenance(db, tx, id, paid);
-            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `receipt-${session.id}`, appointment.email, "Detailing payment received", `We received your payment of $${(checkout.amount / 100).toFixed(2)} for ${appointment.service}.`);
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `receipt-${session.id}`, appointment.email, "Detailing payment received", {
+                eyebrow: "Receipt", heading: "Payment received. Thank you!",
+                paragraphs: [`I received your payment of ${emailMoney(checkout.amount)}. It was a pleasure taking care of your ${appointment.vehicle || "vehicle"}.`],
+                details: [["Paid", emailMoney(checkout.amount)], ...emailFacts(appointment)],
+                action: { label: "Book your next detail", url: `${(0, appointment_email_template_1.emailSiteOrigin)()}/quote` },
+            });
         }
         else {
             const late = appointment.start <= now;
@@ -853,8 +908,18 @@ async function applyStripeSession(db, session) {
                 ...(late ? { refund: { state: "queued", requestedAt: now }, refundAt: now, cancellationReason: "Payment settled after the appointment start." } : {}),
                 ...calendarUpdate(now),
             });
-            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `receipt-${session.id}`, appointment.email, "Detailing deposit received", late ? "The deposit arrived after the appointment start, and a refund has been queued." :
-                `Your $50 deposit was received. ${status === "confirmed" ? "Your appointment is confirmed." : "Your appointment is pending approval."}`);
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `receipt-${session.id}`, appointment.email, "Detailing deposit received", late ? {
+                eyebrow: "Refund on the way", heading: "Your deposit arrived too late",
+                paragraphs: ["The deposit came through after the appointment start time, so a refund has been requested. Book a new time anytime."],
+                details: [["Refunding", emailMoney(checkout.amount)], ...emailFacts(appointment)],
+                action: { label: "Book a new time", url: `${(0, appointment_email_template_1.emailSiteOrigin)()}/quote` },
+            } : {
+                eyebrow: "Deposit received", heading: status === "confirmed" ? "You're booked!" : "Deposit received. You're almost set",
+                paragraphs: [status === "confirmed" ? `Your ${emailMoney(checkout.amount)} deposit is in and your detail is confirmed.`
+                        : `Your ${emailMoney(checkout.amount)} deposit is in. I'll review your request and confirm it shortly, and you'll get an email when I do.`, LINK_HINT],
+                details: [["Deposit paid", emailMoney(checkout.amount)], ...emailFacts(appointment)],
+                ...(status === "confirmed" ? preparationNote(appointment) : {}),
+            });
         }
     });
 }
