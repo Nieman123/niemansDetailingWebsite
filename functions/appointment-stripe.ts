@@ -47,12 +47,42 @@ async function stripeRequest<T>(config: StripeConfig, path: string, body?: Recor
   return await response.json() as T;
 }
 
-export function createStripeSession(config: StripeConfig, input: {
+// Hosted Checkout matches the site: dark ground, royal purple button, Inter, logo and icon from the site.
+export function checkoutBranding(origin: string): Record<string, string> {
+  return {
+    "branding_settings[background_color]": "#0a0912",
+    "branding_settings[button_color]": "#6b3fd8",
+    "branding_settings[border_style]": "rounded",
+    "branding_settings[font_family]": "inter",
+    "branding_settings[display_name]": "Nieman's Detailing",
+    "branding_settings[logo][type]": "url",
+    "branding_settings[logo][url]": `${origin}/images/ND-logo-white-transparentbg-horizontal.png`,
+    "branding_settings[icon][type]": "url",
+    "branding_settings[icon][url]": `${origin}/admin/appointment-icon-512.png`,
+  };
+}
+
+export async function createStripeSession(config: StripeConfig, input: {
   id: string; attempt: string; origin: string; kind: "deposit" | "balance";
   amount: number; expiresAt: number; disclosure: string;
 }) {
+  const { id, attempt, origin } = input;
+  const body = checkoutSessionBody(input);
+  try {
+    return await stripeRequest<StripeSession>(config, "checkout/sessions", { ...body, ...checkoutBranding(origin) }, `detail-${id}-${attempt}-branded`);
+  } catch (error) {
+    // Branding is cosmetic: if Stripe rejects it, still take the payment with Dashboard branding.
+    if (!(error instanceof Error) || !error.message.startsWith("stripe_request_400")) throw error;
+    return stripeRequest<StripeSession>(config, "checkout/sessions", body, `detail-${id}-${attempt}`);
+  }
+}
+
+function checkoutSessionBody(input: {
+  id: string; attempt: string; origin: string; kind: "deposit" | "balance";
+  amount: number; expiresAt: number; disclosure: string;
+}): Record<string, string> {
   const { id, attempt, origin, kind, amount, expiresAt, disclosure } = input;
-  return stripeRequest<StripeSession>(config, "checkout/sessions", {
+  return {
     mode: "payment",
     "line_items[0][quantity]": "1",
     "line_items[0][price_data][currency]": "usd",
@@ -67,7 +97,7 @@ export function createStripeSession(config: StripeConfig, input: {
     expires_at: String(Math.floor(expiresAt / 1000)),
     success_url: `${origin}/appointment?checkout=complete`,
     cancel_url: `${origin}/appointment?checkout=back`,
-  }, `detail-${id}-${attempt}`);
+  };
 }
 
 export function stripeSession(config: StripeConfig, id: string) {

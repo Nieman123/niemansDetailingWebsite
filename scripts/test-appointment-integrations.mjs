@@ -62,6 +62,18 @@ try {
   assert.equal(calls[0].body.get('line_items[0][price_data][unit_amount]'), '5000');
   assert(![...calls[0].body.keys()].some(key => key.split('[')[0] === 'payment_method_types'));
   assert.equal(calls[0].body.get('success_url'), 'https://example-test.web.app/appointment?checkout=complete');
+  assert.equal(calls[0].body.get('branding_settings[button_color]'), '#6b3fd8');
+  assert.equal(calls[0].body.get('branding_settings[logo][url]'), 'https://example-test.web.app/images/ND-logo-white-transparentbg-horizontal.png');
+  // If Stripe rejects the branding, the session is still created without it.
+  const brandingCalls = [];
+  globalThis.fetch = async (url, init) => {
+    brandingCalls.push(init);
+    if (String(init.body).includes('branding_settings')) return { ok: false, status: 400, json: async () => ({ error: { code: 'parameter_unknown' } }) };
+    return { ok: true, json: async () => ({ id: 'cs_test_plain', livemode: false }) };
+  };
+  assert.equal((await stripe.createStripeSession({ secretKey: 'sk_test_sample', webhookSecret: secret }, options)).id, 'cs_test_plain');
+  assert.equal(brandingCalls.length, 2);
+  assert(!String(brandingCalls[1].body).includes('branding_settings'));
 
   const changePayloads = {
     '/v1/charges/ch_test_charge': { livemode: false, currency: 'usd', payment_intent: 'pi_test_payment', amount_refunded: 1500 },

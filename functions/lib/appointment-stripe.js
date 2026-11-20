@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.stripeConfig = stripeConfig;
+exports.checkoutBranding = checkoutBranding;
 exports.createStripeSession = createStripeSession;
 exports.stripeSession = stripeSession;
 exports.findCheckoutAttempt = findCheckoutAttempt;
@@ -36,9 +37,36 @@ async function stripeRequest(config, path, body, key) {
     }
     return await response.json();
 }
-function createStripeSession(config, input) {
+// Hosted Checkout matches the site: dark ground, royal purple button, Inter, logo and icon from the site.
+function checkoutBranding(origin) {
+    return {
+        "branding_settings[background_color]": "#0a0912",
+        "branding_settings[button_color]": "#6b3fd8",
+        "branding_settings[border_style]": "rounded",
+        "branding_settings[font_family]": "inter",
+        "branding_settings[display_name]": "Nieman's Detailing",
+        "branding_settings[logo][type]": "url",
+        "branding_settings[logo][url]": `${origin}/images/ND-logo-white-transparentbg-horizontal.png`,
+        "branding_settings[icon][type]": "url",
+        "branding_settings[icon][url]": `${origin}/admin/appointment-icon-512.png`,
+    };
+}
+async function createStripeSession(config, input) {
+    const { id, attempt, origin } = input;
+    const body = checkoutSessionBody(input);
+    try {
+        return await stripeRequest(config, "checkout/sessions", { ...body, ...checkoutBranding(origin) }, `detail-${id}-${attempt}-branded`);
+    }
+    catch (error) {
+        // Branding is cosmetic: if Stripe rejects it, still take the payment with Dashboard branding.
+        if (!(error instanceof Error) || !error.message.startsWith("stripe_request_400"))
+            throw error;
+        return stripeRequest(config, "checkout/sessions", body, `detail-${id}-${attempt}`);
+    }
+}
+function checkoutSessionBody(input) {
     const { id, attempt, origin, kind, amount, expiresAt, disclosure } = input;
-    return stripeRequest(config, "checkout/sessions", {
+    return {
         mode: "payment",
         "line_items[0][quantity]": "1",
         "line_items[0][price_data][currency]": "usd",
@@ -53,7 +81,7 @@ function createStripeSession(config, input) {
         expires_at: String(Math.floor(expiresAt / 1000)),
         success_url: `${origin}/appointment?checkout=complete`,
         cancel_url: `${origin}/appointment?checkout=back`,
-    }, `detail-${id}-${attempt}`);
+    };
 }
 function stripeSession(config, id) {
     if (!/^cs_test_\w+$/.test(id))
