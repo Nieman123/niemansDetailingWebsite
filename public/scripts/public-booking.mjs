@@ -1,5 +1,6 @@
 import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { slotPicker } from "./slot-picker.mjs";
+import { servicePicker } from "./service-picker.mjs";
 import { appointmentRequest, appointmentMoney, appointmentTime, durationLabel, vehicleLabels } from "./appointment-utils.mjs";
 
 const el = id => document.getElementById(id);
@@ -7,7 +8,7 @@ const form = el("public-booking");
 const fields = form.elements;
 const state = el("booking-state");
 const retry = el("booking-retry");
-let options, quote, quoteReceipt, service, start, calendar;
+let options, quote, quoteReceipt, service, start, calendar, picker;
 let saving = false;
 let reuseQuoteContact = false;
 const makeToken = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, "0")).join("");
@@ -62,8 +63,16 @@ function showSummary() {
   el("contact-cost").textContent = service.name + " · " + estimate + " estimated · " + deposit + " deposit";
   el("summary-time").textContent = start ? appointmentTime({ start, end: start + duration * 60000 }) : "Choose a date and start time.";
 }
+const vehicleChoices = [...document.querySelectorAll('[name="vehicleChoice"]')];
+const syncVehicle = () => vehicleChoices.forEach(input => { input.checked = input.value === fields.vehicleType.value; });
+vehicleChoices.forEach(input => input.addEventListener("change", () => {
+  fields.vehicleType.value = input.value;
+  fields.vehicleType.dispatchEvent(new Event("change"));
+}));
 fields.vehicleType.onchange = () => {
   el("vehicle-selection-hint").textContent = "";
+  syncVehicle();
+  picker?.refreshPrices();
   if (service) showSummary();
 };
 
@@ -83,7 +92,7 @@ function getReceipt() {
 function loadMonth() {
   service = options.services.find(item => item.id === fields.serviceId.value);
   el("schedule-calendar").hidden = !service;
-  el("booking-vehicle").hidden = !service;
+  el("booking-vehicle").hidden = false;
   el("service-facts").hidden = !service;
   el("schedule-summary").hidden = !service;
   if (!service) {
@@ -120,11 +129,14 @@ async function begin() {
             fields.serviceId.prepend(new Option("Choose a service", ""));
             fields.serviceId.value = "";
           }
-          if (quote.vehicle) fields.vehicleType.value = quote.vehicle;
+          if (quote.vehicle) { fields.vehicleType.value = quote.vehicle; syncVehicle(); }
           setQuoteContact(!!quote.phoneEnding);
         }
       } catch {}
     }
+    const featured = options.services.find(item => item.featured) ?? options.services[0];
+    if (!quote && featured) fields.serviceId.value = featured.id;
+    picker = servicePicker(el("service-picker"), fields.serviceId, options.services, { vehicle: () => fields.vehicleType.value });
     await auth.authStateReady();
     if (auth.currentUser?.emailVerified) { fields.email.value = auth.currentUser.email || ""; fields.email.readOnly = true; }
     el("public-policy").textContent = options.depositPolicy;
@@ -142,9 +154,10 @@ async function begin() {
         showSummary();
       },
       onSelect(value) {
-        if (!fields.vehicleType.reportValidity()) {
+        if (fields.vehicleType.required && !fields.vehicleType.value) {
           calendar.clearSelection();
           el("vehicle-selection-hint").textContent = errors.vehicle_required;
+          vehicleChoices[0]?.focus();
           return;
         }
         start = value;

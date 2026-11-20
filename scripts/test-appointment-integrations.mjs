@@ -29,6 +29,14 @@ assert.equal(booking.parseBookingSettings({ ...settings, services: [{ ...service
 assert.equal(booking.bookingSlots(settings, '2027-01-18', service, now)[0], Date.parse('2027-01-18T14:00:00Z'));
 assert.equal(booking.bookingSlots({ ...settings, blockedDates: ['2027-01-18'] }, '2027-01-18', service, now).length, 0);
 assert.equal(booking.bookingSlots(settings, '2027-01-19', service, now).length, 0);
+// Per-day hours override the default open time and validate their own ranges.
+const weekend = { ...settings, days: [1, 6], hours: { '6': { open: '11:00', close: '17:00' } } };
+assert(booking.parseBookingSettings(weekend).hours['6']);
+assert.equal(booking.bookingSlots(weekend, '2027-01-23', service, now)[0], Date.parse('2027-01-23T16:00:00Z'));
+assert.equal(booking.bookingSlots(weekend, '2027-01-18', service, now)[0], Date.parse('2027-01-18T14:00:00Z'));
+assert.equal(booking.parseBookingSettings({ ...settings, hours: { '6': { open: '12:00', close: '11:00' } } }), null);
+assert.equal(booking.parseBookingSettings({ ...settings, hours: { '7': { open: '09:00', close: '11:00' } } }), null);
+assert.equal(booking.parseBookingSettings({ ...settings, services: [{ ...service, featured: true, description: 'Inside and out' }] }).services[0].featured, true);
 
 const previous = globalThis.fetch;
 const calls = [];

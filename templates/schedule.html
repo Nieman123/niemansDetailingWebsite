@@ -12,13 +12,21 @@
 <ol class="booking-steps" id="booking-steps" aria-label="Booking progress"><li class="is-current" aria-current="step">Pick a time</li><li>Your details</li><li>$50 deposit</li></ol>
 <p id="booking-state" role="status">Checking availability…</p><button id="booking-retry" type="button" class="btn secondary" hidden>Try again</button>
 <form id="public-booking" hidden><div class="booking-layout"><div class="booking-work">
-<section id="pick-time"><label class="field service-select"><span>Service</span><select name="serviceId" required></select></label>
-<label class="field" id="booking-vehicle"><span>Vehicle size</span><select name="vehicleType">
+<section id="pick-time">
+<fieldset class="picker-field" id="booking-vehicle"><legend>What are you driving?</legend>
+<div class="vehicle-picker" id="vehicle-picker">
+  <label class="vehicle-choice"><input class="sr-only" type="radio" name="vehicleChoice" value="sedan"><span>Sedan or coupe</span></label>
+  <label class="vehicle-choice"><input class="sr-only" type="radio" name="vehicleChoice" value="suv_truck"><span>SUV or truck</span></label>
+  <label class="vehicle-choice"><input class="sr-only" type="radio" name="vehicleChoice" value="van_3row"><span>Van or 3-row</span></label>
+</div>
+<select name="vehicleType" hidden tabindex="-1">
   <option value="">Choose your vehicle</option>
   <option value="sedan">Sedan / coupe</option>
   <option value="suv_truck">SUV / truck</option>
   <option value="van_3row">3-row SUV / full-size truck / van</option>
-</select></label><p id="vehicle-selection-hint" role="status"></p><p id="service-facts" class="mobile-facts"></p>
+</select></fieldset><p id="vehicle-selection-hint" role="status"></p>
+<fieldset class="picker-field service-select"><legend>Choose your service</legend><div id="service-picker"></div><select name="serviceId" hidden tabindex="-1"></select>
+<p class="service-picker__custom">Paint correction, ceramic coating, or odor removal? <a href="/quote">Get a custom quote</a> or <a href="/ceramic-quote">plan a ceramic coating</a>.</p></fieldset><p id="service-facts" class="mobile-facts"></p>
 <div id="schedule-calendar"><div class="month-nav"><h2 id="month-title"></h2><div><button type="button" id="prev-month" aria-label="Previous month"><span aria-hidden="true" class="chevron previous"></span></button><button type="button" id="next-month" aria-label="Next month"><span aria-hidden="true" class="chevron"></span></button></div></div>
 <div class="weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
 <div id="days" class="month-grid" role="group" aria-labelledby="month-title"></div>

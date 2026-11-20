@@ -58,13 +58,13 @@
             <p class="sub">Enter at least one contact method.</p>
             <label class="field"><span>Service address</span><input name="address" maxlength="400" autocomplete="off"></label>
             <div class="appointment-fields">
-              <label class="field"><span>Service <small>Optional</small></span><select name="service"><option value="">Choose later</option></select></label>
+              <label class="field"><span>Vehicle size <small>Optional</small></span><select name="vehicleType">
+                <option value="">Choose later</option><option value="sedan">Sedan / coupe</option><option value="suv_truck">SUV / truck</option>
+                <option value="van_3row">3-row SUV / full-size truck / van</option>
+              </select></label>
               <label class="field"><span>Vehicle details <small>Optional</small></span><input name="vehicle" maxlength="150" placeholder="Year, make and model"></label>
             </div>
-            <label class="field"><span>Vehicle size <small>Optional</small></span><select name="vehicleType">
-              <option value="">Choose later</option><option value="sedan">Sedan / coupe</option><option value="suv_truck">SUV / truck</option>
-              <option value="van_3row">3-row SUV / full-size truck / van</option>
-            </select></label>
+            <fieldset class="picker-field"><legend>Service</legend><div id="owner-service-picker"></div><select name="service" hidden tabindex="-1"><option value="">Choose later</option></select></fieldset>
             <label class="field"><span>Appointment length</span><select name="durationMinutes" required><option value="60">1 hour</option></select></label>
             <div id="owner-slot-calendar" class="owner-slot-calendar">
               <div class="month-nav">
@@ -102,19 +102,9 @@
           <label class="appointment-checkbox"><input name="enabled" type="checkbox"> Enable public booking</label>
           <fieldset>
             <legend>Weekly hours (Eastern)</legend>
-            <div class="appointment-actions">
-              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="1"> Mon</label>
-              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="2"> Tue</label>
-              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="3"> Wed</label>
-              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="4"> Thu</label>
-              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="5"> Fri</label>
-              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="6"> Sat</label>
-              <label class="appointment-checkbox"><input name="weekday" type="checkbox" value="0"> Sun</label>
-            </div>
-            <div class="appointment-fields">
-              <label class="field"><span>Open</span><input name="open" type="time" required></label>
-              <label class="field"><span>Close</span><input name="close" type="time" required></label>
-            </div>
+            <p class="sub">Turn on the days you take bookings and set each day's start and end time.</p>
+            <div id="weekly-hours" class="weekly-hours"></div>
+            <div class="appointment-actions"><button class="btn secondary" type="button" id="copy-weekday-hours">Copy Monday's hours to weekdays</button></div>
           </fieldset>
           <div class="appointment-fields">
             <label class="field"><span>Minimum notice (hours)</span><input name="minimumHours" type="number" min="1" max="168" required></label>
@@ -123,7 +113,7 @@
             <label class="field"><span>Blocked dates (YYYY-MM-DD)</span><input name="blockedDates" placeholder="2026-12-25"></label>
           </div>
           <label class="field"><span>Service-area ZIP codes</span><input name="postalCodes" placeholder="28803, 28804"></label>
-          <fieldset><legend>Bookable services</legend><p>Set an estimate for each vehicle size. Use the same amount for flat-price services.</p><div id="service-rows"></div><button class="btn secondary" type="button" id="add-service">Add service</button></fieldset>
+          <fieldset><legend>Bookable services</legend><p class="sub">Set an estimate for each vehicle size. Use the same amount for flat-price services. Featured services appear as large cards at the top of the booking page.</p><div id="service-rows"></div><div class="appointment-actions"><button class="btn secondary" type="button" id="add-service">Add service</button><button class="btn secondary" type="button" id="add-standard-services">Add my standard services</button></div></fieldset>
           <button class="btn primary" type="submit" disabled>Save booking settings</button>
           <p role="status"></p>
         </form>

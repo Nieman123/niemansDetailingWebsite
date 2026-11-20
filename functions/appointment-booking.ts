@@ -11,6 +11,9 @@ export type BookingVehicle = typeof bookingVehicles[number];
 export type BookingService = {
   id: string; name: string; duration: number; cents: number;
   vehiclePrices?: Record<BookingVehicle, number>;
+  // Featured services lead the booking picker; the description is a short customer-facing line.
+  featured?: boolean;
+  description?: string;
 };
 
 // Quotes already use these rates. Recognize the original Full Detail booking price until it is edited.
@@ -24,11 +27,14 @@ export function bookingPrices(service: BookingService): Record<BookingVehicle, n
 export function bookingVehicle(value: unknown): BookingVehicle | undefined {
   return bookingVehicles.find(vehicle => vehicle === value);
 }
+export type DayHours = { open: string; close: string };
 export type BookingSettings = {
   enabled: boolean;
   days: number[];
   open: string;
   close: string;
+  // Per-weekday overrides keyed "0" (Sunday) through "6"; other open days use open/close.
+  hours?: Record<string, DayHours>;
   minimumHours: number;
   horizonDays: number;
   bufferMinutes: number;
@@ -52,8 +58,19 @@ function stringList(input: unknown, pattern: RegExp, max: number): input is stri
 }
 
 export function parseBookingSettings(input: Record<string, unknown>): Omit<BookingSettings, "revision"> | null {
-  const { enabled, days, open, close, minimumHours, horizonDays, bufferMinutes, blockedDates, postalCodes, services } = input;
+  const { enabled, days, open, close, hours, minimumHours, horizonDays, bufferMinutes, blockedDates, postalCodes, services } = input;
   const clock = /^([01]\d|2[0-3]):[0-5]\d$/;
+  let dayHours: Record<string, DayHours> | undefined;
+  if (hours !== undefined) {
+    if (!hours || typeof hours !== "object" || Array.isArray(hours)) return null;
+    dayHours = {};
+    for (const [day, value] of Object.entries(hours as Record<string, unknown>)) {
+      const row = value as Partial<DayHours> | null;
+      if (!/^[0-6]$/.test(day) || !row || typeof row.open !== "string" || typeof row.close !== "string" ||
+        !clock.test(row.open) || !clock.test(row.close) || row.open >= row.close) return null;
+      dayHours[day] = { open: row.open, close: row.close };
+    }
+  }
   if (typeof enabled !== "boolean" || !Array.isArray(days) || days.length > 7 || !days.every(value => integer(value, 0, 6)) ||
     typeof open !== "string" || typeof close !== "string" || !clock.test(open) || !clock.test(close) || open >= close ||
     !integer(minimumHours, 1, 168) || !integer(horizonDays, 1, 90) || !integer(bufferMinutes, 0, 120) ||
@@ -72,10 +89,13 @@ export function parseBookingSettings(input: Record<string, unknown>): Omit<Booki
           !bookingVehicles.every(vehicle => integer(prices[vehicle], 5000, 10_000_000))) return null;
       vehiclePrices = { sedan: prices.sedan, suv_truck: prices.suv_truck, van_3row: prices.van_3row };
     }
+    if (row.featured !== undefined && typeof row.featured !== "boolean") return null;
+    if (row.description !== undefined && (typeof row.description !== "string" || row.description.length > 140)) return null;
+    const description = typeof row.description === "string" ? row.description.trim() : "";
     catalog.push({ id: row.id, name: row.name.trim(), duration: row.duration, cents: vehiclePrices?.sedan ?? row.cents,
-      ...(vehiclePrices ? { vehiclePrices } : {}) });
+      ...(vehiclePrices ? { vehiclePrices } : {}), ...(row.featured ? { featured: true } : {}), ...(description ? { description } : {}) });
   }
-  return { enabled, days, open, close, minimumHours, horizonDays, bufferMinutes, blockedDates, postalCodes, services: catalog };
+  return { enabled, days, open, close, ...(dayHours ? { hours: dayHours } : {}), minimumHours, horizonDays, bufferMinutes, blockedDates, postalCodes, services: catalog };
 }
 
 export function easternDate(timestamp: number) {
@@ -102,8 +122,9 @@ export function bookingSlots(settings: BookingSettings, date: string, service: B
   const day = Date.parse(`${date}T12:00:00Z`);
   if (!Number.isFinite(day) || date < easternDate(now) || date > easternDate(now + settings.horizonDays * DAY) ||
     !settings.days.includes(new Date(day).getUTCDay())) return [];
-  const start = eastDateTime(date, settings.open);
-  const end = eastDateTime(date, settings.close);
+  const hours = settings.hours?.[String(new Date(day).getUTCDay())] ?? { open: settings.open, close: settings.close };
+  const start = eastDateTime(date, hours.open);
+  const end = eastDateTime(date, hours.close);
   if (start === null || end === null) return [];
   const result: number[] = [];
   for (let candidate = start; candidate + service.duration * MINUTE <= end; candidate += 30 * MINUTE) {

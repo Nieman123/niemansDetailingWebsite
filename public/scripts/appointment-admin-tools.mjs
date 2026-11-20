@@ -1,5 +1,6 @@
 import { appointmentMoney, appointmentTime, easternStart, fillDurationSelect, vehicleLabels } from "./appointment-utils.mjs";
 import { jobPhotosSection } from "./appointment-photos.mjs";
+import { standardServices } from "./service-picker.mjs";
 
 export const statusLabels = {
   draft: "Draft / deposit required", awaiting_deposit: "Awaiting deposit", pending_approval: "Pending approval",
@@ -51,8 +52,8 @@ export function jobWorkspace(record, request, refresh, report) {
   const message = elm("p", "");
   message.setAttribute("role", "status");
   let busy = false;
-  const action = (label, handler) => {
-    const button = Object.assign(elm("button", label, "btn secondary"), { type: "button" });
+  const action = (label, handler, className = "btn secondary") => {
+    const button = Object.assign(elm("button", label, className), { type: "button" });
     button.addEventListener("click", async () => {
       if (busy || !form.reportValidity()) return;
       busy = button.disabled = true;
@@ -153,7 +154,7 @@ export function jobWorkspace(record, request, refresh, report) {
       clearTimeout(autosave);
       if (pendingNotes.has(record.id)) await saveNotes(pendingNotes.get(record.id));
       await request("start-job", { id: record.id }); await refresh();
-    }));
+    }, "btn primary"));
     form.append(action("Save notes", async () => {
       clearTimeout(autosave);
       await saveNotes(pendingNotes.get(record.id) ?? work());
@@ -173,7 +174,7 @@ export function jobWorkspace(record, request, refresh, report) {
       });
       pendingNotes.delete(record.id);
       await refresh();
-    }));
+    }, record.status === "in_progress" ? "btn primary" : "btn secondary"));
   }
   area.append(form, message, jobPhotosSection(record.id));
   return area;
@@ -218,6 +219,8 @@ export function rescheduleWorkspace(record, request, refresh, report) {
   return area;
 }
 
+const weekdayNames = [[1, "Monday"], [2, "Tuesday"], [3, "Wednesday"], [4, "Thursday"], [5, "Friday"], [6, "Saturday"], [0, "Sunday"]];
+
 export function setupBookingSettings(form, request, report) {
   if (form.dataset.bound) { form.dispatchEvent(new Event("reload-settings")); return; }
   form.dataset.bound = "1";
@@ -225,6 +228,40 @@ export function setupBookingSettings(form, request, report) {
   const fields = form.elements;
   let revision;
   const rows = document.getElementById("service-rows");
+  const week = document.getElementById("weekly-hours");
+
+  // One row per weekday: open toggle plus start and end times.
+  const dayRows = new Map(weekdayNames.map(([day, label]) => {
+    const row = elm("div", "", "weekly-hours__row");
+    const toggle = elm("label", "", "appointment-checkbox weekly-hours__day");
+    const open = Object.assign(document.createElement("input"), { type: "checkbox" });
+    toggle.append(open, elm("span", label));
+    const time = (title) => {
+      const field = elm("label", "", "field");
+      const input = Object.assign(document.createElement("input"), { type: "time", step: 900 });
+      field.append(elm("span", title, "sr-only"), input);
+      input.setAttribute("aria-label", `${label} ${title.toLowerCase()}`);
+      return [field, input];
+    };
+    const [startField, start] = time("Start");
+    const [endField, end] = time("End");
+    const sync = () => { row.classList.toggle("is-closed", !open.checked); start.disabled = end.disabled = !open.checked; start.required = end.required = open.checked; };
+    open.addEventListener("change", sync);
+    row.append(toggle, startField, elm("span", "to", "weekly-hours__to"), endField);
+    week.append(row);
+    return [day, { open, start, end, sync }];
+  }));
+  document.getElementById("copy-weekday-hours").onclick = () => {
+    const monday = dayRows.get(1);
+    for (const day of [2, 3, 4, 5]) {
+      const row = dayRows.get(day);
+      row.open.checked = monday.open.checked;
+      row.start.value = monday.start.value;
+      row.end.value = monday.end.value;
+      row.sync();
+    }
+  };
+
   function addServiceRow(service = {}) {
     const row = document.createElement("div");
     row.className = "service-row";
@@ -232,11 +269,11 @@ export function setupBookingSettings(form, request, report) {
     const pricing = document.createElement("div");
     info.className = "service-fields";
     pricing.className = "service-prices";
-    function control(parent, key, title, input) {
+    function control(parent, key, title, input, required = true) {
       const label = document.createElement("label");
       label.className = "field";
       input.dataset.key = key;
-      input.required = true;
+      input.required = required;
       label.append(elm("span", title), input);
       parent.append(label);
       return input;
@@ -257,17 +294,41 @@ export function setupBookingSettings(form, request, report) {
       const amount = service.vehiclePrices?.[key] ?? service.cents;
       price.value = amount == null ? "" : (amount / 100).toFixed(2);
     }
-    row.append(info, pricing);
-    const remove = Object.assign(document.createElement("button"), {type: "button", className: "quiet", textContent: "Remove service"});
+    const extra = elm("div", "", "service-extra");
+    const description = control(extra, "description", "Short description (optional)", document.createElement("input"), false);
+    description.maxLength = 140;
+    description.value = service.description || "";
+    const featureLabel = elm("label", "", "appointment-checkbox");
+    const featured = Object.assign(document.createElement("input"), { type: "checkbox", checked: !!service.featured });
+    featured.dataset.key = "featured";
+    featureLabel.append(featured, elm("span", "Featured on the booking page"));
+    extra.append(featureLabel);
+    row.append(info, pricing, extra);
+    const remove = Object.assign(document.createElement("button"), { type: "button", className: "btn secondary btn-remove", textContent: "Remove service" });
     remove.onclick = () => row.remove();
     row.append(remove); rows.append(row);
     return row;
   }
   document.getElementById("add-service").onclick = () => addServiceRow().querySelector("input").focus();
+  document.getElementById("add-standard-services").onclick = () => {
+    const codes = new Set([...rows.querySelectorAll('[data-key="id"]')].map(input => input.value.trim()));
+    const added = standardServices.filter(service => !codes.has(service.id));
+    added.forEach(service => addServiceRow(service));
+    status.textContent = added.length
+      ? `Added ${added.length} service${added.length === 1 ? "" : "s"}. Check the lengths and prices, then save.`
+      : "Your standard services are already listed.";
+  };
+
   function load(settings) {
-    for (const name of ["open", "close", "minimumHours", "horizonDays", "bufferMinutes"]) fields[name].value = settings[name];
+    for (const name of ["minimumHours", "horizonDays", "bufferMinutes"]) fields[name].value = settings[name];
     fields.enabled.checked = settings.enabled;
-    for (const input of form.querySelectorAll('[name="weekday"]')) input.checked = settings.days.includes(Number(input.value));
+    for (const [day, row] of dayRows) {
+      const hours = settings.hours?.[String(day)] ?? { open: settings.open, close: settings.close };
+      row.open.checked = settings.days.includes(day);
+      row.start.value = hours.open;
+      row.end.value = hours.close;
+      row.sync();
+    }
     fields.blockedDates.value = settings.blockedDates.join(", ");
     fields.postalCodes.value = settings.postalCodes.join(", ");
     rows.replaceChildren();
@@ -283,18 +344,30 @@ export function setupBookingSettings(form, request, report) {
   };
   form.addEventListener("submit", async event => {
     event.preventDefault();
-    button.disabled = true;
     const parseList = value => value.split(/[,\s]+/).filter(Boolean);
     const input = Object.fromEntries(new FormData(form));
+    const openDays = [...dayRows].filter(([, row]) => row.open.checked);
+    const badDay = openDays.find(([, row]) => !row.start.value || !row.end.value || row.start.value >= row.end.value);
+    if (badDay) {
+      status.textContent = "Each open day needs an end time after its start time.";
+      badDay[1].start.focus();
+      return;
+    }
+    const hours = Object.fromEntries(openDays.map(([day, row]) => [String(day), { open: row.start.value, close: row.end.value }]));
+    const fallback = openDays[0]?.[1] ?? dayRows.get(1);
     const services = [...rows.children].map(row => {
-      const values = Object.fromEntries([...row.querySelectorAll("[data-key]")].map(input => [input.dataset.key, input.value.trim()]));
+      const values = Object.fromEntries([...row.querySelectorAll("[data-key]")].map(input => [input.dataset.key, input.type === "checkbox" ? input.checked : input.value.trim()]));
       const vehiclePrices = Object.fromEntries(Object.keys(vehicleLabels).map(key => [key, cents(values[key])]));
-      return { id: values.id, name: values.name, duration: Number(values.duration), cents: vehiclePrices.sedan, vehiclePrices };
+      return {
+        id: values.id, name: values.name, duration: Number(values.duration), cents: vehiclePrices.sedan, vehiclePrices,
+        ...(values.featured ? { featured: true } : {}), ...(values.description ? { description: values.description } : {}),
+      };
     });
+    button.disabled = true;
     try {
       const result = await request("save-booking-settings", {
-        ...input, revision, enabled: fields.enabled.checked,
-        days: [...form.querySelectorAll('[name="weekday"]:checked')].map(input => Number(input.value)),
+        revision, enabled: fields.enabled.checked,
+        days: openDays.map(([day]) => day), open: fallback.start.value || "09:00", close: fallback.end.value || "17:00", hours,
         minimumHours: Number(input.minimumHours), horizonDays: Number(input.horizonDays), bufferMinutes: Number(input.bufferMinutes),
         blockedDates: parseList(input.blockedDates), postalCodes: parseList(input.postalCodes), services,
       });

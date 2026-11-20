@@ -322,3 +322,57 @@
 .appointment-help { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 20px; }
 .appointment-help a { display: inline-flex; align-items: center; min-height: 44px; color: var(--nd-gold) !important; font-weight: 600; }
 .appointment-customer #my-appointments .appointment-record h3 { font-size: 20px; }
+
+/* ---------- Vehicle and service pickers ---------- */
+
+.picker-field { min-width: 0; margin: 0 0 22px; padding: 0; border: 0; }
+.picker-field legend { margin-bottom: 10px; padding: 0; color: var(--nd-text); font-family: var(--nd-font-display); font-size: 18px; font-weight: 700; }
+.vehicle-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.vehicle-choice span, .service-choice {
+  display: flex;
+  border: 1.5px solid var(--nd-line-strong);
+  border-radius: 14px;
+  background: var(--nd-bg);
+  cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+.vehicle-choice span { align-items: center; justify-content: center; min-height: 52px; padding: 8px 10px; text-align: center; font-weight: 600; font-size: 15px; line-height: 1.25; }
+.vehicle-choice:hover span, .service-choice:hover { border-color: var(--nd-gold-line); }
+.vehicle-choice input:checked + span, .service-choice:has(input:checked) {
+  border-color: var(--nd-gold);
+  background: var(--nd-gold-tint);
+  box-shadow: 0 0 0 3px rgba(228, 187, 92, .14);
+}
+.vehicle-choice input:focus-visible + span, .service-choice:has(input:focus-visible) { outline: 3px solid var(--nd-gold); outline-offset: 3px; }
+
+.service-picker { display: grid; gap: 12px; }
+.service-picker__lead { display: grid; gap: 10px; }
+.service-choice--lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "name price" "desc price" "meta price";
+  gap: 4px 16px;
+  align-items: center;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(107, 63, 216, .22), var(--nd-bg) 70%);
+}
+.service-choice--lead .service-choice__name { grid-area: name; font-family: var(--nd-font-display); font-size: 21px; font-weight: 800; }
+.service-choice--lead .service-choice__desc { grid-area: desc; color: var(--nd-text-2); font-size: 15px; }
+.service-choice--lead .service-choice__meta { grid-area: meta; color: var(--nd-muted); font-size: 14px; }
+.service-choice--lead .service-choice__price { grid-area: price; color: var(--nd-gold); font-family: var(--nd-font-display); font-size: 22px; font-weight: 800; text-align: right; }
+.service-picker__label { margin: 4px 0 0; color: var(--nd-muted); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.service-picker__more { display: flex; flex-wrap: wrap; gap: 8px; }
+.service-choice--chip { align-items: center; gap: 10px; min-height: 46px; padding: 8px 14px; border-radius: 999px; font-size: 15px; font-weight: 600; }
+.service-choice--chip .service-choice__price { color: var(--nd-gold); font-size: 14px; font-weight: 700; }
+.service-picker__custom { margin: 12px 0 0; color: var(--nd-muted); font-size: 14px; }
+.service-picker__custom a { color: var(--nd-gold); }
+@media (max-width: 480px) {
+  .service-choice--lead { padding: 16px; }
+  .service-choice--lead .service-choice__name { font-size: 19px; }
+  .service-choice--chip { flex: 1 1 auto; justify-content: space-between; }
+}
+@media (max-width: 480px) {
+  .service-choice--lead { grid-template-columns: minmax(0, 1fr); grid-template-areas: "name" "desc" "meta" "price"; }
+  .service-choice--lead .service-choice__price { text-align: left; font-size: 20px; }
+}

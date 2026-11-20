@@ -2,6 +2,7 @@ import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { easternInput, slotPicker } from "./slot-picker.mjs";
 import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect, vehicleLabels } from "./appointment-utils.mjs";
+import { servicePicker } from "./service-picker.mjs";
 import { clearJobNotes, hasUnsavedJobNotes, jobWorkspace, rescheduleWorkspace, setupBookingSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);
@@ -66,6 +67,7 @@ let requestId = crypto.randomUUID();
 let scope = 0;
 let authScope;
 let saving = false;
+let servicePickerView;
 
 const explain = error => messages[error.code] || "Something went wrong. Try again.";
 const ownerRequest = async (action, body = {}) => appointmentRequest(action, body, await auth.currentUser?.getIdToken());
@@ -105,7 +107,7 @@ fields.service.onchange = () => {
   syncEstimate();
   refreshCalendar();
 };
-fields.vehicleType.onchange = syncEstimate;
+fields.vehicleType.onchange = () => { syncEstimate(); servicePickerView?.refreshPrices(); };
 fields.durationMinutes.addEventListener("change", refreshCalendar);
 fields.start.addEventListener("input", () => {
   selectedSlot = null;
@@ -127,6 +129,7 @@ function fillForm(prefill) {
     fields.service.add(new Option(prefill.service, prefill.service));
   }
   fields.service.value = prefill.service || "";
+  servicePickerView?.sync();
   fields.vehicleType.value = prefill.vehicleType || "";
   autoEstimate = null;
   fillDurationSelect(fields.durationMinutes, 60);
@@ -199,7 +202,7 @@ function contactEditor(record) {
     save.disabled = true;
     try {
       await ownerRequest("update-contact",{id:record.id, expected, ...Object.fromEntries(new FormData(editor))});
-      await refreshList(); feedback().textContent = "Customer details saved.";
+      await refreshList(); detailStatus.textContent = "Customer details saved.";
     } catch (error) {feedback.textContent = explain(error);}
     finally {save.disabled = false;}
   };
@@ -252,22 +255,136 @@ function renderRow(record) {
   return row;
 }
 
+const icons = {
+  map: '<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  phone: '<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.5-1.3a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.8 2z"/>',
+  chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  dots: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+  cash: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+};
+const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
+const quickLink = (label, href, name, external) => {
+  const link = Object.assign(document.createElement("a"), { className: "quick-action", href });
+  link.innerHTML = icon(name);
+  link.append(Object.assign(document.createElement("span"), { textContent: label }));
+  if (external) Object.assign(link, { target: "_blank", rel: "noopener noreferrer" });
+  return link;
+};
+let openDetailView = null;
+
+// Turn one of the older <details> workspaces into a view: the summary becomes its title.
+function detailsAsView(details) {
+  const summary = details.querySelector(":scope > summary");
+  const title = summary?.textContent ?? "";
+  summary?.remove();
+  const body = document.createElement("div");
+  body.append(...details.childNodes);
+  return { title, body };
+}
+
 function renderDetail(record) {
   byId("owner-detail-heading").textContent = record.name;
   const card = Object.assign(document.createElement("article"), { className: "owner-record" });
-  const overview = Object.assign(document.createElement("p"), { textContent: record.service + " · " + appointmentTime(record) });
-  const extraActions = document.createElement("details");
-  extraActions.append(Object.assign(document.createElement("summary"), { textContent: "More actions" }));
-  const secondary = Object.assign(document.createElement("div"), { className: "appointment-actions" });
-  extraActions.append(secondary);
-  const actions = Object.assign(document.createElement("div"), { className: "appointment-actions" });
+  const hub = Object.assign(document.createElement("div"), { className: "record-hub" });
+  const viewHost = Object.assign(document.createElement("section"), { className: "record-view", hidden: true });
+  card.append(hub, viewHost);
+
+  const views = new Map();
+  function addView(key, label, iconName, build, { tone = "", hint = "" } = {}) {
+    views.set(key, { label, build });
+    const tile = Object.assign(document.createElement("button"), { type: "button", className: "record-tile" + (tone ? " record-tile--" + tone : "") });
+    tile.innerHTML = icon(iconName);
+    tile.append(Object.assign(document.createElement("strong"), { textContent: label }));
+    if (hint) tile.append(Object.assign(document.createElement("span"), { textContent: hint }));
+    tile.onclick = () => showRecordView(key);
+    return tile;
+  }
+  function showRecordView(key) {
+    const view = views.get(key);
+    if (!view) return;
+    openDetailView = { id: record.id, key };
+    const back = Object.assign(document.createElement("button"), { type: "button", className: "record-view__back", textContent: "Back to appointment" });
+    back.onclick = showHub;
+    const heading = Object.assign(document.createElement("h3"), { textContent: view.label, tabIndex: -1 });
+    const built = view.build();
+    viewHost.replaceChildren(back, heading, ...(Array.isArray(built) ? built : [built]));
+    hub.hidden = true;
+    viewHost.hidden = false;
+    heading.focus({ preventScroll: true });
+    byId("view-detail").scrollIntoView({ block: "start" });
+  }
+  function showHub() {
+    openDetailView = null;
+    viewHost.hidden = true;
+    viewHost.replaceChildren();
+    hub.hidden = false;
+    byId("view-detail").scrollIntoView({ block: "start" });
+  }
+
+  // Summary
+  const pill = Object.assign(document.createElement("span"), { className: "status-pill", textContent: statusLabels[record.status] ?? record.status });
+  pill.dataset.status = record.status;
+  const when = Object.assign(document.createElement("p"), { className: "record-when", textContent: record.service + " · " + appointmentTime(record) });
+  hub.append(pill, when);
+
+  // Quick contact and navigation
+  const quick = Object.assign(document.createElement("div"), { className: "quick-actions" });
+  if (record.address) {
+    quick.append(quickLink("Directions", `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(record.address)}`, "map", true));
+  }
+  if (record.phone) quick.append(quickLink("Call", "tel:" + record.phone, "phone"), quickLink("Text", "sms:" + record.phone, "chat"));
+  if (record.email) quick.append(quickLink("Email", "mailto:" + record.email, "mail"));
+  if (quick.childElementCount) hub.append(quick);
+
+  // Facts
+  const facts = Object.assign(document.createElement("dl"), { className: "record-facts" });
+  const fact = (label, value) => {
+    if (value == null || value === "") return;
+    facts.append(Object.assign(document.createElement("dt"), { textContent: label }), Object.assign(document.createElement("dd"), { textContent: value }));
+  };
+  if (record.address) {
+    const dd = document.createElement("dd");
+    dd.append(Object.assign(document.createElement("a"), {
+      href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(record.address)}`, target: "_blank", rel: "noopener noreferrer", textContent: record.address,
+    }));
+    facts.append(Object.assign(document.createElement("dt"), { textContent: "Address" }), dd);
+  }
+  fact("Vehicle", record.vehicle);
+  fact("Phone", record.phone);
+  fact("Email", record.email);
+  fact(record.finalCents != null ? "Final total" : "Estimate", record.finalCents != null ? appointmentMoney(record.finalCents) : record.estimateCents != null ? appointmentMoney(record.estimateCents) : "");
+  fact("Deposit", record.paidDeposit ? appointmentMoney(record.paidDeposit) + " received" : record.depositCents ? appointmentMoney(record.depositCents) + " due" : "Waived");
+  if (record.balanceCents != null) fact("Balance", record.balanceCents ? appointmentMoney(record.balanceCents) : "Paid");
+  hub.append(facts);
+
+  const alerts = [];
+  if (record.rescheduleRequest) alerts.push("The customer asked for a different time. Open Reschedule to review it.");
+  if (record.calendarFailed) alerts.push("Calendar sync failed and will retry.");
+  if (record.refundState) alerts.push(`Deposit refund: ${record.refundState}`);
+  if (record.paymentReview) alerts.push(`Stripe ${record.paymentReview.kind} needs review · ${appointmentMoney(record.paymentReview.amount)} · ${record.paymentReview.stripeObjectId}`);
+  for (const text of alerts) hub.append(Object.assign(document.createElement("p"), { className: "appointment-notice", textContent: text }));
+
+  // Primary actions
+  const actions = Object.assign(document.createElement("div"), { className: "appointment-actions record-primary" });
   const share = document.createElement("div");
   const url = links.get(record.id);
   if (url && !["draft", "cancelled"].includes(record.status)) share.append(shareActions(record, url));
-
+  if (record.status === "pending_approval") {
+    const approve = actionButton("Approve appointment", async () => {
+      if (!confirm("Check availability and approve this request?")) return;
+      await ownerRequest("approve", { id: record.id }); await refreshList();
+    });
+    approve.className = "btn primary";
+    actions.append(approve);
+  }
   if (["draft", "awaiting_deposit", "confirmed", "in_progress", "pending_approval", "completed"].includes(record.status)) {
-    const label = record.status === "draft" ? "Hold time and generate deposit link" : record.status === "completed" ? "Generate balance link" : "Generate customer link";
-    actions.append(actionButton(label, async () => {
+    const label = record.status === "draft" ? "Hold time and send deposit link" : record.status === "completed" ? "Send balance link" : "Send customer link";
+    const linkButton = actionButton(label, async () => {
       const session = scope;
       const warning = record.status === "draft"
         ? "Check availability and hold this time for a $50 deposit?"
@@ -282,10 +399,30 @@ function renderDetail(record) {
       if (record.status === "draft") await refreshList();
       else share.querySelector("input").focus();
       feedback().textContent = "Customer link ready to copy or send.";
-    }));
+    });
+    if (record.status === "draft") linkButton.className = "btn primary";
+    actions.append(linkButton);
   }
+  hub.append(actions, share);
+
+  // Views
+  const tiles = Object.assign(document.createElement("div"), { className: "record-tiles" });
+  if (["confirmed", "in_progress", "completed"].includes(record.status)) {
+    const completed = record.status === "completed";
+    tiles.append(addView("job", completed ? "Balance and payments" : record.status === "in_progress" ? "Job in progress" : "Start job",
+      completed ? "cash" : "wrench", () => detailsAsView(jobWorkspace(record, ownerRequest, refreshList, explain)).body,
+      { tone: "gold", hint: completed ? "Record payments and invitations" : "Notes, photos, and closeout" }));
+  }
+  if (["confirmed", "pending_approval"].includes(record.status)) {
+    const view = () => detailsAsView(rescheduleWorkspace(record, ownerRequest, refreshList, explain)).body;
+    tiles.append(addView("reschedule", record.rescheduleRequest ? "Review time request" : record.status === "pending_approval" ? "Offer another time" : "Reschedule",
+      "clock", view, { hint: record.rescheduleRequest ? "Customer asked to move" : "Move to a new time" }));
+  }
+  tiles.append(addView("customer", "Customer details", "user", () => detailsAsView(contactEditor(record)).body, { hint: "Name, phone, address" }));
+
+  const more = [];
   if (!["draft", "cancelled", "no_show"].includes(record.status)) {
-    secondary.append(actionButton("Revoke link", async () => {
+    more.push(actionButton("Revoke customer link", async () => {
       if (!window.confirm("Revoke access from the current customer link?")) return;
       await ownerRequest("revoke-link", { id: record.id });
       links.delete(record.id);
@@ -293,14 +430,8 @@ function renderDetail(record) {
       feedback().textContent = "Customer link revoked.";
     }));
   }
-  if (record.status === "pending_approval") {
-    actions.append(actionButton("Approve appointment", async () => {
-      if (!confirm("Check availability and approve this request?")) return;
-      await ownerRequest("approve", { id: record.id }); await refreshList();
-    }));
-  }
   if (["draft", "awaiting_deposit", "pending_approval", "confirmed"].includes(record.status)) {
-    secondary.append(actionButton(record.status === "draft" ? "Discard draft" : "Cancel appointment", async () => {
+    more.push(actionButton(record.status === "draft" ? "Discard draft" : "Cancel appointment", async () => {
       if (!window.confirm(record.status === "draft" ? "Discard this appointment draft?" : "Cancel this appointment and release its time?")) return;
       await ownerRequest("cancel", { id: record.id });
       links.delete(record.id);
@@ -308,39 +439,30 @@ function renderDetail(record) {
     }));
   }
   if (record.paidDeposit && ["pending_approval", "confirmed"].includes(record.status)) {
-    secondary.append(actionButton("Cancel and refund deposit", async () => {
+    more.push(actionButton("Cancel and refund deposit", async () => {
       const reason = prompt("Why are you refunding this deposit?");
       if (!reason?.trim()) return;
       await ownerRequest("cancel", { id: record.id, refundOverride: true, reason }); await refreshList();
     }));
   }
   if (record.status === "confirmed" && record.start <= Date.now()) {
-    secondary.append(actionButton("Record no-show", async () => {
+    more.push(actionButton("Record no-show", async () => {
       const reason = prompt("Add a brief reason.");
       if (!reason?.trim()) return;
       await ownerRequest("no-show", { id: record.id, reason }); await refreshList();
     }));
   }
-  const contact = document.createElement("div");
-  contact.className = "contact-line";
-  if (record.phone) {
-    const sms = Object.assign(document.createElement("a"), { href:"sms:" + record.phone, textContent:"Text customer" });
-    const call = Object.assign(document.createElement("a"), { href:"tel:" + record.phone, textContent:record.phone });
-    contact.append(sms,call);
+  if (more.length) {
+    tiles.append(addView("more", "Cancel or other actions", "dots", () => {
+      const list = Object.assign(document.createElement("div"), { className: "record-danger-actions" });
+      for (const button of more) { button.classList.add("btn-danger-outline"); list.append(button); }
+      return list;
+    }, { tone: "danger", hint: "Cancel, refund, no-show" }));
   }
-  if (record.address) contact.append(Object.assign(document.createElement("span"),{textContent:record.address}));
-  if (record.status === "pending_approval") {
-    const approve = [...actions.children].find(button => button.textContent === "Approve appointment");
-    if (approve) { approve.className = "btn primary"; actions.prepend(approve); }
-  }
-  const state = Object.assign(document.createElement("p"), { className: "appointment-notice", textContent: recordStatus(record) });
-  card.append(overview, state, contact, actions, share, contactEditor(record));
-  if (record.calendarFailed) card.append(Object.assign(document.createElement("p"), { textContent: "Calendar sync failed and will retry." }));
-  if (record.refundState) card.append(Object.assign(document.createElement("p"), { textContent: `Deposit refund: ${record.refundState}` }));
-  if (record.paymentReview) card.append(Object.assign(document.createElement("p"), { textContent: `Stripe ${record.paymentReview.kind} needs review · ${appointmentMoney(record.paymentReview.amount)} · ${record.paymentReview.stripeObjectId}` }));
-  if (["confirmed", "pending_approval"].includes(record.status)) card.append(rescheduleWorkspace(record, ownerRequest, refreshList, explain));
-  if (["confirmed", "in_progress", "completed"].includes(record.status)) card.append(jobWorkspace(record, ownerRequest, refreshList, explain));
-  if (secondary.childElementCount) card.append(extraActions);
+  hub.append(tiles);
+
+  if (openDetailView?.id === record.id && views.has(openDetailView.key)) showRecordView(openDetailView.key);
+  else openDetailView = null;
   return card;
 }
 
@@ -465,6 +587,10 @@ if (!appointmentsEnabled) {
       if (previous && !labels.includes(previous)) labels.push(previous);
       fields.service.replaceChildren(new Option("Choose later", ""), ...labels.map(name => new Option(name, name)));
       fields.service.value = previous;
+      const unique = labels.map(name => services.find(service => service.name === name) ?? { name, duration: 60, cents: 0 });
+      servicePickerView = servicePicker(byId("owner-service-picker"), fields.service, unique, {
+        valueFor: service => service.name, vehicle: () => fields.vehicleType.value, none: "Choose later",
+      });
       const selectedService = services.find(service => service.name === previous);
       if (!pickerReady && selectedService) fillDurationSelect(fields.durationMinutes, selectedService.duration);
       calendar.setHorizon(settings.horizonDays);

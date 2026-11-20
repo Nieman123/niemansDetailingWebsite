@@ -37,8 +37,21 @@ function stringList(input, pattern, max) {
     return Array.isArray(input) && input.length <= max && input.every(item => typeof item === "string" && pattern.test(item));
 }
 function parseBookingSettings(input) {
-    const { enabled, days, open, close, minimumHours, horizonDays, bufferMinutes, blockedDates, postalCodes, services } = input;
+    const { enabled, days, open, close, hours, minimumHours, horizonDays, bufferMinutes, blockedDates, postalCodes, services } = input;
     const clock = /^([01]\d|2[0-3]):[0-5]\d$/;
+    let dayHours;
+    if (hours !== undefined) {
+        if (!hours || typeof hours !== "object" || Array.isArray(hours))
+            return null;
+        dayHours = {};
+        for (const [day, value] of Object.entries(hours)) {
+            const row = value;
+            if (!/^[0-6]$/.test(day) || !row || typeof row.open !== "string" || typeof row.close !== "string" ||
+                !clock.test(row.open) || !clock.test(row.close) || row.open >= row.close)
+                return null;
+            dayHours[day] = { open: row.open, close: row.close };
+        }
+    }
     if (typeof enabled !== "boolean" || !Array.isArray(days) || days.length > 7 || !days.every(value => integer(value, 0, 6)) ||
         typeof open !== "string" || typeof close !== "string" || !clock.test(open) || !clock.test(close) || open >= close ||
         !integer(minimumHours, 1, 168) || !integer(horizonDays, 1, 90) || !integer(bufferMinutes, 0, 120) ||
@@ -60,10 +73,15 @@ function parseBookingSettings(input) {
                 return null;
             vehiclePrices = { sedan: prices.sedan, suv_truck: prices.suv_truck, van_3row: prices.van_3row };
         }
+        if (row.featured !== undefined && typeof row.featured !== "boolean")
+            return null;
+        if (row.description !== undefined && (typeof row.description !== "string" || row.description.length > 140))
+            return null;
+        const description = typeof row.description === "string" ? row.description.trim() : "";
         catalog.push({ id: row.id, name: row.name.trim(), duration: row.duration, cents: vehiclePrices?.sedan ?? row.cents,
-            ...(vehiclePrices ? { vehiclePrices } : {}) });
+            ...(vehiclePrices ? { vehiclePrices } : {}), ...(row.featured ? { featured: true } : {}), ...(description ? { description } : {}) });
     }
-    return { enabled, days, open, close, minimumHours, horizonDays, bufferMinutes, blockedDates, postalCodes, services: catalog };
+    return { enabled, days, open, close, ...(dayHours ? { hours: dayHours } : {}), minimumHours, horizonDays, bufferMinutes, blockedDates, postalCodes, services: catalog };
 }
 function easternDate(timestamp) {
     const date = easternParts(timestamp);
@@ -89,8 +107,9 @@ function bookingSlots(settings, date, service, now) {
     if (!Number.isFinite(day) || date < easternDate(now) || date > easternDate(now + settings.horizonDays * DAY) ||
         !settings.days.includes(new Date(day).getUTCDay()))
         return [];
-    const start = eastDateTime(date, settings.open);
-    const end = eastDateTime(date, settings.close);
+    const hours = settings.hours?.[String(new Date(day).getUTCDay())] ?? { open: settings.open, close: settings.close };
+    const start = eastDateTime(date, hours.open);
+    const end = eastDateTime(date, hours.close);
     if (start === null || end === null)
         return [];
     const result = [];
