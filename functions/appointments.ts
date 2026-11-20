@@ -923,8 +923,8 @@ export async function reconcileAppointments(db: Firestore) {
           await cancelAppointment(db, tx, doc.id, latest, "system", false, "Appointment hold expired.", now);
         }
       });
-    } catch {
-      logger.error("Appointment payment needs reconciliation", { appointmentId: doc.id });
+    } catch (error) {
+      logger.error("Appointment payment needs reconciliation", { appointmentId: doc.id, reason: error instanceof Error ? error.message : String(error) });
       await db.runTransaction(async tx => {
         const latest = (await tx.get(doc.ref)).data() as Appointment | undefined;
         if (latest?.checkout && (latest.reconcileAt ?? Infinity) <= now) tx.update(doc.ref, { reconcileAt: now + 5 * MINUTE });
@@ -953,7 +953,9 @@ export async function reconcileAppointments(db: Firestore) {
         tx.set(doc.ref.collection("ledger").doc(refund.id), { kind: "refund", id: refund.id, amount: -refund.amount, status: state, method: "stripe", at: now }, { merge: true });
         tx.update(doc.ref, { refund: { ...latest.refund, state, id: refund.id }, refundAt: state === "pending" ? now + 5 * MINUTE : null });
       });
-    } catch { logger.error("Appointment refund needs reconciliation", { appointmentId: doc.id }); }
+    } catch (error) {
+      logger.error("Appointment refund needs reconciliation", { appointmentId: doc.id, reason: error instanceof Error ? error.message : String(error) });
+    }
   }
 }
 

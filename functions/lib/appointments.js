@@ -908,8 +908,8 @@ async function reconcileAppointments(db) {
                 }
             });
         }
-        catch {
-            firebase_functions_1.logger.error("Appointment payment needs reconciliation", { appointmentId: doc.id });
+        catch (error) {
+            firebase_functions_1.logger.error("Appointment payment needs reconciliation", { appointmentId: doc.id, reason: error instanceof Error ? error.message : String(error) });
             await db.runTransaction(async (tx) => {
                 const latest = (await tx.get(doc.ref)).data();
                 if (latest?.checkout && (latest.reconcileAt ?? Infinity) <= now)
@@ -943,8 +943,8 @@ async function reconcileAppointments(db) {
                 tx.update(doc.ref, { refund: { ...latest.refund, state, id: refund.id }, refundAt: state === "pending" ? now + 5 * MINUTE : null });
             });
         }
-        catch {
-            firebase_functions_1.logger.error("Appointment refund needs reconciliation", { appointmentId: doc.id });
+        catch (error) {
+            firebase_functions_1.logger.error("Appointment refund needs reconciliation", { appointmentId: doc.id, reason: error instanceof Error ? error.message : String(error) });
         }
     }
 }

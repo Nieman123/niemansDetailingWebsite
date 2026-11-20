@@ -28,8 +28,12 @@ async function stripeRequest(config, path, body, key) {
         body: body ? new URLSearchParams(body) : undefined,
         signal: AbortSignal.timeout(12000),
     });
-    if (!response.ok)
-        throw new Error(`stripe_request_${response.status}`);
+    if (!response.ok) {
+        // Keep Stripe's error code and message (never the request) so failures can be diagnosed from logs.
+        const detail = await Promise.resolve().then(() => response.json()).catch(() => null);
+        const reason = detail?.error?.code ?? detail?.error?.type ?? "unknown";
+        throw new Error(`stripe_request_${response.status}:${reason}:${(detail?.error?.message ?? "").slice(0, 200)}`);
+    }
     return await response.json();
 }
 function createStripeSession(config, input) {

@@ -32,6 +32,11 @@ function appointmentUrl(id) {
   return "/admin/appointments" + (query.size ? "?" + query : "");
 }
 const feedback = () => recordId ? detailStatus : listStatus;
+const refundBanner = Object.assign(document.createElement("p"), { className: "appointment-notice refund-banner", hidden: true });
+listStatus.before(refundBanner);
+// Keep the queue current when you come back to the app or leave it open.
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !recordId && !byId("workspace").hidden) refreshList(); });
+setInterval(() => { if (document.visibilityState === "visible" && !recordId && !byId("workspace").hidden && !byId("view-queue").hidden) refreshList(); }, 60000);
 const messages = {
   access_denied: "This account isn’t on the admin list for this site.",
   sign_in_required: "Sign in to manage appointments.",
@@ -232,10 +237,13 @@ for (const button of workspace.querySelectorAll("[data-view]")) {
   };
 }
 
+const refundLabels = { queued: "refund queued", pending: "refund processing", succeeded: "deposit refunded", failed: "refund failed, needs attention" };
 function recordStatus(record) {
   const status = statusLabels[record.status] ?? record.status;
+  if (record.refundState) return status + " · " + (refundLabels[record.refundState] ?? "refund " + record.refundState);
   return status + (record.paidDeposit ? " · " + appointmentMoney(record.paidDeposit) + " deposit received" : "");
 }
+const refundOpen = record => ["queued", "pending", "failed"].includes(record.refundState);
 
 function renderRow(record) {
   const row = Object.assign(document.createElement("a"), { className: "appointment-queue-row", href: appointmentUrl(record.id) });
@@ -488,7 +496,14 @@ async function refreshList() {
     if (session !== scope || recordId) return;
     const view = filter.value;
     const east = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", dateStyle: "short" });
+    const refunds = records.filter(refundOpen);
+    const failed = refunds.filter(record => record.refundState === "failed").length;
+    refundBanner.hidden = !refunds.length;
+    refundBanner.textContent = refunds.length
+      ? `${refunds.length} deposit refund${refunds.length === 1 ? "" : "s"} in progress${failed ? `, ${failed} failed and need${failed === 1 ? "s" : ""} attention in Stripe` : ""}. Choose "Refunds" in the filter to see them.`
+      : "";
     const visible = records.filter(record => {
+      if (view === "refunds") return refundOpen(record);
       if (view === "cancelled") return record.status === "cancelled";
       if (record.status === "cancelled") return false;
       if (view === "today") return east.format(record.start) === east.format(Date.now());
