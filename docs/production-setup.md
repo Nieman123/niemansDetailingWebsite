@@ -93,7 +93,7 @@ The `www` entry matters only if `www` ever serves pages instead of redirecting, 
 
 **Budget:** under Billing → Budgets & alerts, add a monthly budget alert so a leaked or abused key shows up quickly. Optionally set per-day quotas on Places API (New) under its Quotas page.
 
-The Firebase web key (`AIzaSyBgUnt…` in `firebase-config.mjs`) is a different key. If you restrict it, allow the same production domains and keep Identity Toolkit, Token Service, Firestore and Firebase Installations APIs allowed, or sign-in breaks.
+The Firebase web key (`AIzaSyBgUnt…` in `firebase-config.mjs`) is a different key. If you restrict it, allow the same production domains, **including `https://niemansdetailing.firebaseapp.com/*`**, and keep Identity Toolkit, Token Service, Firestore and Firebase Installations APIs allowed. Google sign-in runs its popup on the `firebaseapp.com` domain, so without that referrer it fails with "The requested action is invalid".
 
 ## 5. First production run
 
