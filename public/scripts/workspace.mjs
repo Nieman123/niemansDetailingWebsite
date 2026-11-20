@@ -15,7 +15,7 @@ const directory = document.querySelector("#admin-view .sidebar");
 const detail = document.querySelector("#admin-view .main");
 if (directory && detail) {
   const mobile = window.matchMedia("(max-width: 800px)");
-  const back = Object.assign(document.createElement("button"), {type:"button", className:"mobile-list-back", textContent:"Back to list"});
+  const back = Object.assign(document.createElement("button"), {type:"button", className:"mobile-list-back", textContent:"‹ " + (document.body.dataset.records || "Back to list")});
   detail.prepend(back);
   let selected;
   function openRecord(button) {
@@ -26,7 +26,7 @@ if (directory && detail) {
     window.scrollTo(0,0);
   }
   document.addEventListener("click", event => {
-    const button = event.target.closest(".lead-item, .client-item, .followup-open-btn, #post-list li, #new-post-btn");
+    const button = event.target.closest(".lead-item, .client-item, .followup-open-btn, #post-list li, #new-post-btn, #new-client-btn");
     if (button) openRecord(button);
   });
   back.onclick = () => {
@@ -36,4 +36,31 @@ if (directory && detail) {
   if (new URLSearchParams(location.search).has("id") || new URLSearchParams(location.search).has("fromLead")) {
     if (mobile.matches) document.body.dataset.recordOpen = "true";
   }
+}
+
+// Quick filter chips mirror a native <select>, so the existing filter code keeps working.
+for (const row of document.querySelectorAll(".chip-filter[data-for]")) {
+  const select = document.getElementById(row.dataset.for);
+  if (!select) continue;
+  const values = (row.dataset.values || "").split(",").filter(Boolean);
+  const labels = (row.dataset.labels || "").split(",");
+  const options = [...select.options].filter(option => !values.length || values.includes(option.value));
+  const chips = options.map((option, index) => {
+    const chip = Object.assign(document.createElement("button"), {type:"button", className:"chip-filter__chip", textContent: labels[index] || (option.value === "all" ? "All" : option.textContent)});
+    chip.dataset.value = option.value;
+    chip.onclick = () => { select.value = option.value; select.dispatchEvent(new Event("change", {bubbles:true})); };
+    return chip;
+  });
+  row.setAttribute("role", "group");
+  row.append(...chips);
+  const sync = () => chips.forEach(chip => chip.setAttribute("aria-pressed", String(chip.dataset.value === select.value)));
+  select.addEventListener("change", sync);
+  // Clear filters sets the value without an event, so re-check after clicks too.
+  document.addEventListener("click", () => setTimeout(sync));
+  sync();
+}
+
+// Rarely used record sections start folded on phones.
+if (window.matchMedia("(max-width: 800px)").matches) {
+  for (const section of document.querySelectorAll("details[data-mobile-collapsed]")) section.open = false;
 }

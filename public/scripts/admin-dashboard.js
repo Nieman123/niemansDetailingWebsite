@@ -97,10 +97,15 @@ const QUOTE_FUNNEL_BASELINE_ISO = "2026-02-23T14:00:00-05:00";
 const QUOTE_FUNNEL_BASELINE_MS = new Date(QUOTE_FUNNEL_BASELINE_ISO).getTime();
 const QUOTE_FUNNEL_BASELINE_LABEL = "Feb 23, 2026 at 2:00 PM ET";
 
+let statusTimer;
 function setStatus(message, type = "info") {
   if (!els.status) return;
   els.status.textContent = message;
   els.status.dataset.type = type;
+  // Confirmations fade after a few seconds so they never cover buttons; errors stay until replaced.
+  els.status.classList.remove("is-idle");
+  clearTimeout(statusTimer);
+  if (type !== "error") statusTimer = setTimeout(() => els.status.classList.add("is-idle"), 4000);
 }
 
 function showView(view) {
@@ -498,6 +503,15 @@ function renderQuoteFunnel() {
   els.funnelChart.innerHTML = rows;
 }
 
+const callIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>';
+const textIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>';
+// Call and Text sit beside each row so a follow-up is one tap from the list.
+function quickContactHtml(name, sms, call) {
+  if (sms === "#" && call === "#") return "";
+  const label = escapeHtml(name);
+  return `<span class="record-quick">${sms !== "#" ? `<a class="record-quick__btn" href="${escapeHtml(sms)}" aria-label="Text ${label}">${textIcon}</a>` : ""}${call !== "#" ? `<a class="record-quick__btn" href="${escapeHtml(call)}" aria-label="Call ${label}">${callIcon}</a>` : ""}</span>`;
+}
+
 function renderLeadList() {
   if (!els.leadList || !els.leadListEmpty) return;
 
@@ -514,7 +528,7 @@ function renderLeadList() {
       const status = leadStatus(lead);
       const activeClass = lead.id === state.activeLeadId ? " lead-item-active" : "";
       return `
-        <li>
+        <li class="record-row">
           <button type="button" class="lead-item${activeClass}" data-lead-id="${escapeHtml(lead.id)}">
             <span class="lead-item-top">
               <span class="lead-item-name">${escapeHtml(lead.name || "Unnamed lead")}</span>
@@ -526,6 +540,7 @@ function renderLeadList() {
               <span>${escapeHtml(formatDateTime(leadCreatedDate(lead)))}</span>
             </span>
           </button>
+          ${quickContactHtml(lead.name || "lead", smsHrefForLead(lead), callHrefForLead(lead))}
         </li>
       `;
     })
@@ -583,11 +598,10 @@ function showLeadDetails(lead) {
   if (els.detailBody) {
     const addonText = Array.isArray(lead.addons) && lead.addons.length ? lead.addons.join(", ") : "None";
     els.detailBody.innerHTML = detailRowsHtml([
-      { label: "Lead ID", value: lead.id || "N/A" },
-      { label: "Status", value: leadStatus(lead) },
-      { label: "Client Record", value: lead.client_id || "Not linked" },
-      { label: "Vehicle", value: vehicleLabel(lead) },
       { label: "Service", value: serviceLabel(lead) },
+      { label: "Vehicle", value: vehicleLabel(lead) },
+      { label: "Quote", value: priceLabel(lead) },
+      { label: "Phone", value: formatPhone(lead.phone_normalized || lead.phone || "N/A") },
       ...(lead.service === "ceramic" ? [
         { label: "Coating package", value: { single_step: "Single-step correction + coating", two_step: "Two-step correction + coating", recommend: "Help me choose" }[lead.coating_package] || "N/A" },
         { label: "Paint condition", value: { new: "New / like new", light_swirls: "Light swirls", heavy_swirls: "Visible swirls / dull paint", unsure: "Not sure" }[lead.paint_condition] || "N/A" },
@@ -595,9 +609,8 @@ function showLeadDetails(lead) {
       ] : []),
       { label: "Add-ons", value: addonText },
       { label: "ZIP", value: lead.zip || "N/A" },
-      { label: "Phone", value: formatPhone(lead.phone_normalized || lead.phone || "N/A") },
-      { label: "Quote", value: priceLabel(lead) },
-      { label: "Notes", value: lead.notes || "None" },
+      { label: "Customer notes", value: lead.notes || "None" },
+      { label: "Client record", value: lead.client_id ? "Linked" : "Not linked" },
     ]);
   }
 
@@ -606,7 +619,8 @@ function showLeadDetails(lead) {
   }
   if (els.detailMeta) {
     els.detailMeta.innerHTML = detailRowsHtml([
-      { label: "Submitted", value: lead.ts || "N/A" },
+      { label: "Submitted", value: formatDateTime(leadCreatedDate(lead)) },
+      { label: "Lead ID", value: lead.id || "N/A" },
       { label: "Referrer", value: lead.referrer || "N/A" },
       { label: "User Agent", value: lead.user_agent || "N/A" },
       { label: "IP", value: lead.ip || "N/A" },

@@ -116,10 +116,15 @@ const state = {
   importing: false,
 };
 
+let statusTimer;
 function setStatus(message, type = "info") {
   if (!els.status) return;
   els.status.textContent = message;
   els.status.dataset.type = type;
+  // Confirmations fade after a few seconds so they never cover buttons; errors stay until replaced.
+  els.status.classList.remove("is-idle");
+  clearTimeout(statusTimer);
+  if (type !== "error") statusTimer = setTimeout(() => els.status.classList.add("is-idle"), 4000);
 }
 
 function showView(view) {
@@ -712,6 +717,15 @@ function renderFollowupDashboard() {
   });
 }
 
+const callIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>';
+const textIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>';
+// Call and Text sit beside each row so a follow-up is one tap from the list.
+function quickContactHtml(name, sms, call) {
+  if (sms === "#" && call === "#") return "";
+  const label = escapeHtml(name);
+  return `<span class="record-quick">${sms !== "#" ? `<a class="record-quick__btn" href="${escapeHtml(sms)}" aria-label="Text ${label}">${textIcon}</a>` : ""}${call !== "#" ? `<a class="record-quick__btn" href="${escapeHtml(call)}" aria-label="Call ${label}">${callIcon}</a>` : ""}</span>`;
+}
+
 function renderClientList() {
   if (!els.clientList || !els.clientListEmpty) return;
 
@@ -730,7 +744,7 @@ function renderClientList() {
     const subline = [client.phone || client.email || "No phone/email", client.neighborhood || client.city || ""].filter(Boolean).join(" | ");
 
     return `
-      <li>
+      <li class="record-row">
         <button type="button" class="client-item${activeClass}" data-client-id="${escapeHtml(client.id)}">
           <span class="client-item-top">
             <span class="client-item-name">${escapeHtml(client.full_name || "Unnamed client")}</span>
@@ -742,6 +756,7 @@ function renderClientList() {
             <span class="muted">${escapeHtml(formatDateTime(client.updated_at || client.created_at))}</span>
           </span>
         </button>
+        ${quickContactHtml(client.full_name || "client", smsHref(client), callHref(client))}
       </li>
     `;
   }).join("");

@@ -717,9 +717,10 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="/styles/brand.css?v=20261120">
   <link rel="stylesheet" href="/styles/workspace.css">
+  <link rel="stylesheet" href="/styles/admin-records.css">
 </head>
 
-<body class="owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="index"></nav></header>
+<body class="owner-app records-app" data-records="Leads"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="index"></nav></header>
   <div id="admin-status">Initializing...</div>
 
   <div id="auth-view" class="auth-container">
@@ -738,18 +739,20 @@
   <div id="admin-view" class="layout" hidden>
     <aside class="sidebar">
       <div class="sidebar-head">
-        <h2>Lead Dashboard</h2>
-        <button id="refresh-leads-btn" type="button" class="btn btn-ghost">Refresh</button>
+        <h2>Leads</h2>
+        <button id="refresh-leads-btn" type="button" class="btn btn-ghost records-refresh">Refresh</button>
       </div>
 
       
 
       <section class="filters">
-        <div>
-          <label for="lead-search-input">Search</label>
-          <input id="lead-search-input" type="text" placeholder="Name, phone, notes, lead id" />
+        <div class="records-search">
+          <label for="lead-search-input" class="sr-only">Search leads</label>
+          <input id="lead-search-input" type="search" placeholder="Search name, phone, notes" />
         </div>
+        <div class="chip-filter" data-for="lead-status-filter" data-values="all,new,contacted,booked,archived" aria-label="Filter by status"></div>
 
+        <details class="filter-drawer"><summary>More filters</summary>
         <div class="split">
           <div>
             <label for="lead-status-filter">Status</label>
@@ -798,24 +801,25 @@
           </div>
         </div>
 
-        <button id="clear-filters-btn" type="button" class="btn btn-ghost">Clear Filters</button>
+        <button id="clear-filters-btn" type="button" class="btn btn-ghost">Clear filters</button>
+        </details>
       </section>
 
       <section class="summary-grid" aria-label="Lead summary metrics">
         <div class="summary-card">
-          <span class="label">Total Loaded</span>
+          <span class="label">Loaded</span>
           <span id="summary-total-count" class="value">0</span>
         </div>
         <div class="summary-card">
-          <span class="label">Currently Shown</span>
+          <span class="label">Shown</span>
           <span id="summary-shown-count" class="value">0</span>
         </div>
         <div class="summary-card">
-          <span class="label">New Leads</span>
+          <span class="label">New</span>
           <span id="summary-new-count" class="value">0</span>
         </div>
         <div class="summary-card">
-          <span class="label">Need Follow-up</span>
+          <span class="label">Follow up</span>
           <span id="summary-followup-count" class="value">0</span>
         </div>
       </section>
@@ -875,11 +879,11 @@
             </div>
             <div class="detail-actions">
               <span id="detail-price-pill" class="pill">$0</span>
-              <a id="lead-action-sms" class="btn btn-action" href="#">Text Customer</a>
-              <a id="lead-action-call" class="btn btn-action" href="#">Call Customer</a>
+              <a id="lead-action-sms" class="btn btn-action records-contact" href="#">Text</a>
+              <a id="lead-action-call" class="btn btn-action records-contact" href="#">Call</a>
               <a id="lead-action-open-client" class="btn btn-action" href="/admin/clients">Open Client</a>
               <a id="lead-action-appointment" class="btn btn-action" href="/admin/appointments" hidden>Create appointment</a>
-              <button id="lead-action-copy-link" type="button" class="btn btn-ghost">Copy Link</button>
+              <button id="lead-action-copy-link" type="button" class="btn btn-ghost">Copy link</button>
             </div>
           </header>
 
@@ -889,17 +893,7 @@
           </section>
 
           <section class="detail-section">
-            <h4>Campaign Data (UTM)</h4>
-            <pre id="lead-detail-utm">{}</pre>
-          </section>
-
-          <section class="detail-section">
-            <h4>Request Metadata</h4>
-            <div id="lead-detail-meta" class="detail-grid"></div>
-          </section>
-
-          <section class="detail-section">
-            <h4>Internal Follow-up</h4>
+            <h4>Follow-up</h4>
             <div style="display:grid; gap:10px; max-width:640px;">
               <div>
                 <label for="lead-status-input">Lead Status</label>
@@ -919,12 +913,21 @@
                 <button id="lead-action-add-client" type="button" class="btn btn-action">Add/Update Client Record</button>
                 <span id="lead-client-link-status" style="color:var(--muted); font-size:0.82rem; align-self:center;"></span>
               </div>
-              <div class="save-row">
-                <button id="delete-lead-btn" type="button" class="btn btn-danger">Delete Lead</button>
-                <button id="save-lead-btn" type="button" class="btn btn-primary">Save Lead Updates</button>
               </div>
-            </div>
           </section>
+
+          <details class="detail-section records-tech">
+            <summary>Tracking and request info</summary>
+            <h4>Campaign data (UTM)</h4>
+            <pre id="lead-detail-utm">{}</pre>
+            <h4>Request</h4>
+            <div id="lead-detail-meta" class="detail-grid"></div>
+          </details>
+
+          <div class="save-row records-save">
+            <button id="delete-lead-btn" type="button" class="btn btn-danger">Delete</button>
+            <button id="save-lead-btn" type="button" class="btn btn-primary">Save lead</button>
+          </div>
         </section>
       </div>
     </main>
