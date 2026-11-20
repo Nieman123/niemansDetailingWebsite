@@ -1,5 +1,4 @@
-import { appointmentMoney, appointmentTime, easternStart, fillDurationSelect } from "./appointment-utils.mjs";
-import { vehicleLabels } from "./booking-vehicles.mjs";
+import { appointmentMoney, appointmentTime, easternStart, fillDurationSelect, vehicleLabels } from "./appointment-utils.mjs";
 import { jobPhotosSection } from "./appointment-photos.mjs";
 
 export const statusLabels = {

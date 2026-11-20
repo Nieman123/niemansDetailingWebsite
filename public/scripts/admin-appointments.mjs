@@ -1,8 +1,7 @@
 import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-import { vehicleLabels } from "./booking-vehicles.mjs";
 import { easternInput, slotPicker } from "./slot-picker.mjs";
-import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect } from "./appointment-utils.mjs";
+import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect, vehicleLabels } from "./appointment-utils.mjs";
 import { clearJobNotes, hasUnsavedJobNotes, jobWorkspace, rescheduleWorkspace, setupBookingSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);

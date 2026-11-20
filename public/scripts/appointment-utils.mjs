@@ -1,3 +1,9 @@
+export const vehicleLabels = {
+  sedan: "Sedan / coupe",
+  suv_truck: "SUV / truck",
+  van_3row: "3-row SUV / full-size truck / van",
+};
+
 const eastern = "America/New_York";
 const machineDate = new Intl.DateTimeFormat("en-CA", {
   timeZone: eastern, year: "numeric", month: "2-digit", day: "2-digit",

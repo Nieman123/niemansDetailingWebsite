@@ -145,7 +145,7 @@ jobs:
 
           for (const [path, marker] of [
             ['/scripts/slot-picker.mjs', 'export function slotPicker'],
-            ['/scripts/booking-vehicles.mjs', 'export const vehicleLabels'],
+            ['/scripts/appointment-utils.mjs', 'export const vehicleLabels'],
             ['/scripts/admin-vacation.mjs', 'export async function loadVacation'],
             ['/scripts/admin-clients.js?v=20261119', 'async function handleAuth'],
           ]) {

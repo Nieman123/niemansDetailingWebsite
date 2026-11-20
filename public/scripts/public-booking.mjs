@@ -1,7 +1,6 @@
 import { appointmentsEnabled, auth } from "./firebase-client.js";
-import { vehicleLabels } from "./booking-vehicles.mjs";
 import { slotPicker } from "./slot-picker.mjs";
-import { appointmentRequest, appointmentMoney, appointmentTime, durationLabel } from "./appointment-utils.mjs";
+import { appointmentRequest, appointmentMoney, appointmentTime, durationLabel, vehicleLabels } from "./appointment-utils.mjs";
 
 const el = id => document.getElementById(id);
 const form = el("public-booking");
