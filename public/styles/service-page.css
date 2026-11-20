@@ -263,3 +263,4 @@
 .faq-item strong { color: var(--nd-text); }
 .faq-emphasis { margin-top: 32px; color: var(--nd-text); font-weight: 600; }
 .site-copy-override { white-space: pre-line; }
+.service-section a, .prose a, .faq-item a { text-decoration: underline; }
