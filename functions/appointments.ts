@@ -10,7 +10,7 @@ import { ContentError, manageSiteContent, publicSiteContent } from "./appointmen
 import { busyWindows, calendarConfig, mirrorAppointment } from "./appointment-calendar";
 import { bookingPrices, bookingSlots, bookingVehicle, easternDate, emptyBookingSettings, parseBookingSettings, type BookingSettings } from "./appointment-booking";
 import {
-  createStripeSession, findCheckoutAttempt, isSessionId, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
+  createStripeSession, findCheckoutAttempt, isSessionId, releaseStripeSession, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
   type StripeSession,
 } from "./appointment-stripe";
 
@@ -19,13 +19,15 @@ const DEPOSIT_CENTS = 5000;
 const ID = /^[\w-]{1,128}$/;
 const HASH = /^[a-f0-9]{64}$/;
 const MINUTE = 60_000;
+// Stripe requires a session to stay open at least 30 minutes, so the app ends it itself after the hold.
 const CHECKOUT_WINDOW = 35 * MINUTE;
+const CHECKOUT_HOLD = 10 * MINUTE;
 const POLICY_VERSION = "deposit-v1";
 const DEPOSIT_POLICY = "The $50 deposit applies toward service. Before approval, you can cancel for a full refund. After confirmation, cancel at least 96 hours before the appointment for a refund. Inside 96 hours or for a no-show, the deposit is nonrefundable. An approved reschedule carries your deposit forward without resetting a forfeiture that already applies. If we cancel, you may request a refund or agree to another time.";
 const MANUAL_METHODS = new Set(["cash", "check", "venmo", "cash_app", "other"]);
 type Checkout = {
   attempt: string; kind: "deposit" | "balance"; amount: number; expiresAt: number;
-  id?: string; disclosure: string; origin: string;
+  id?: string; disclosure: string; origin: string; holdUntil?: number;
 };
 type PaymentEntry = { id: string; method: string; amount: number; at: number; by: string; reference: string; clearance?: "pending" | "cleared" | "returned" };
 type Refund = { state: "queued" | "pending" | "succeeded" | "failed"; requestedAt: number; id?: string };
@@ -317,8 +319,18 @@ async function createAppointment(db: Firestore, uid: string, body: Record<string
 async function changeAppointment(db: Firestore, uid: string, id: string, action: string, body: Record<string, unknown>) {
   const ref = db.collection("appointments").doc(id);
   const stripe = action === "issue-link" ? await stripeConfig() : null;
-  const previous = await readAppointment(db, id);
+  let previous = await readAppointment(db, id);
   if (!previous) throw new AppointmentError(404, "record_not_found");
+  if (action === "cancel" && previous.checkout?.id) {
+    // Cancelling ends an open payment page first. A payment that already went through is recorded
+    // before the cancellation, so its refund follows the normal deposit rules.
+    const config = await stripeConfig();
+    if (config) {
+      await applyStripeSession(db, await releaseStripeSession(config, previous.checkout.id));
+      previous = await readAppointment(db, id);
+      if (!previous) throw new AppointmentError(404, "record_not_found");
+    }
+  }
   let newStart: number | undefined;
   if (action === "reschedule" || action === "offer-alternate") {
     newStart = validMoveStart(body.start ?? previous.rescheduleRequest?.start);
@@ -806,10 +818,10 @@ async function openCheckout(db: Firestore, id: string, body: Record<string, unkn
     if (expiresAt - now < 31 * MINUTE) throw new AppointmentError(409, "checkout_too_close");
     const kind = deposit ? "deposit" : "balance";
     const checkout: Checkout = {
-      attempt: randomBytes(16).toString("hex"), kind, expiresAt, amount, origin,
+      attempt: randomBytes(16).toString("hex"), kind, expiresAt, amount, origin, holdUntil: now + CHECKOUT_HOLD,
       disclosure: deposit ? DEPOSIT_POLICY : "Pay the outstanding balance for your completed detail.",
     };
-    tx.update(ref, { checkout, reconcileAt: expiresAt,
+    tx.update(ref, { checkout, reconcileAt: checkout.holdUntil,
       ...(deposit ? { policyVersion: POLICY_VERSION, acceptedPolicy: DEPOSIT_POLICY, acceptedAt: now } : {}),
     });
     return checkout;
@@ -904,7 +916,12 @@ export async function reconcileAppointments(db: Firestore) {
         if (!config) throw new Error("stripe_unavailable");
         const checkout = appointment.checkout;
         if (checkout.id) {
-          await applyStripeSession(db, await stripeSession(config, checkout.id));
+          const holdOver = (checkout.holdUntil ?? checkout.expiresAt) <= now;
+          await applyStripeSession(db, holdOver ? await releaseStripeSession(config, checkout.id) : await stripeSession(config, checkout.id));
+        } else if (checkout.expiresAt > now) {
+          // The session ID was never saved, so it can only be found once Stripe's own expiry has passed.
+          await doc.ref.update({ reconcileAt: checkout.expiresAt });
+          continue;
         } else if (checkout.expiresAt <= now) {
           const session = await findCheckoutAttempt(config, doc.id, checkout.attempt, checkout.expiresAt - CHECKOUT_WINDOW - MINUTE, checkout.expiresAt);
           if (session) {
