@@ -28,7 +28,16 @@ function eventDetails(id, appointment, origin = process.env.HOSTING_ORIGIN ?? ""
         lines.push("Directions: https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(address));
     add("Vehicle", appointment.vehicle);
     add("Service", appointment.service);
-    const total = appointment.finalCents ?? appointment.estimateCents;
+    const base = appointment.finalCents ?? appointment.estimateCents;
+    // Sales tax: the frozen amount once invoiced, otherwise an estimate at the rate captured at booking.
+    const rate = appointment.taxRateBasisPoints ?? 0;
+    const tax = appointment.finalCents !== undefined ? appointment.taxCents ?? 0
+        : typeof base === "number" && rate ? Math.round(base * rate / 10000) : 0;
+    const total = typeof base === "number" ? base + tax : base;
+    if (typeof base === "number" && tax)
+        add("Subtotal", money(base));
+    if (tax)
+        add(`Sales tax (${(rate / 100).toFixed(2).replace(/\.?0+$/, "")}%)`, money(tax));
     if (typeof total === "number")
         add(appointment.finalCents !== undefined ? "Final total" : "Estimate", money(total));
     if (appointment.paidDeposit)

@@ -4,6 +4,7 @@ import stripe from '../functions/lib/appointment-stripe.js';
 import booking from '../functions/lib/appointment-booking.js';
 import calendarSync from '../functions/lib/appointment-calendar.js';
 import emailTemplate from '../functions/lib/appointment-email-template.js';
+import tax from '../functions/lib/appointment-tax.js';
 
 const now = Date.parse('2027-01-17T13:00:00Z');
 const timestamp = Math.trunc(now / 1000);
@@ -18,6 +19,25 @@ assert.equal(stripe.verifyStripeEvent(Buffer.concat([raw, Buffer.from(' ')]), he
 assert.equal(stripe.verifyStripeEvent(raw, header, secret, now + 300_001), null);
 const live = Buffer.from(raw.toString().replace('false', 'true'));
 assert.equal(stripe.verifyStripeEvent(live, `t=${timestamp},v1=${sign(live)}`, secret, now), null);
+
+// Sales tax ships off at 7%; tax goes on the subtotal, and payments cover the service price before tax.
+assert.equal(tax.defaultTaxSettings.enabled, false);
+assert.equal(tax.defaultTaxSettings.rateBasisPoints, 700);
+assert.equal(tax.taxOn(30_000, 700), 2100);
+assert.equal(tax.taxOn(12_345, 700), 864);
+assert.equal(tax.taxLineLabel(675), 'Sales tax (6.75%)');
+assert.equal(tax.taxLineLabel(700), 'Sales tax (7%)');
+assert.equal(tax.taxPortion(30_000, 2100, 5000, 27_100), 2100);
+assert.equal(tax.taxPortion(30_000, 2100, 5000, 20_000), 0);
+assert.equal(tax.taxPortion(30_000, 2100, 30_000, 1000), 1000);
+assert.deepEqual(tax.parseTaxSettings({ enabled: true, rateBasisPoints: 700, taxId: ' 600-1234567 ' }), { enabled: true, rateBasisPoints: 700, taxId: '600-1234567' });
+assert.equal(tax.parseTaxSettings({ enabled: true, rateBasisPoints: 0 }), null);
+assert.equal(tax.parseTaxSettings({ enabled: true, rateBasisPoints: 7.5 }), null);
+assert.equal(tax.parseTaxSettings({ enabled: true, rateBasisPoints: 700, taxId: '<script>' }), null);
+const taxedMirror = calendarSync.eventDetails('abc', { start: 0, end: 1, service: 'Full Detail', status: 'completed', finalCents: 30000, taxCents: 2100, taxRateBasisPoints: 700, paidDeposit: 5000 }, '');
+assert.match(taxedMirror.description, /Sales tax \(7%\): \$21/);
+assert.match(taxedMirror.description, /Final total: \$321/);
+assert.match(taxedMirror.description, /Due at service: \$271/);
 
 const service = { id: 'full', name: 'Full Detail', duration: 180, cents: 30_000 };
 const settings = { ...booking.emptyBookingSettings, enabled: true, days: [1], postalCodes: ['28803'], services: [service] };
@@ -62,6 +82,20 @@ try {
   assert.equal(String(calls[0].body), String(calls[1].body));
   assert.equal(calls[0].body.get('line_items[0][price_data][unit_amount]'), '5000');
   assert(![...calls[0].body.keys()].some(key => key.split('[')[0] === 'payment_method_types'));
+  assert.equal(calls[0].body.get('line_items[1][price_data][unit_amount]'), null);
+  // A taxed balance shows the tax as its own line, and the lines add up to the amount charged.
+  await stripe.createStripeSession({ secretKey: 'sk_test_sample', webhookSecret: secret },
+    { ...options, attempt: 'balance-attempt', kind: 'balance', amount: 27_100, taxCents: 2100, taxLabel: 'Sales tax (7%)' });
+  const taxedBody = calls[2].body;
+  assert.equal(taxedBody.get('line_items[0][price_data][unit_amount]'), '25000');
+  assert.equal(taxedBody.get('line_items[1][price_data][unit_amount]'), '2100');
+  assert.equal(taxedBody.get('line_items[1][price_data][product_data][name]'), 'Sales tax (7%)');
+  // A balance that is only tax drops the empty service line.
+  await stripe.createStripeSession({ secretKey: 'sk_test_sample', webhookSecret: secret },
+    { ...options, attempt: 'tax-only', kind: 'balance', amount: 2100, taxCents: 2100, taxLabel: 'Sales tax (7%)' });
+  assert.equal(calls[3].body.get('line_items[0][price_data][product_data][name]'), 'Sales tax (7%)');
+  assert.equal(calls[3].body.get('line_items[1][price_data][unit_amount]'), null);
+  calls.length = 2;
   assert.equal(calls[0].body.get('success_url'), 'https://example-test.web.app/appointment?checkout=complete');
   assert.equal(calls[0].body.get('branding_settings[button_color]'), '#6b3fd8');
   assert.equal(calls[0].body.get('branding_settings[logo][url]'), 'https://example-test.web.app/images/ND-logo-white-transparentbg-horizontal.png');

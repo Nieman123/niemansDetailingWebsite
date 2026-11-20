@@ -354,6 +354,16 @@
     if (heading) requestAnimationFrame(() => heading.focus());
   };
 
+  // When sales tax is on, estimates say tax is added. Booking may be off, so a failed lookup just shows no note.
+  let plusTax = '';
+  fetch(buildApiUrl('/api/appointments/sales-tax'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', cache: 'no-store',
+  }).then(response => response.ok ? response.json() : null).then(data => {
+    if (!data?.result?.enabled) return;
+    plusTax = ' + tax';
+    recalculate();
+  }).catch(() => {});
+
   const recalculate = () => {
     updateServicePrices();
     const { total, consult } = computeQuote(state);
@@ -364,13 +374,13 @@
     const line = $('#quote-line');
     if (line) {
       if (ceramic) {
-        line.textContent = total === null ? 'Your ceramic coating price will be confirmed by text.' : `Your ceramic estimate: ${formatUSD(total)}`;
+        line.textContent = total === null ? 'Your ceramic coating price will be confirmed by text.' : `Your ceramic estimate: ${formatUSD(total)}${plusTax}`;
         const summary = $('#ceramic-summary');
         if (summary) summary.textContent = [ceramicVehicleLabel(), PAINT[state.paint_condition], COATINGS[state.coating_package]].filter(Boolean).join(' · ');
       } else if (consult) {
         line.textContent = 'I’ll confirm pricing by text.';
       } else if (typeof total === 'number') {
-        line.textContent = `Your estimate: ${formatUSD(total)}`;
+        line.textContent = `Your estimate: ${formatUSD(total)}${plusTax}`;
       } else {
         line.textContent = 'Select options to see your quote.';
       }

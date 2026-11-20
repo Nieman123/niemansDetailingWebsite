@@ -1,4 +1,4 @@
-import { appointmentMoney, appointmentTime, easternStart, fillDurationSelect, vehicleLabels } from "./appointment-utils.mjs";
+import { appointmentMoney, appointmentTime, easternStart, fillDurationSelect, taxOn, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
 import { jobPhotoBoard, jobPhotosSection } from "./appointment-photos.mjs";
 import { standardServices } from "./service-picker.mjs";
 
@@ -12,6 +12,13 @@ const methodNames = { cash: "Cash", check: "Check", venmo: "Venmo", cash_app: "C
 const readDay = value => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", dateStyle: "short" }).format(value);
 const pendingNotes = new Map();
 const noteSaves = new Map();
+// Current sales tax setting, loaded with the settings view and rechecked before a job is completed.
+let salesTax = { enabled: false, rateBasisPoints: 0 };
+const currentRate = () => salesTax.enabled ? salesTax.rateBasisPoints : 0;
+async function freshTaxRate(request) {
+  try { salesTax = await request("tax-settings"); } catch {}
+  return currentRate();
+}
 export const hasUnsavedJobNotes = () => pendingNotes.size > 0;
 export const clearJobNotes = () => pendingNotes.clear();
 window.addEventListener("beforeunload", event => {
@@ -66,11 +73,12 @@ export function jobWorkspace(record, request, refresh, report) {
   };
 
   if (record.status === "completed") {
-    area.append(elm("p", `Final total ${appointmentMoney(record.finalCents)} · Deposit credit ${appointmentMoney(record.paidDeposit)} · Remaining ${appointmentMoney(record.balanceCents)}`));
+    const taxText = record.taxCents ? ` · Sales tax (${taxRateLabel(record.taxRateBasisPoints)}) ${appointmentMoney(record.taxCents)} · Total ${appointmentMoney(record.totalCents)}` : "";
+    area.append(elm("p", `${record.taxCents ? "Subtotal" : "Final total"} ${appointmentMoney(record.finalCents)}${taxText} · Deposit credit ${appointmentMoney(record.paidDeposit)} · Remaining ${appointmentMoney(record.balanceCents)}`));
     if (record.maintenanceInviteQueued) area.append(elm("p", "Maintenance invitation prepared for this customer."));
     for (const entry of record.payments) {
       const line = elm("div", "", "appointment-actions");
-      line.append(elm("span", `${readDay(entry.at)} · ${methodNames[entry.method] || entry.method} · ${appointmentMoney(entry.amount)}${entry.clearance ? ` · ${entry.clearance}` : ""}`));
+      line.append(elm("span", `${readDay(entry.at)} · ${methodNames[entry.method] || entry.method} · ${appointmentMoney(entry.amount)}${entry.taxCents ? ` (incl. ${appointmentMoney(entry.taxCents)} tax)` : ""}${entry.clearance ? ` · ${entry.clearance}` : ""}`));
       const recordedManually = ["cash", "check", "venmo", "cash_app", "other"].includes(entry.method);
       const reversed = record.payments.some(other => other.method === "reversal" && other.reference === entry.id);
       if (entry.clearance === "pending") {
@@ -168,8 +176,10 @@ export function jobWorkspace(record, request, refresh, report) {
         if (extra !== undefined || !description || !/^-?\d+(\.\d{1,2})?$/.test(price || "")) throw new Error("Enter each charge as Description | Amount.");
         return { description, cents: cents(price) };
       });
+      const rate = await freshTaxRate(request);
+      if (rate && !confirm(`Add ${taxRateLabel(rate)} sales tax (${appointmentMoney(taxOn(cents(final.value), rate))}) to this invoice?`)) { message.textContent = ""; return; }
       await request("finish-job", {
-        ...work(), finalCents: cents(final.value), scopeAccepted: accepted.checked,
+        ...work(), finalCents: cents(final.value), scopeAccepted: accepted.checked, taxRateBasisPoints: rate,
         maintenanceInviteAfterPayment: autoInvite?.checked === true, ...(invoiceLines.length ? { invoiceLines } : {}),
       });
       pendingNotes.delete(record.id);
@@ -310,6 +320,7 @@ export function jobScreen(record, request, refresh, report) {
   closeout.append(elm("h4", "Finish and charge"));
   const lines = elm("div", "", "job-lines");
   const totalLine = elm("p", "", "job-total");
+  const taxLine = elm("p", "", "job-due job-tax");
   const dueLine = elm("p", "", "job-due");
   const approval = elm("label", "", "appointment-checkbox job-approval");
   const approved = Object.assign(document.createElement("input"), { type: "checkbox" });
@@ -338,8 +349,12 @@ export function jobScreen(record, request, refresh, report) {
   }).filter(line => line.description || line.dollars);
   function update() {
     const total = readLines().reduce((sum, line) => sum + cents(line.dollars || 0), 0);
-    totalLine.textContent = "Total " + appointmentMoney(total);
-    const due = total - (record.paidDeposit ?? 0);
+    const rate = currentRate();
+    const tax = rate ? taxOn(total, rate) : 0;
+    taxLine.hidden = !rate;
+    taxLine.textContent = rate ? `Subtotal ${appointmentMoney(total)} · Sales tax (${taxRateLabel(rate)}) ${appointmentMoney(tax)}` : "";
+    totalLine.textContent = "Total " + appointmentMoney(total + tax);
+    const due = total + tax - (record.paidDeposit ?? 0);
     dueLine.textContent = (record.paidDeposit ? `Deposit ${appointmentMoney(record.paidDeposit)} applied · ` : "") + "Due now " + appointmentMoney(Math.max(0, due));
     approval.hidden = !(record.estimateCents != null && total > record.estimateCents);
     finish.textContent = "Complete job · collect " + appointmentMoney(Math.max(0, due));
@@ -373,17 +388,22 @@ export function jobScreen(record, request, refresh, report) {
     if (raised && !changes.value.trim()) {
       changes.value = "Added: " + invoiceLines.slice(1).map(line => `${line.description} ${appointmentMoney(line.cents)}`).join(", ");
     }
-    if (!confirm(`Complete this job with a total of ${appointmentMoney(total)}?`)) { message.textContent = ""; return; }
+    // Recheck the tax setting so the amount confirmed here is the amount the server charges.
+    const rate = await freshTaxRate(request);
+    update();
+    const tax = rate ? taxOn(total, rate) : 0;
+    const summary = rate ? `${appointmentMoney(total)} plus ${appointmentMoney(tax)} sales tax (${appointmentMoney(total + tax)} total)` : appointmentMoney(total);
+    if (!confirm(`Complete this job with a total of ${summary}?`)) { message.textContent = ""; return; }
     await flushNotes();
     await request("finish-job", {
-      ...work(), finalCents: total, scopeAccepted: approved.checked, invoiceLines,
+      ...work(), finalCents: total, scopeAccepted: approved.checked, invoiceLines, taxRateBasisPoints: rate,
       maintenanceInviteAfterPayment: invite ? inviteBox.checked : false,
     });
     pendingNotes.delete(record.id);
     await refresh();
   });
 
-  closeout.append(lines, addOns, totalLine, dueLine, approval);
+  closeout.append(lines, addOns, taxLine, totalLine, dueLine, approval);
   if (invite) closeout.append(invite);
   screen.append(closeout);
   const bar = elm("div", "", "job-finish-bar");
@@ -433,6 +453,43 @@ export function rescheduleWorkspace(record, request, refresh, report) {
 }
 
 const weekdayNames = [[1, "Monday"], [2, "Tuesday"], [3, "Wednesday"], [4, "Thursday"], [5, "Friday"], [6, "Saturday"], [0, "Sunday"]];
+
+// Sales tax: off until turned on. The rate applies to invoices completed after saving.
+export function setupTaxSettings(form, request, report) {
+  if (form.dataset.bound) { form.dispatchEvent(new Event("reload-settings")); return; }
+  form.dataset.bound = "1";
+  const status = form.querySelector("[role=status]");
+  const fields = form.elements;
+  const button = form.querySelector("button[type=submit]");
+  let revision = "";
+  function load(settings) {
+    salesTax = settings;
+    revision = settings.revision ?? "";
+    fields.enabled.checked = settings.enabled;
+    fields.rate.value = (settings.rateBasisPoints / 100).toFixed(2).replace(/\.?0+$/, "");
+    fields.taxId.value = settings.taxId ?? "";
+    status.textContent = settings.enabled ? `Charging ${taxRateLabel(settings.rateBasisPoints)} sales tax on completed invoices.` : "Sales tax is off.";
+  }
+  const refresh = async () => {
+    button.disabled = true;
+    try { load(await request("tax-settings")); button.disabled = false; }
+    catch (error) { status.textContent = report(error); }
+  };
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const rateBasisPoints = Math.round(Number(fields.rate.value) * 100);
+    if (fields.enabled.checked && !salesTax.enabled && !confirm(`Charge ${taxRateLabel(rateBasisPoints)} sales tax on every invoice completed from now on?`)) return;
+    button.disabled = true;
+    try {
+      load(await request("save-tax-settings", { revision, enabled: fields.enabled.checked, rateBasisPoints, taxId: fields.taxId.value.trim() }));
+      status.textContent = "Saved. " + status.textContent;
+    } catch (error) { status.textContent = report(error); }
+    finally { button.disabled = false; }
+  });
+  form.addEventListener("reload-settings", refresh);
+  void refresh();
+}
 
 export function setupBookingSettings(form, request, report) {
   if (form.dataset.bound) { form.dispatchEvent(new Event("reload-settings")); return; }

@@ -14,6 +14,7 @@ import {
   createStripeSession, findCheckoutAttempt, isSessionId, releaseStripeSession, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
   type StripeSession,
 } from "./appointment-stripe";
+import { defaultTaxSettings, parseTaxSettings, taxLineLabel, taxOn, taxPortion, taxRateLabel, type TaxSettings } from "./appointment-tax";
 
 const DAY = 86_400_000;
 const DEPOSIT_CENTS = 5000;
@@ -29,8 +30,13 @@ const MANUAL_METHODS = new Set(["cash", "check", "venmo", "cash_app", "other"]);
 type Checkout = {
   attempt: string; kind: "deposit" | "balance"; amount: number; expiresAt: number;
   id?: string; disclosure: string; origin: string; holdUntil?: number;
+  // Part of a balance payment that is sales tax, shown as its own Stripe line.
+  taxCents?: number; taxLabel?: string;
 };
-type PaymentEntry = { id: string; method: string; amount: number; at: number; by: string; reference: string; clearance?: "pending" | "cleared" | "returned" };
+type PaymentEntry = {
+  id: string; method: string; amount: number; at: number; by: string; reference: string; clearance?: "pending" | "cleared" | "returned";
+  taxCents?: number;
+};
 type Refund = { state: "queued" | "pending" | "succeeded" | "failed"; requestedAt: number; id?: string };
 type InvoiceLine = { description: string; cents: number };
 
@@ -66,7 +72,12 @@ type Appointment = {
   reconcileAt?: number | null;
   policyVersion?: string;
   acceptedPolicy?: string;
+  // finalCents is the pre-tax invoice subtotal. taxCents is frozen on it at completion when sales tax is on.
   finalCents?: number;
+  taxCents?: number;
+  // Rate captured at booking for estimates, then the rate actually charged at completion.
+  taxRateBasisPoints?: number;
+  taxId?: string;
   invoiceLines?: InvoiceLine[];
   payments?: PaymentEntry[];
   workNotes?: string;
@@ -188,6 +199,7 @@ function customerDetails(appointment: Appointment) {
     refundState: appointment.refund?.state ?? null,
     paymentPending: hasPendingCheck(appointment),
     finalCents: appointment.finalCents ?? null, balanceCents: remainingBalance(appointment),
+    ...taxDetails(appointment),
     invoiceLines: appointment.invoiceLines ?? [],
     depositDeadline: appointment.depositDeadline ?? null, preapproved: !!appointment.preapproved,
     depositPolicy: appointment.acceptedPolicy ?? DEPOSIT_POLICY,
@@ -214,10 +226,27 @@ function adminDetails(id: string, appointment: Appointment) {
   };
 }
 
+// Money already counted toward the invoice: the deposit plus payments that have not bounced and are not still clearing.
+function paidSoFar(appointment: Appointment) {
+  return (appointment.paidDeposit ?? 0) +
+    (appointment.payments ?? []).reduce((total, entry) => ["pending", "returned"].includes(entry.clearance ?? "") ? total : total + entry.amount, 0);
+}
+
 function remainingBalance(appointment: Appointment) {
   if (appointment.finalCents === undefined) return null;
-  return Math.max(0, appointment.finalCents - (appointment.paidDeposit ?? 0) -
-    (appointment.payments ?? []).reduce((total, entry) => ["pending", "returned"].includes(entry.clearance ?? "") ? total : total + entry.amount, 0));
+  return Math.max(0, appointment.finalCents + (appointment.taxCents ?? 0) - paidSoFar(appointment));
+}
+
+// Tax figures for customer and admin views. Before completion, a rate captured at booking gives an estimate.
+function taxDetails(appointment: Appointment) {
+  const rate = appointment.taxRateBasisPoints ?? null;
+  const final = appointment.finalCents;
+  const taxCents = final !== undefined ? appointment.taxCents ?? 0 : null;
+  return {
+    taxRateBasisPoints: rate, taxCents, taxId: appointment.taxId ?? "",
+    totalCents: final !== undefined ? final + (taxCents ?? 0) : null,
+    estimateTaxCents: final === undefined && rate && appointment.estimateCents !== null ? taxOn(appointment.estimateCents, rate) : null,
+  };
 }
 
 const hasPendingCheck = (appointment: Appointment) => (appointment.payments ?? []).some(entry => entry.clearance === "pending");
@@ -298,6 +327,7 @@ async function createAppointment(db: Firestore, uid: string, body: Record<string
   const previous = await readAppointment(db, id);
   if (previous) return adminDetails(id, previous);
   const bufferMinutes = body.useCalendarSlot === true ? (await getSettings(db)).bufferMinutes : undefined;
+  const salesTax = await getTaxSettings(db);
   const requested = buildAppointment(body, uid, Date.now());
   if (bufferMinutes !== undefined) requested.bufferMinutes = bufferMinutes;
   if (requested.status === "confirmed") await assertCalendarOpen(requested);
@@ -307,6 +337,7 @@ async function createAppointment(db: Firestore, uid: string, body: Record<string
     const now = Date.now();
     const appointment = buildAppointment(body, uid, now);
     if (bufferMinutes !== undefined) appointment.bufferMinutes = bufferMinutes;
+    if (salesTax.enabled) appointment.taxRateBasisPoints = salesTax.rateBasisPoints;
     const client = appointment.clientId ? db.collection("clients").doc(appointment.clientId) : null;
     const lead = appointment.leadId ? db.collection("leads").doc(appointment.leadId) : null;
     if ((client && !(await tx.get(client)).exists) || (lead && !(await tx.get(lead)).exists)) {
@@ -325,6 +356,7 @@ async function createAppointment(db: Firestore, uid: string, body: Record<string
 async function changeAppointment(db: Firestore, uid: string, id: string, action: string, body: Record<string, unknown>) {
   const ref = db.collection("appointments").doc(id);
   const stripe = action === "issue-link" ? await stripeConfig() : null;
+  const salesTax = action === "finish-job" ? await getTaxSettings(db) : null;
   let previous = await readAppointment(db, id);
   if (!previous) throw new AppointmentError(404, "record_not_found");
   if (action === "cancel" && previous.checkout?.id) {
@@ -439,7 +471,14 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
             !supplied.every(item => item && text(item.description, 140) && Number.isSafeInteger(item.cents) && Math.abs(item.cents) <= 10_000_000) ||
             supplied.reduce((total, item) => total + item.cents, 0) !== final) throw new AppointmentError(400, "invalid_line_items");
         const invoiceLines = supplied.map(item => ({ description: text(item.description, 140), cents: item.cents as number }));
-        const update = { ...work, ...calendarUpdate(now), status: "completed" as const, finalCents: final, invoiceLines, completedAt: now, completedBy: uid,
+        // The owner sees the tax line before completing; refuse if the setting changed since that screen loaded.
+        const tax = salesTax ?? defaultTaxSettings;
+        const expectedRate = tax.enabled ? tax.rateBasisPoints : 0;
+        if ((body.taxRateBasisPoints ?? 0) !== expectedRate) throw new AppointmentError(409, "tax_settings_changed");
+        const taxFields = tax.enabled
+          ? { taxCents: taxOn(final, tax.rateBasisPoints), taxRateBasisPoints: tax.rateBasisPoints, taxId: tax.taxId }
+          : { taxCents: 0 };
+        const update = { ...work, ...calendarUpdate(now), status: "completed" as const, finalCents: final, ...taxFields, invoiceLines, completedAt: now, completedBy: uid,
           maintenanceInviteAfterPayment: body.maintenanceInviteAfterPayment === true && !!appointment.email && maintenanceService(appointment.service),
         };
         const completed = { ...appointment, ...update };
@@ -489,8 +528,12 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
       } else if (hasPendingCheck(appointment)) {
         throw new AppointmentError(409, "check_pending");
       }
+      // Record how much of each payment is sales tax so collected tax can be reported from the ledger.
+      const reversed = entryMethod === "reversal" ? payments.find(payment => payment.id === reference) : undefined;
+      const taxCents = reversed ? -(reversed.taxCents ?? 0)
+        : taxPortion(appointment.finalCents ?? 0, appointment.taxCents ?? 0, paidSoFar(appointment), amount as number);
       const entry: PaymentEntry = { id: operation, amount: amount as number, method: entryMethod, reference, by: uid, at: now,
-        ...(entryMethod === "check" ? { clearance: "pending" as const } : {}),
+        ...(entryMethod === "check" ? { clearance: "pending" as const } : {}), ...(taxCents ? { taxCents } : {}),
       };
       tx.create(ref.collection("ledger").doc(operation), entry);
       const paid = { ...appointment, payments: [...payments, entry] };
@@ -618,6 +661,11 @@ async function readAppointment(db: Firestore, id: string) {
 }
 
 const settingsDoc = (db: Firestore) => db.collection("appointmentSettings").doc("booking");
+const taxDoc = (db: Firestore) => db.collection("appointmentSettings").doc("salesTax");
+
+async function getTaxSettings(db: Firestore): Promise<TaxSettings> {
+  return { ...defaultTaxSettings, ...((await taxDoc(db).get()).data() as Partial<TaxSettings> | undefined) };
+}
 
 async function getSettings(db: Firestore) {
   return ((await settingsDoc(db).get()).data() as BookingSettings | undefined) ?? emptyBookingSettings;
@@ -719,6 +767,8 @@ async function publicBooking(db: Firestore, auth: Auth, req: Request, body: Reco
     throw new AppointmentError(409, "time_unavailable");
   }
   appointment.bufferMinutes = settings.bufferMinutes;
+  const salesTax = await getTaxSettings(db);
+  if (salesTax.enabled) appointment.taxRateBasisPoints = salesTax.rateBasisPoints;
   await assertCalendarOpen(appointment);
   const ref = db.collection("appointments").doc(id);
   const holds = db.collection("appointmentBookingHolds");
@@ -820,7 +870,23 @@ function emailFacts(appointment: Appointment, start = appointment.start): Array<
     ["Service", appointment.service], ["When", emailWhenFormat.format(start)],
     ["Vehicle", appointment.vehicle], ["Address", appointment.address],
   ];
+  // Before the job is done, say tax will be added when the booking captured a rate.
+  if (appointment.finalCents === undefined && appointment.taxRateBasisPoints) {
+    facts.push(["Sales tax", `${taxRateLabel(appointment.taxRateBasisPoints)} added to the final invoice`]);
+  }
   return facts.filter(([, value]) => !!value);
+}
+
+// Receipt lines: subtotal, sales tax and total when the invoice carries tax, plus the tax account number.
+function invoiceFacts(appointment: Appointment): Array<[string, string]> {
+  if (appointment.finalCents === undefined || !appointment.taxCents) return [];
+  const facts: Array<[string, string]> = [
+    ["Subtotal", emailMoney(appointment.finalCents)],
+    [taxLineLabel(appointment.taxRateBasisPoints ?? 0), emailMoney(appointment.taxCents)],
+    ["Invoice total", emailMoney(appointment.finalCents + appointment.taxCents)],
+  ];
+  if (appointment.taxId) facts.push(["NC sales tax account", appointment.taxId]);
+  return facts;
 }
 
 function checkoutOrigin() {
@@ -862,9 +928,12 @@ async function openCheckout(db: Firestore, id: string, body: Record<string, unkn
     const expiresAt = Math.min(deposit ? appointment.depositDeadline ?? 0 : Infinity, now + CHECKOUT_WINDOW);
     if (expiresAt - now < 31 * MINUTE) throw new AppointmentError(409, "checkout_too_close");
     const kind = deposit ? "deposit" : "balance";
+    // A balance that still includes unpaid tax shows the tax as its own line; the lines add up to the amount.
+    const taxCents = deposit ? 0 : taxPortion(appointment.finalCents ?? 0, appointment.taxCents ?? 0, paidSoFar(appointment), amount);
     const checkout: Checkout = {
       attempt: randomBytes(16).toString("hex"), kind, expiresAt, amount, origin, holdUntil: now + CHECKOUT_HOLD,
       disclosure: deposit ? DEPOSIT_POLICY : "Pay the outstanding balance for your completed detail.",
+      ...(taxCents > 0 ? { taxCents, taxLabel: taxLineLabel(appointment.taxRateBasisPoints ?? 0) } : {}),
     };
     tx.update(ref, { checkout, reconcileAt: checkout.holdUntil,
       ...(deposit ? { policyVersion: POLICY_VERSION, acceptedPolicy: DEPOSIT_POLICY, acceptedAt: now } : {}),
@@ -903,16 +972,18 @@ export async function applyStripeSession(db: Firestore, session: StripeSession) 
     }
     if (session.status !== "complete" || session.payment_status !== "paid" || !session.payment_intent || !/^pi_\w+$/.test(session.payment_intent)) return;
     const ledger = ref.collection("ledger").doc(session.id);
-    tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: liveMode() });
+    tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: liveMode(),
+      ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}) });
     if (checkout.kind === "balance") {
-      const entry: PaymentEntry = { id: session.id, amount: checkout.amount, method: "stripe", at: now, by: "stripe", reference: session.payment_intent };
+      const entry: PaymentEntry = { id: session.id, amount: checkout.amount, method: "stripe", at: now, by: "stripe", reference: session.payment_intent,
+        ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}) };
       const paid = { ...appointment, payments: [...(appointment.payments ?? []), entry] };
       tx.update(ref, { checkout: null, reconcileAt: null, payments: paid.payments });
       queueOptedInMaintenance(db, tx, id, paid);
       queueAppointmentEmail(db, tx, `receipt-${session.id}`, appointment.email, "Detailing payment received", {
           eyebrow: "Receipt", heading: "Payment received. Thank you!",
           paragraphs: [`I received your payment of ${emailMoney(checkout.amount)}. It was a pleasure taking care of your ${appointment.vehicle || "vehicle"}.`],
-          details: [["Paid", emailMoney(checkout.amount)], ...emailFacts(appointment)],
+          details: [...invoiceFacts(appointment), ["Paid", emailMoney(checkout.amount)], ...emailFacts(appointment)],
           action: { label: "Book your next detail", url: `${emailSiteOrigin()}/quote` },
         });
     } else {
@@ -1060,7 +1131,12 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
     } else if (action === "booking-options") {
       const settings = await getSettings(db);
       const enabled = settings.enabled && !!await stripeConfig() && !!await calendarConfig();
-      result = { enabled, services: enabled ? settings.services.map(service => ({ ...service, vehiclePrices: bookingPrices(service) })) : [], horizonDays: settings.horizonDays, depositPolicy: DEPOSIT_POLICY, depositCents: DEPOSIT_CENTS };
+      const tax = await getTaxSettings(db);
+      result = { enabled, services: enabled ? settings.services.map(service => ({ ...service, vehiclePrices: bookingPrices(service) })) : [], horizonDays: settings.horizonDays, depositPolicy: DEPOSIT_POLICY, depositCents: DEPOSIT_CENTS,
+        salesTax: { enabled: tax.enabled, rateBasisPoints: tax.enabled ? tax.rateBasisPoints : 0 } };
+    } else if (action === "sales-tax") {
+      const tax = await getTaxSettings(db);
+      result = { enabled: tax.enabled, rateBasisPoints: tax.enabled ? tax.rateBasisPoints : 0 };
     } else if (action === "availability") {
       result = await getAvailability(db, body);
     } else if (action === "book") {
@@ -1140,6 +1216,18 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
           tx.create(settingsDoc(db).collection("versions").doc(), { ...result, updatedBy: uid, updatedAt: Date.now() });
         });
       }
+      else if (action === "tax-settings") result = await getTaxSettings(db);
+      else if (action === "save-tax-settings") {
+        const tax = parseTaxSettings(body);
+        if (!tax) throw new AppointmentError(400, "invalid_tax_settings");
+        await db.runTransaction(async tx => {
+          const previous = await tx.get(taxDoc(db));
+          if ((previous.get("revision") ?? "") !== (body.revision ?? "")) throw new AppointmentError(409, "settings_updated");
+          result = { ...tax, revision: randomBytes(16).toString("hex") };
+          tx.set(taxDoc(db), { ...result, updatedBy: uid, updatedAt: Date.now() });
+          tx.create(taxDoc(db).collection("versions").doc(), { ...result, updatedBy: uid, updatedAt: Date.now() });
+        });
+      }
       else if (action === "list") {
         const recent = await db.collection("appointments").orderBy("createdAt", "desc").limit(50).get();
         result = recent.docs.map(doc => adminDetails(doc.id, doc.data() as Appointment));
@@ -1150,11 +1238,11 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
         if (records.size > 1000) throw new AppointmentError(400, "export_range_too_large");
         const cell = (value: unknown) => `"${String(value ?? "").replace(/^[=+@\-\s]/, match => "'" + match).replace(/"/g, '""')}"`;
         const rows = records.docs.map(row => {
-          const { at, kind, method, amount, by, reference, status, clearance } = row.data();
+          const { at, kind, method, amount, by, reference, status, clearance, taxCents } = row.data();
           return [row.ref.parent.parent?.id, row.id, new Date(at).toISOString(), kind ?? "manual_payment", method, status ?? clearance ?? "recorded",
-            by, reference].map(cell).join(",") + `,${Number.isSafeInteger(amount) ? amount : ""}`;
+            by, reference].map(cell).join(",") + `,${Number.isSafeInteger(amount) ? amount : ""},${Number.isSafeInteger(taxCents) ? taxCents : 0}`;
         });
-        result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents", ...rows].join("\r\n") };
+        result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents,tax_cents", ...rows].join("\r\n") };
       } else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite"].includes(action)) {
         result = await changeAppointment(db, uid, identifier(body.id)!, action, body);
       } else throw new AppointmentError(404, "not_found");

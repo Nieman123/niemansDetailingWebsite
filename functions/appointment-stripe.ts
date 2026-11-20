@@ -66,7 +66,7 @@ export function checkoutBranding(origin: string): Record<string, string> {
 
 export async function createStripeSession(config: StripeConfig, input: {
   id: string; attempt: string; origin: string; kind: "deposit" | "balance";
-  amount: number; expiresAt: number; disclosure: string;
+  amount: number; expiresAt: number; disclosure: string; taxCents?: number; taxLabel?: string;
 }) {
   const { id, attempt, origin } = input;
   const body = checkoutSessionBody(input);
@@ -81,15 +81,25 @@ export async function createStripeSession(config: StripeConfig, input: {
 
 function checkoutSessionBody(input: {
   id: string; attempt: string; origin: string; kind: "deposit" | "balance";
-  amount: number; expiresAt: number; disclosure: string;
+  amount: number; expiresAt: number; disclosure: string; taxCents?: number; taxLabel?: string;
 }): Record<string, string> {
   const { id, attempt, origin, kind, amount, expiresAt, disclosure } = input;
+  // Sales tax is its own line on a balance; the lines always add up to the reserved amount.
+  const tax = kind === "balance" && input.taxCents && input.taxCents > 0 && input.taxCents <= amount ? input.taxCents : 0;
+  const lines: Array<[string, number]> = [
+    [kind === "deposit" ? "Detailing appointment deposit" : "Detailing appointment balance", amount - tax],
+    [input.taxLabel || "Sales tax", tax],
+  ].filter(([, cents]) => (cents as number) > 0) as Array<[string, number]>;
+  const items: Record<string, string> = {};
+  lines.forEach(([name, cents], index) => {
+    items[`line_items[${index}][quantity]`] = "1";
+    items[`line_items[${index}][price_data][currency]`] = "usd";
+    items[`line_items[${index}][price_data][unit_amount]`] = String(cents);
+    items[`line_items[${index}][price_data][product_data][name]`] = name;
+  });
   return {
     mode: "payment",
-    "line_items[0][quantity]": "1",
-    "line_items[0][price_data][currency]": "usd",
-    "line_items[0][price_data][unit_amount]": String(amount),
-    "line_items[0][price_data][product_data][name]": kind === "deposit" ? "Detailing appointment deposit" : "Detailing appointment balance",
+    ...items,
     "metadata[appointmentId]": id,
     "metadata[attemptId]": attempt,
     "metadata[kind]": kind,

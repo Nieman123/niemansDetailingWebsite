@@ -30,6 +30,9 @@ export function easternStart(value) {
 
 export const appointmentTime = ({ start, end }) => `${friendlyDate.formatRange(start, end)} Eastern`;
 export const appointmentMoney = cents => dollars.format(cents / 100);
+// Sales tax rates are stored in hundredths of a percent: 700 is 7%.
+export const taxRateLabel = basisPoints => `${(basisPoints / 100).toFixed(2).replace(/\.?0+$/, "")}%`;
+export const taxOn = (cents, basisPoints) => Math.max(0, Math.round(cents * basisPoints / 10000));
 
 export function durationLabel(total) {
   if (total % 1440 === 0) return total / 1440 + (total === 1440 ? " day" : " days");
