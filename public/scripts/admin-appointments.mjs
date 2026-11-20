@@ -394,9 +394,8 @@ function renderDetail(record) {
     approve.className = "btn primary";
     actions.append(approve);
   }
-  if (["draft", "awaiting_deposit", "confirmed", "in_progress", "pending_approval", "completed"].includes(record.status)) {
-    const label = record.status === "draft" ? "Hold time and send deposit link" : record.status === "completed" ? "Send balance link" : "Send customer link";
-    const linkButton = actionButton(label, async () => {
+  // Builds a link button that shows the share tools in the given container (hub or balance view).
+  const linkButtonFor = (label, target) => actionButton(label, async () => {
       const session = scope;
       const warning = record.status === "draft"
         ? "Check availability and hold this time for a $50 deposit?"
@@ -407,22 +406,39 @@ function renderDetail(record) {
       if (session !== scope) return;
       const issued = `${location.origin}/appointment#${record.id}.${token}`;
       links.set(record.id, issued);
-      share.replaceChildren(shareActions(record, issued));
+      target.replaceChildren(shareActions(record, issued));
       if (record.status === "draft") await refreshList();
-      else share.querySelector("input").focus();
+      else target.querySelector("input").focus();
       feedback().textContent = "Customer link ready to copy or send.";
     });
+  if (["draft", "awaiting_deposit", "confirmed", "in_progress", "pending_approval", "completed"].includes(record.status)) {
+    const label = record.status === "draft" ? "Hold time and send deposit link" : record.status === "completed" ? "Send balance link" : "Send customer link";
+    const linkButton = linkButtonFor(label, share);
     if (record.status === "draft") linkButton.className = "btn primary";
     actions.append(linkButton);
   }
   hub.append(actions, share);
+
+  // Balance and payments: lead with the payment link while money is still owed.
+  function balanceView() {
+    const body = detailsAsView(jobWorkspace(record, ownerRequest, refreshList, explain)).body;
+    if (!(record.balanceCents > 0) || record.paymentUnderReview || record.paymentPending) return body;
+    const block = Object.assign(document.createElement("section"), { className: "balance-link" });
+    const target = document.createElement("div");
+    const existing = links.get(record.id);
+    if (existing) target.append(shareActions(record, existing));
+    const button = linkButtonFor("Send balance link · " + appointmentMoney(record.balanceCents), target);
+    button.className = "btn primary";
+    block.append(Object.assign(document.createElement("p"), { textContent: "Text or email the customer a link to pay the remaining balance online." }), button, target);
+    return [block, body];
+  }
 
   // Views
   const tiles = Object.assign(document.createElement("div"), { className: "record-tiles" });
   if (["confirmed", "in_progress", "completed"].includes(record.status)) {
     const completed = record.status === "completed";
     tiles.append(addView("job", completed ? "Balance and payments" : record.status === "in_progress" ? "Job in progress" : "Start job",
-      completed ? "cash" : "wrench", () => completed ? detailsAsView(jobWorkspace(record, ownerRequest, refreshList, explain)).body : jobScreen(record, ownerRequest, refreshList, explain),
+      completed ? "cash" : "wrench", () => completed ? balanceView() : jobScreen(record, ownerRequest, refreshList, explain),
       { tone: "gold", hint: completed ? "Record payments and invitations" : "Notes, photos, and closeout" }));
   }
   const jobOpen = record.status === "in_progress";

@@ -274,3 +274,6 @@
 .owner-app[data-record-view="job"] #workspace > .appointment-notice,
 .owner-app[data-record-view="job"] #back-to-queue { display: none; }
 .owner-app[data-record-view="job"] #view-detail { margin-top: 0; }
+.balance-link { display: grid; gap: 10px; margin-bottom: 18px; padding: 16px; border: 1px solid var(--nd-gold-line); border-radius: 16px; background: var(--nd-gold-tint); }
+.balance-link p { margin: 0; color: var(--nd-text-2); }
+.owner-app .balance-link .btn { min-height: 56px; font-size: 17px; }
