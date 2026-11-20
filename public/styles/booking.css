@@ -363,21 +363,18 @@
 .service-choice--lead .service-choice__price { grid-area: price; color: var(--nd-gold); font-family: var(--nd-font-display); font-size: 22px; font-weight: 800; text-align: right; }
 .service-picker__drawer { border: 1px solid var(--nd-line, rgba(255,255,255,.1)); border-radius: 16px; background: rgba(255, 255, 255, .02); }
 .service-picker__drawer[open] { border-color: var(--nd-gold-line, rgba(228,187,92,.45)); }
-.service-picker__label {
-  display: flex; align-items: center; gap: 10px; min-height: 52px; margin: 0; padding: 0 18px; cursor: pointer; list-style: none;
+.service-picker__drawer > .service-picker__label, .appointment-app .service-picker__drawer > .service-picker__label { display: block; margin: 0; padding: 0 18px; cursor: pointer; list-style: none; }
+.service-picker__label::-webkit-details-marker { display: none; }
+.service-picker__summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; line-height: 1.2;
   color: var(--nd-text-2); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
 }
-.service-picker__label::-webkit-details-marker { display: none; }
-.service-picker__label::after {
-  content: ""; width: 9px; height: 9px; margin-left: auto; border-right: 2px solid var(--nd-gold); border-bottom: 2px solid var(--nd-gold);
+.service-picker__summary::after {
+  content: ""; flex: none; width: 9px; height: 9px; border-right: 2px solid var(--nd-gold); border-bottom: 2px solid var(--nd-gold);
   transform: translateY(-3px) rotate(45deg); transition: transform .2s ease;
 }
-.service-picker__drawer[open] > .service-picker__label::after { transform: translateY(2px) rotate(-135deg); }
+.service-picker__drawer[open] .service-picker__summary::after { transform: translateY(2px) rotate(-135deg); }
 .service-picker__label:focus-visible { outline: 2px solid var(--nd-gold); outline-offset: 2px; border-radius: 16px; }
-.service-picker__count {
-  min-width: 22px; padding: 2px 7px; border-radius: 999px; background: rgba(228, 187, 92, .14); color: var(--nd-gold);
-  font-size: 12px; letter-spacing: 0; text-align: center;
-}
 .service-picker__more { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 14px 14px; }
 .service-choice--chip { align-items: center; gap: 10px; min-height: 46px; padding: 8px 14px; border-radius: 999px; font-size: 15px; font-weight: 600; }
 .service-choice--chip .service-choice__price { color: var(--nd-gold); font-size: 14px; font-weight: 700; }
