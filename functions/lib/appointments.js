@@ -7,6 +7,7 @@ exports.handleStripeWebhook = handleStripeWebhook;
 const node_crypto_1 = require("node:crypto");
 const firebase_functions_1 = require("firebase-functions");
 const appointment_email_1 = require("./appointment-email");
+const appointment_secrets_1 = require("./appointment-secrets");
 const appointment_content_1 = require("./appointment-content");
 const appointment_calendar_1 = require("./appointment-calendar");
 const appointment_booking_1 = require("./appointment-booking");
@@ -731,7 +732,9 @@ async function cancelAppointment(db, tx, id, appointment, actor, override, reaso
 function checkoutOrigin() {
     const origin = process.env.HOSTING_ORIGIN ?? "";
     const project = process.env.APPOINTMENT_INTEGRATIONS_PROJECT;
-    if (!project || origin !== `https://${project}.web.app`)
+    // Live checkout returns customers to the production domain; test checkout only to <project>.web.app.
+    const expected = (0, appointment_secrets_1.liveMode)() ? /^https:\/\/[a-z0-9.-]+$/.test(origin) : origin === `https://${project}.web.app`;
+    if (!project || !expected)
         throw new AppointmentError(503, "stripe_unavailable");
     return origin;
 }
@@ -786,7 +789,7 @@ async function openCheckout(db, id, body) {
     const session = reservation.id
         ? await (0, appointment_stripe_1.stripeSession)(config, reservation.id)
         : await (0, appointment_stripe_1.createStripeSession)(config, { id, ...reservation });
-    if (session.livemode !== false || session.metadata.appointmentId !== id || session.metadata.attemptId !== reservation.attempt ||
+    if (session.livemode !== (0, appointment_secrets_1.liveMode)() || session.metadata.appointmentId !== id || session.metadata.attemptId !== reservation.attempt ||
         session.amount_total !== reservation.amount || session.currency !== "usd")
         throw new Error("stripe_checkout_mismatch");
     await db.runTransaction(async (tx) => {
@@ -802,7 +805,7 @@ async function openCheckout(db, id, body) {
 }
 async function applyStripeSession(db, session) {
     const id = session.metadata?.appointmentId;
-    if (!HASH.test(id ?? "") || session.livemode !== false || !/^cs_test_\w+$/.test(session.id))
+    if (!HASH.test(id ?? "") || session.livemode !== (0, appointment_secrets_1.liveMode)() || !(0, appointment_stripe_1.isSessionId)(session.id))
         return;
     const ref = db.collection("appointments").doc(id);
     await db.runTransaction(async (tx) => {
@@ -820,7 +823,7 @@ async function applyStripeSession(db, session) {
         if (session.status !== "complete" || session.payment_status !== "paid" || !session.payment_intent || !/^pi_\w+$/.test(session.payment_intent))
             return;
         const ledger = ref.collection("ledger").doc(session.id);
-        tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: false });
+        tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: (0, appointment_secrets_1.liveMode)() });
         if (checkout.kind === "balance") {
             const entry = { id: session.id, amount: checkout.amount, method: "stripe", at: now, by: "stripe", reference: session.payment_intent };
             const paid = { ...appointment, payments: [...(appointment.payments ?? []), entry] };

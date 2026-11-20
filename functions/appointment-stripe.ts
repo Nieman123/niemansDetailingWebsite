@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { integrationConfig } from "./appointment-secrets";
+import { integrationConfig, liveMode } from "./appointment-secrets";
 
 type StripeConfig = { secretKey: string; webhookSecret: string };
 export type StripeSession = {
@@ -23,7 +23,9 @@ export type StripeEvent = {
 
 export async function stripeConfig(): Promise<StripeConfig | null> {
   const config = await integrationConfig<StripeConfig>("APPOINTMENT_STRIPE_CONFIG");
-  if (!config || !/^(sk|rk)_test_\w+$/.test(config.secretKey) || !/^whsec_\w+$/.test(config.webhookSecret)) return null;
+  // Keys must match the mode, so a test key can never run production or a live key staging.
+  const keyPattern = liveMode() ? /^(sk|rk)_live_\w+$/ : /^(sk|rk)_test_\w+$/;
+  if (!config || !keyPattern.test(config.secretKey) || !/^whsec_\w+$/.test(config.webhookSecret)) return null;
   return config;
 }
 
@@ -100,8 +102,12 @@ function checkoutSessionBody(input: {
   };
 }
 
+export function isSessionId(id: string) {
+  return (liveMode() ? /^cs_live_\w+$/ : /^cs_test_\w+$/).test(id);
+}
+
 export function stripeSession(config: StripeConfig, id: string) {
-  if (!/^cs_test_\w+$/.test(id)) throw new Error("invalid_stripe_session");
+  if (!isSessionId(id)) throw new Error("invalid_stripe_session");
   return stripeRequest<StripeSession>(config, `checkout/sessions/${id}`);
 }
 
@@ -112,7 +118,7 @@ export async function findCheckoutAttempt(config: StripeConfig, id: string, atte
   });
   for (;;) {
     const page = await stripeRequest<{ data: StripeSession[]; has_more: boolean }>(config, `checkout/sessions?${query}`);
-    const match = page.data.find(session => session.livemode === false && session.metadata?.appointmentId === id &&
+    const match = page.data.find(session => session.livemode === liveMode() && session.metadata?.appointmentId === id &&
       session.metadata.attemptId === attempt);
     if (match) return match;
     if (page.has_more === false) return null;
@@ -130,9 +136,9 @@ export async function stripeMoneyChange(config: StripeConfig, event: StripeEvent
   const object = await stripeRequest<{
     livemode: boolean; currency: string; payment_intent: string; status: string; amount: number; amount_refunded?: number;
   }>(config, `${isRefund ? "charges" : "disputes"}/${id}`);
-  if (object.livemode !== false || object.currency !== "usd" || !/^pi_\w+$/.test(object.payment_intent)) return null;
+  if (object.livemode !== liveMode() || object.currency !== "usd" || !/^pi_\w+$/.test(object.payment_intent)) return null;
   const intent = await stripeRequest<{ livemode: boolean; metadata?: Record<string, string> }>(config, `payment_intents/${object.payment_intent}`);
-  if (intent.livemode !== false || !intent.metadata?.appointmentId) return null;
+  if (intent.livemode !== liveMode() || !intent.metadata?.appointmentId) return null;
   const amount = isRefund ? object.amount_refunded : object.amount;
   if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount < 0) return null;
   return { appointmentId: intent.metadata.appointmentId, intent: object.payment_intent, kind: isRefund ? "refund" : "dispute",
@@ -160,7 +166,7 @@ export function verifyStripeEvent(raw: Buffer, signature: string, secret: string
   if (!parts.some(part => /^v1=[a-f0-9]{64}$/.test(part) && timingSafeEqual(expected, Buffer.from(part.slice(3), "hex")))) return null;
   try {
     const event = JSON.parse(raw.toString("utf8")) as StripeEvent;
-    return event.livemode === false && /^evt_\w+$/.test(event.id) && typeof event.type === "string" &&
+    return event.livemode === liveMode() && /^evt_\w+$/.test(event.id) && typeof event.type === "string" &&
       typeof event.data?.object?.id === "string" ? event : null;
   } catch { return null; }
 }

@@ -73,7 +73,7 @@ async function renderUser(user) {
 }
 
 async function init() {
-  if (!appointmentsEnabled) { status.textContent = "Customer accounts are available on staging."; return; }
+  if (!appointmentsEnabled) { status.textContent = "Customer accounts aren't available yet."; return; }
   if (isSignInWithEmailLink(auth, location.href)) {
     const complete = async email => {
       await signInWithEmailLink(auth, email, location.href);

@@ -5,7 +5,7 @@ Everything to check before the first production deploy from `main`. Production i
 There are two stages:
 
 1. **First production run** (sections 1–6). The current site, quote intake, Telegram alerts, admin, blog and the new UI. Appointments, deposits and customer email stay off.
-2. **Turning on appointments** (section 7). Live Stripe, Calendar and email. This needs code changes as well as keys, so it is a separate launch.
+2. **Turning on appointments** (section 7). Live Stripe deposits, Calendar sync, customer email and the first-party booking page. The code is ready; it needs the keys in section 7, then one GitHub variable.
 
 ## What the workflows do
 
@@ -115,27 +115,72 @@ The Firebase web key (`AIzaSyBgUnt…` in `firebase-config.mjs`) is a different 
 
 After publishing a post in `/admin/blog`, run **Actions → Publish blog to production → Run workflow** on `main`. A normal deploy also rebuilds the blog.
 
-## 7. Turning on appointments (later)
+## 7. Turning on appointments
 
-`ENABLE_APPOINTMENTS=true` turns on the appointment API and deploys the 5-minute `appointmentMaintenance` job. **It does not make live booking work yet.** The code is deliberately locked to test mode, and these must change in code before taking real deposits:
+Appointments are switched on with one GitHub variable. Until then production behaves exactly as in sections 1–6. With `ENABLE_APPOINTMENTS=true` the production workflows:
 
-- `functions/appointment-stripe.ts`: only accepts `sk_test_`/`rk_test_` keys.
-- `functions/appointments.ts` (`openCheckout`, `checkoutOrigin`): rejects live Checkout sessions and only allows a `<project>.web.app` origin.
-- `functions/appointment-email.ts`: only emails addresses in `testRecipients`.
-- Production `public/schedule.html` is still the Google Calendar booking embed. The first-party booking page, `/book` redirects and site-copy publishing are only built by `scripts/prepare-staging.mjs`, and production `firebase-config.mjs` has `appointmentsPreview = false`.
+- build the first-party booking page at `/schedule` (replacing the Google Calendar embed), redirect `/book` there, and add the site-copy publishing hooks and customer accounts (`scripts/prepare-staging.mjs --production`);
+- write `APPOINTMENTS_MODE=live` for Functions, so Stripe accepts **only live** keys, sessions and events, Checkout returns customers to `HOSTING_ORIGIN`, and appointment emails go to customers instead of only the test inboxes;
+- deploy the 5-minute `appointmentMaintenance` job and the Storage rules in `storage.rules` (blog images and job photos);
+- smoke-test the booking page, the appointment API and the Stripe webhook.
 
-When that work is done, the production setup mirrors staging:
+Staging and the emulators always stay in test mode, so a test key can never run production and a live key can never run staging.
 
-**Production Secret Manager** (project `niemansdetailing`). Enable Secret Manager, Google Calendar API and Cloud Scheduler. Grant the Functions runtime account **Secret Manager Secret Accessor** on each secret.
+Do every step below before setting the variable.
+
+### 7a. Google Cloud (project `niemansdetailing`)
+
+- Enable **Secret Manager**, **Google Calendar API** and **Cloud Scheduler** under APIs & Services.
+- Give the deploy service account **Cloud Scheduler Admin** (`roles/cloudscheduler.admin`) and **Firebase Rules Admin** if it lacks it (Storage rules).
+- Give the Functions runtime account (`<PROJECT_NUMBER>-compute@developer.gserviceaccount.com`) **Secret Manager Secret Accessor** on each of the three secrets below.
+- For job photos and blog uploads, Storage rules read the Firestore admin list. Grant `roles/firebaserules.firestoreServiceAgent` to `service-<PROJECT_NUMBER>@gcp-sa-firebasestorage.iam.gserviceaccount.com`.
+- **Storage rules are replaced on deploy.** Open Firebase console → Storage → Rules first. If it has rules for paths other than `blog-images/` and `job-photos/`, add them to `storage.rules` before turning appointments on.
+
+### 7b. Secrets in production Secret Manager
+
+Create each as a secret with one version whose value is the JSON shown.
 
 | Secret | Payload | Where to get it |
 | --- | --- | --- |
-| `APPOINTMENT_STRIPE_CONFIG` | `{"secretKey":"sk_live_… or rk_live_…","webhookSecret":"whsec_…"}` | Stripe Dashboard in **live mode** → Developers → API keys. A restricted key needs write access to Checkout Sessions and Refunds. The webhook secret comes from the endpoint below. |
-| `APPOINTMENT_GOOGLE_CONFIG` | `{"clientId","clientSecret","refreshToken","detailingId","personalId","plutoId"}` | An OAuth client (Web) in the production project, authorized with offline access for `calendar.events` and `calendar.events.freebusy` by the owner of your real calendars. **Publish the OAuth consent screen to production**, or the refresh token expires after 7 days. Calendar IDs are in each calendar's settings. |
-| `APPOINTMENT_EMAIL_CONFIG` | `{"apiKey":"re_…","from":"Nieman's Detailing <appointments@niemansdetailing.com>","testRecipients":[…]}` | Resend: verify the `niemansdetailing.com` domain (DNS records), then create a sending API key. |
+| `APPOINTMENT_STRIPE_CONFIG` | `{"secretKey":"rk_live_…","webhookSecret":"whsec_…"}` | Restricted key from 7c and the signing secret from 7d. A full `sk_live_` key also works, but the restricted key is safer. |
+| `APPOINTMENT_GOOGLE_CONFIG` | `{"clientId":"…","clientSecret":"…","refreshToken":"…","detailingId":"…","personalId":"…","plutoId":"…"}` | An OAuth client (type Web) in the production project, authorized with offline access for `https://www.googleapis.com/auth/calendar.events` and `https://www.googleapis.com/auth/calendar.events.freebusy` by the owner of your real calendars. **Publish the OAuth consent screen to production**, or the refresh token expires after 7 days. Calendar IDs are under each calendar's Settings → Integrate calendar. Set them to America/New_York. |
+| `APPOINTMENT_EMAIL_CONFIG` | `{"apiKey":"re_…","from":"Nieman's Detailing <appointments@niemansdetailing.com>"}` | Resend: add and verify the `niemansdetailing.com` domain (it gives you DNS records to add), then create an API key with sending access. `testRecipients` is not needed in production. |
 
-**Stripe live webhook:** Developers → Webhooks → Add destination `https://niemansdetailing.com/api/appointments/stripe-webhook`, API version `2026-10-28.endive`, snapshot events: `checkout.session.completed`, `checkout.session.expired`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed`. Copy its signing secret into `webhookSecret`. Also finish account activation, payout bank account, and enable the payment methods you want under Settings → Payment methods.
+### 7c. Stripe restricted key
 
-**Firebase Auth:** enable Email/Password with Email link sign-in (customer accounts).
+In the Stripe Dashboard switch to **live mode**, then Developers → API keys → **Create restricted key**. Set:
 
-**GitHub:** set the `production` environment variable `ENABLE_APPOINTMENTS` to `true`, and give the deploy account Cloud Scheduler Admin (section 2).
+| Resource | Permission | Used for |
+| --- | --- | --- |
+| Checkout Sessions | **Write** | Create deposit and balance checkouts, read them back and find a session after a retry |
+| Refunds | **Write** | Issue deposit refunds and check their status |
+| Charges | **Read** | Confirm refunds reported by the webhook |
+| Disputes | **Read** | Confirm dispute events |
+| PaymentIntents | **Read** | Match a payment to its appointment |
+
+Leave everything else at **None**. Line items are created inline, so Products and Prices are not needed. The webhook is created in the Dashboard, so Webhook Endpoints is not needed.
+
+Also finish account activation, add the payout bank account, and turn on the payment methods you want under Settings → Payment methods.
+
+### 7d. Stripe live webhook
+
+Developers → Webhooks → **Add destination**:
+
+- Endpoint URL: `https://niemansdetailing.com/api/appointments/stripe-webhook`
+- API version: `2026-10-28.endive`, snapshot events
+- Events: `checkout.session.completed`, `checkout.session.expired`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed`
+
+Copy its signing secret (`whsec_…`) into `webhookSecret`.
+
+### 7e. Firebase Authentication
+
+Enable **Email/Password** with **Email link (passwordless sign-in)** for customer accounts, alongside Google. The authorized domains from section 3 already cover the site.
+
+### 7f. Turn it on
+
+1. In GitHub, set the `production` environment variable **`ENABLE_APPOINTMENTS`** to `true`.
+2. Run **Actions → Deploy production** on `main` (or merge the next change).
+3. In `/admin/appointments` → **Settings**, enter your real hours, ZIP codes and services, then enable public booking. The booking page shows availability only once Stripe and Calendar are both configured and booking is enabled.
+4. Make one real booking with a small deposit on your own card, check it in Stripe, your Detailing calendar and your inbox, then cancel it and confirm the refund.
+
+To turn appointments off again, set the variable back to `false` and redeploy. The scheduled job stays deployed but does nothing while appointments are off.

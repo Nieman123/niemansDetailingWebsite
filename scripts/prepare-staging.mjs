@@ -4,16 +4,21 @@ import { load } from 'cheerio';
 import sharp from 'sharp';
 import { firebaseConfig as production } from '../public/scripts/firebase-config.mjs';
 
-const projectId = process.env.STAGING_FIREBASE_PROJECT_ID;
-const publicDir = 'public-staging';
-const deploymentConfig = 'firebase.staging.generated.json';
+// Builds the appointments bundle: the first-party booking page, /book redirects, site-copy publishing
+// hooks and appointmentsPreview. `node scripts/prepare-staging.mjs` targets staging (its own Firebase
+// config, noindex, no-cache). `--production` targets the live project once appointments are launched.
+const isProduction = process.argv.includes('--production');
+const projectId = isProduction ? production.projectId : process.env.STAGING_FIREBASE_PROJECT_ID;
+const publicDir = isProduction ? 'public-production' : 'public-staging';
+const deploymentConfig = isProduction ? 'firebase.production.generated.json' : 'firebase.staging.generated.json';
 
-if (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(projectId ?? '') || projectId === production.projectId) {
+if (!isProduction && (!/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(projectId ?? '') || projectId === production.projectId)) {
   throw new Error('STAGING_FIREBASE_PROJECT_ID must be a valid, separate Firebase project ID.');
 }
 
 let webConfig;
-try {
+if (isProduction) webConfig = production;
+else try {
   const input = (process.env.STAGING_FIREBASE_WEB_CONFIG ?? '').trim();
   const sdkSnippet = /^const\s+firebaseConfig\s*=\s*(\{[\s\S]+\})\s*;?$/.exec(input);
   // Firebase's Web SDK snippet uses bare JS keys. Convert only its object literal and parse as data.
@@ -25,18 +30,18 @@ try {
   throw new Error('STAGING_FIREBASE_WEB_CONFIG must be the staging web app SDK config as JSON or as the Firebase config object snippet.');
 }
 
-const origin = `https://${projectId}.web.app`;
+const origin = isProduction ? null : `https://${projectId}.web.app`;
 const authDomains = new Set([`${projectId}.firebaseapp.com`, `${projectId}.web.app`]);
 const storageBuckets = new Set([`${projectId}.firebasestorage.app`, `${projectId}.appspot.com`]);
-if (webConfig?.projectId !== projectId || !authDomains.has(webConfig.authDomain) ||
+if (!isProduction && (webConfig?.projectId !== projectId || !authDomains.has(webConfig.authDomain) ||
     !storageBuckets.has(webConfig.storageBucket) || typeof webConfig.apiKey !== 'string' ||
     !webConfig.apiKey.trim() || webConfig.apiKey === production.apiKey ||
-    !/^1:\d+:web:[a-f0-9]+$/i.test(webConfig.appId ?? '')) {
+    !/^1:\d+:web:[a-f0-9]+$/i.test(webConfig.appId ?? ''))) {
   throw new Error('Supply the SDK config from the staging web app, including its default Storage bucket.');
 }
 
 const { apiKey, authDomain, storageBucket, appId } = webConfig;
-const stagingConfig = { apiKey, authDomain, projectId, storageBucket, appId };
+const siteConfig = isProduction ? { ...production } : { apiKey, authDomain, projectId, storageBucket, appId };
 
 const siteCopy = {};
 const copySelectors = {
@@ -57,14 +62,15 @@ function preparePages(directory) {
     } else if (entry.isFile() && entry.name.endsWith('.html')) {
       const isFragment = path.relative(publicDir, file).startsWith(`fragments${path.sep}`);
       const $ = load(readFileSync(file, 'utf8'), {}, !isFragment);
-      $('a[href], form[action]').each((_, element) => {
+      // Staging keeps visitors on staging; production links may stay absolute.
+      if (!isProduction) $('a[href], form[action]').each((_, element) => {
         const node = $(element);
         const attribute = node.is('form') ? 'action' : 'href';
         const href = node.attr(attribute);
         const relative = href.replace(/^https?:\/\/(?:www\.)?niemansdetailing\.com(?=\/|[?#]|$)/i, '');
         if (relative !== href) node.attr(attribute, relative.startsWith('/') ? relative : `/${relative}`);
       });
-      $('meta[name="firebase-api-key"]').remove();
+      if (!isProduction) $('meta[name="firebase-api-key"]').remove();
       const name = path.relative(publicDir, file);
       if (name === 'thank-you.html') $('body').attr('data-booking-handoff', 'true');
       const selectors = copySelectors[name];
@@ -121,21 +127,28 @@ await sharp('assets/images/touch/chrome-touch-icon-192x192.png')
   .extend({ top: 76, bottom: 76, left: 76, right: 76, background: '#0b1330' })
   .png().toFile(path.join(publicDir, 'admin', 'appointment-icon-512.png'));
 writeFileSync(path.join(publicDir, 'scripts', 'firebase-config.mjs'),
-  `export const firebaseConfig = Object.freeze(${JSON.stringify(stagingConfig, null, 2)});\nexport const appointmentsPreview = true;\n`);
+  `export const firebaseConfig = Object.freeze(${JSON.stringify(siteConfig, null, 2)});\nexport const appointmentsPreview = true;\n`);
 
 const firebase = JSON.parse(readFileSync('firebase.json', 'utf8'));
 firebase.hosting.public = publicDir;
 firebase.hosting.redirects.unshift(...['/book', '/book.html'].map(source => ({ source, destination: '/schedule', type: 301 })));
 delete firebase.hosting.predeploy;
-for (const entry of firebase.hosting.headers) {
-  if (['**/*.css', '**/*.js', '**/*.html'].includes(entry.source)) {
-    entry.headers.find(header => header.key === 'Cache-Control').value = 'no-cache';
+if (!isProduction) {
+  for (const entry of firebase.hosting.headers) {
+    if (['**/*.css', '**/*.js', '**/*.html'].includes(entry.source)) {
+      entry.headers.find(header => header.key === 'Cache-Control').value = 'no-cache';
+    }
   }
+  firebase.hosting.headers.push({ source: '**/*.mjs', headers: [{ key: 'Cache-Control', value: 'no-cache' }] });
+  firebase.hosting.headers[0].headers.push({ key: 'X-Robots-Tag', value: 'noindex, nofollow' });
 }
-firebase.hosting.headers.push({ source: '**/*.mjs', headers: [{ key: 'Cache-Control', value: 'no-cache' }] });
-firebase.hosting.headers[0].headers.push({ key: 'X-Robots-Tag', value: 'noindex, nofollow' });
-firebase.storage = { rules: 'storage.staging.rules' };
+firebase.storage = { rules: 'storage.rules' };
 writeFileSync(deploymentConfig, `${JSON.stringify(firebase, null, 2)}\n`, { flag: 'wx' });
+if (isProduction) {
+  // The production workflow writes functions/.env itself, with the real Telegram and mode settings.
+  console.log(`Prepared production appointment assets in ${publicDir}`);
+  process.exit(0);
+}
 // Firebase CLI resolves declared parameters even when staging disables Telegram delivery.
 const functionsEnv = [
   `HOSTING_ORIGIN=${origin}`,

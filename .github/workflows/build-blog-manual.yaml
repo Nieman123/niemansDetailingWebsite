@@ -23,6 +23,7 @@ jobs:
     env:
       FIREBASE_PROJECT_ID: niemansdetailing
       FIREBASE_CLI_VERSION: 15.32.0
+      ENABLE_APPOINTMENTS: ${{ vars.ENABLE_APPOINTMENTS == 'true' && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,6 +48,13 @@ jobs:
           npm run build:images
           npm run build:blog
           npm run img:rewire
+
+      # Must match the deploy workflow, or publishing the blog would put the old booking page back.
+      - name: Build appointments bundle
+        if: env.ENABLE_APPOINTMENTS == 'true'
+        run: |
+          node scripts/prepare-staging.mjs --production
+          echo "FIREBASE_DEPLOY_CONFIG=firebase.production.generated.json" >> "$GITHUB_ENV"
 
       - name: Install Firebase CLI
         run: npm install --global "firebase-tools@$FIREBASE_CLI_VERSION"
@@ -74,4 +82,4 @@ jobs:
           NODE
 
       - name: Deploy Hosting
-        run: firebase deploy --non-interactive --project "$FIREBASE_PROJECT_ID" --only hosting
+        run: firebase deploy --non-interactive --config "${FIREBASE_DEPLOY_CONFIG:-firebase.json}" --project "$FIREBASE_PROJECT_ID" --only hosting

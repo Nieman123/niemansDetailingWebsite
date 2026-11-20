@@ -102,7 +102,7 @@ export function jobWorkspace(record, request, refresh, report) {
     } else if (record.maintenanceEligible && !record.maintenanceInviteQueued) {
       form.append(action("Create monthly maintenance invitation", async () => {
         if (!confirm("I have the customer's permission to share a monthly maintenance invitation.")) return;
-        const sendEmail = confirm("Queue this invitation for your staging email inbox? Cancel to create a share link only.");
+        const sendEmail = confirm("Email this invitation to the customer too? Cancel to create a share link only.");
         const { url } = await request("maintenance-invite", { id: record.id, permitted: true, sendEmail });
         const link = Object.assign(document.createElement("input"), { value: url, readOnly: true });
         link.setAttribute("aria-label", "Maintenance invitation link");

@@ -402,7 +402,7 @@ function renderDetail(record) {
         ? "Check availability and hold this time for a $50 deposit?"
         : "Generate a customer link? This replaces any earlier shared link for this appointment.";
       if (!window.confirm(warning)) return;
-      const sendEmail = !!record.email && window.confirm("Queue an email to the customer’s staging test inbox? Cancel to create the link only.");
+      const sendEmail = !!record.email && window.confirm("Email this link to the customer too? Cancel to create the link only.");
       const { token } = await ownerRequest("issue-link", { id: record.id, sendEmail });
       if (session !== scope) return;
       const issued = `${location.origin}/appointment#${record.id}.${token}`;
@@ -552,7 +552,7 @@ form.addEventListener("submit", async event => {
 fields.deposit.addEventListener("change", () => { syncDeposit(); refreshCalendar(); });
 
 if (!appointmentsEnabled) {
-  authStatus.textContent = "Appointments are available on the staging site.";
+  authStatus.textContent = "Appointments aren't turned on for this site yet.";
 } else {
   signIn.addEventListener("click", async () => {
     try { await signInWithPopup(auth, new GoogleAuthProvider()); }

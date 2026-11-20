@@ -1,5 +1,9 @@
 import { applicationDefault } from "firebase-admin/app";
 
+// Staging and the emulators use Stripe test mode and email only allow-listed test inboxes.
+// Production sets APPOINTMENTS_MODE=live to take real payments and email customers.
+export const liveMode = () => process.env.APPOINTMENTS_MODE === "live" && process.env.FUNCTIONS_EMULATOR !== "true";
+
 type Integration = "APPOINTMENT_STRIPE_CONFIG" | "APPOINTMENT_GOOGLE_CONFIG" | "APPOINTMENT_EMAIL_CONFIG";
 const cache = new Map<Integration, { until: number; value: unknown }>();
 

@@ -11,13 +11,15 @@ function queueAppointmentEmail(db, tx, key, to, subject, text, maintenance) {
 }
 async function deliverAppointmentEmails(db, now, maintenanceEligible) {
     const config = await (0, appointment_secrets_1.integrationConfig)("APPOINTMENT_EMAIL_CONFIG").catch(() => null);
-    if (!config?.apiKey?.startsWith("re_") || !config.from || !Array.isArray(config.testRecipients))
+    const live = (0, appointment_secrets_1.liveMode)();
+    if (!config?.apiKey?.startsWith("re_") || !config.from || (!live && !Array.isArray(config.testRecipients)))
         return;
-    const recipients = new Set(config.testRecipients.map(value => value.toLowerCase()));
+    // Outside production, only allow-listed test inboxes receive mail.
+    const recipients = new Set((config.testRecipients ?? []).map(value => value.toLowerCase()));
     const rows = await db.collection("appointmentEmails").where("nextAt", "<=", now).where("nextAt", ">", 0).orderBy("nextAt").limit(5).get();
     for (const row of rows.docs) {
         const email = row.data();
-        if (email.sentAt || !recipients.has(email.to.toLowerCase()) || now - email.createdAt > 23 * 3600000) {
+        if (email.sentAt || (!live && !recipients.has(email.to.toLowerCase())) || now - email.createdAt > 23 * 3600000) {
             await row.ref.update({ nextAt: null, state: email.sentAt ? "sent" : "needs_review" });
             continue;
         }

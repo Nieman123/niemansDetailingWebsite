@@ -5,11 +5,12 @@ import { logger } from "firebase-functions";
 import type { Request } from "firebase-functions/v2/https";
 import type { Response } from "express";
 import { deliverAppointmentEmails, queueAppointmentEmail } from "./appointment-email";
+import { liveMode } from "./appointment-secrets";
 import { ContentError, manageSiteContent, publicSiteContent } from "./appointment-content";
 import { busyWindows, calendarConfig, mirrorAppointment } from "./appointment-calendar";
 import { bookingPrices, bookingSlots, bookingVehicle, easternDate, emptyBookingSettings, parseBookingSettings, type BookingSettings } from "./appointment-booking";
 import {
-  createStripeSession, findCheckoutAttempt, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
+  createStripeSession, findCheckoutAttempt, isSessionId, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
   type StripeSession,
 } from "./appointment-stripe";
 
@@ -768,7 +769,9 @@ async function cancelAppointment(db: Firestore, tx: Transaction, id: string, app
 function checkoutOrigin() {
   const origin = process.env.HOSTING_ORIGIN ?? "";
   const project = process.env.APPOINTMENT_INTEGRATIONS_PROJECT;
-  if (!project || origin !== `https://${project}.web.app`) throw new AppointmentError(503, "stripe_unavailable");
+  // Live checkout returns customers to the production domain; test checkout only to <project>.web.app.
+  const expected = liveMode() ? /^https:\/\/[a-z0-9.-]+$/.test(origin) : origin === `https://${project}.web.app`;
+  if (!project || !expected) throw new AppointmentError(503, "stripe_unavailable");
   return origin;
 }
 
@@ -814,7 +817,7 @@ async function openCheckout(db: Firestore, id: string, body: Record<string, unkn
   const session = reservation.id
     ? await stripeSession(config, reservation.id)
     : await createStripeSession(config, { id, ...reservation });
-  if (session.livemode !== false || session.metadata.appointmentId !== id || session.metadata.attemptId !== reservation.attempt ||
+  if (session.livemode !== liveMode() || session.metadata.appointmentId !== id || session.metadata.attemptId !== reservation.attempt ||
       session.amount_total !== reservation.amount || session.currency !== "usd") throw new Error("stripe_checkout_mismatch");
   await db.runTransaction(async tx => {
     const latest = (await tx.get(ref)).data() as Appointment;
@@ -829,7 +832,7 @@ async function openCheckout(db: Firestore, id: string, body: Record<string, unkn
 
 export async function applyStripeSession(db: Firestore, session: StripeSession) {
   const id = session.metadata?.appointmentId;
-  if (!HASH.test(id ?? "") || session.livemode !== false || !/^cs_test_\w+$/.test(session.id)) return;
+  if (!HASH.test(id ?? "") || session.livemode !== liveMode() || !isSessionId(session.id)) return;
   const ref = db.collection("appointments").doc(id);
   await db.runTransaction(async tx => {
     const appointment = (await tx.get(ref)).data() as Appointment | undefined;
@@ -843,7 +846,7 @@ export async function applyStripeSession(db: Firestore, session: StripeSession) 
     }
     if (session.status !== "complete" || session.payment_status !== "paid" || !session.payment_intent || !/^pi_\w+$/.test(session.payment_intent)) return;
     const ledger = ref.collection("ledger").doc(session.id);
-    tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: false });
+    tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: liveMode() });
     if (checkout.kind === "balance") {
       const entry: PaymentEntry = { id: session.id, amount: checkout.amount, method: "stripe", at: now, by: "stripe", reference: session.payment_intent };
       const paid = { ...appointment, payments: [...(appointment.payments ?? []), entry] };

@@ -130,4 +130,22 @@ try {
   assert.deepEqual(polled, ['/v1/refunds/pyr_test123', '/v1/refunds/re_test123']);
   assert.throws(() => stripe.stripeRefund(config, { id: 'a', intent: 'pi_test', cents: 5000, refundId: '../charges' }), /invalid_refund_id/);
 } finally { globalThis.fetch = previous; }
-console.log('PASS: Stripe signature and replay checks, stable Checkout requests, provider-verified refund and dispute references, and public booking policy validation.');
+// Production runs with APPOINTMENTS_MODE=live: only live keys, sessions and events are accepted there,
+// and test ones are rejected, so neither environment can act on the other's payments.
+const secrets = await import('../functions/lib/appointment-secrets.js');
+try {
+  process.env.APPOINTMENTS_MODE = 'live';
+  assert.equal(secrets.liveMode(), true);
+  assert.equal(stripe.verifyStripeEvent(raw, header, secret, now), null);
+  assert.equal(stripe.verifyStripeEvent(live, `t=${timestamp},v1=${sign(live)}`, secret, now).livemode, true);
+  assert.equal(stripe.isSessionId('cs_live_abc'), true);
+  assert.equal(stripe.isSessionId('cs_test_abc'), false);
+  assert.throws(() => stripe.stripeSession({ secretKey: 'sk_live_x', webhookSecret: secret }, 'cs_test_abc'), /invalid_stripe_session/);
+  process.env.FUNCTIONS_EMULATOR = 'true';
+  assert.equal(secrets.liveMode(), false, 'Emulators always stay in test mode');
+} finally {
+  delete process.env.APPOINTMENTS_MODE;
+  delete process.env.FUNCTIONS_EMULATOR;
+}
+assert.equal(stripe.isSessionId('cs_live_abc'), false);
+console.log('PASS: Stripe signature and replay checks, stable Checkout requests, provider-verified refund and dispute references, and public booking policy validation, plus live/test mode separation.');

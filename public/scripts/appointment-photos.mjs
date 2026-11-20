@@ -33,7 +33,7 @@ export function jobPhotosSection(appointmentId) {
           previewUrl = URL.createObjectURL(blob);
           preview.src = previewUrl;
           preview.hidden = false;
-        } catch { status.textContent = "Couldn't load this photo. Check the staging Storage configuration."; }
+        } catch { status.textContent = "Couldn't load this photo. Check the Storage configuration."; }
       };
       remove.onclick = async () => {
         if (!confirm("Delete this private job photo?")) return;

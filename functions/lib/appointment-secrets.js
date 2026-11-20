@@ -1,7 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.liveMode = void 0;
 exports.integrationConfig = integrationConfig;
 const app_1 = require("firebase-admin/app");
+// Staging and the emulators use Stripe test mode and email only allow-listed test inboxes.
+// Production sets APPOINTMENTS_MODE=live to take real payments and email customers.
+const liveMode = () => process.env.APPOINTMENTS_MODE === "live" && process.env.FUNCTIONS_EMULATOR !== "true";
+exports.liveMode = liveMode;
 const cache = new Map();
 async function integrationConfig(name) {
     if (process.env.FUNCTIONS_EMULATOR === "true") {

@@ -26,7 +26,8 @@ jobs:
       FIREBASE_PROJECT_ID: niemansdetailing
       FIREBASE_CLI_VERSION: 15.32.0
       HOSTING_ORIGIN: ${{ vars.HOSTING_ORIGIN || secrets.HOSTING_ORIGIN || 'https://niemansdetailing.com' }}
-      # Appointments stay off in production until this environment variable is set to true.
+      # Appointments stay off in production until this environment variable is set to true. When on,
+      # production takes live Stripe payments and emails customers (APPOINTMENTS_MODE=live).
       ENABLE_APPOINTMENTS: ${{ vars.ENABLE_APPOINTMENTS == 'true' && 'true' || 'false' }}
       CI: 'true'
     steps:
@@ -105,6 +106,12 @@ jobs:
           npm run build:blog
           npm run img:rewire
 
+      - name: Build appointments bundle
+        if: env.ENABLE_APPOINTMENTS == 'true'
+        run: |
+          node scripts/prepare-staging.mjs --production
+          echo "FIREBASE_DEPLOY_CONFIG=firebase.production.generated.json" >> "$GITHUB_ENV"
+
       - name: Lighthouse CI (report only)
         run: npm run lhci
         continue-on-error: true
@@ -154,18 +161,20 @@ jobs:
             printf 'ENABLE_APPOINTMENTS=%s\n' "$ENABLE_APPOINTMENTS"
             if [ "$ENABLE_APPOINTMENTS" = true ]; then
               printf 'APPOINTMENT_INTEGRATIONS_PROJECT=%s\n' "$FIREBASE_PROJECT_ID"
+              printf 'APPOINTMENTS_MODE=live\n'
             fi
           } > functions/.env
 
       - name: Deploy Functions and Firestore rules/indexes
         run: |
           targets=functions:api,functions:notifyLeadAddonUpdate,firestore:rules,firestore:indexes
-          # The reconciliation job runs every 5 minutes, so deploy it only once appointments are on.
-          if [ "$ENABLE_APPOINTMENTS" = true ]; then targets="$targets,functions:appointmentMaintenance"; fi
-          firebase deploy --non-interactive --project "$FIREBASE_PROJECT_ID" --only "$targets"
+          # The reconciliation job runs every 5 minutes, and job photos need Storage rules, so both
+          # deploy only once appointments are on.
+          if [ "$ENABLE_APPOINTMENTS" = true ]; then targets="$targets,functions:appointmentMaintenance,storage"; fi
+          firebase deploy --non-interactive --config "${FIREBASE_DEPLOY_CONFIG:-firebase.json}" --project "$FIREBASE_PROJECT_ID" --only "$targets"
 
       - name: Deploy Hosting
-        run: firebase deploy --non-interactive --project "$FIREBASE_PROJECT_ID" --only hosting
+        run: firebase deploy --non-interactive --config "${FIREBASE_DEPLOY_CONFIG:-firebase.json}" --project "$FIREBASE_PROJECT_ID" --only hosting
 
       - name: Smoke test production
         run: |
@@ -190,5 +199,18 @@ jobs:
           });
           assert.equal(lead.status, 400, 'createLead should reject an empty quote');
           assert.equal(lead.headers.get('access-control-allow-origin'), origin, 'HOSTING_ORIGIN must match the site origin');
+          if (process.env.ENABLE_APPOINTMENTS === 'true') {
+            const schedule = await (await request('/schedule')).text();
+            assert.ok(!schedule.includes('calendar.google.com/calendar/appointments'), '/schedule should be the first-party booking page');
+            const options = await request('/api/appointments/booking-options', {
+              method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: '{}',
+            });
+            assert.equal(options.status, 200, 'Appointment API should be enabled');
+            const webhook = await request('/api/appointments/stripe-webhook', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+            });
+            if (webhook.status === 503) console.warn('::warning::The webhook could not load a live Stripe configuration (APPOINTMENT_STRIPE_CONFIG).');
+            else assert.equal(webhook.status, 400, 'Webhook should reject an unsigned request');
+          }
           console.log(`Production smoke checks passed at ${origin}`);
           NODE

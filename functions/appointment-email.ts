@@ -1,7 +1,7 @@
 import type { Firestore, Transaction } from "firebase-admin/firestore";
-import { integrationConfig } from "./appointment-secrets";
+import { integrationConfig, liveMode } from "./appointment-secrets";
 
-type EmailConfig = { apiKey: string; from: string; testRecipients: string[] };
+type EmailConfig = { apiKey: string; from: string; testRecipients?: string[] };
 type MaintenanceEligibility = { appointmentId: string; inviteHash: string };
 type EmailMessage = {
   to: string; subject: string; text: string; createdAt: number; nextAt: number; sentAt?: number;
@@ -18,12 +18,14 @@ export function queueAppointmentEmail(db: Firestore, tx: Transaction, key: strin
 export async function deliverAppointmentEmails(db: Firestore, now: number,
   maintenanceEligible: (details: MaintenanceEligibility) => Promise<boolean>) {
   const config = await integrationConfig<EmailConfig>("APPOINTMENT_EMAIL_CONFIG").catch(() => null);
-  if (!config?.apiKey?.startsWith("re_") || !config.from || !Array.isArray(config.testRecipients)) return;
-  const recipients = new Set(config.testRecipients.map(value => value.toLowerCase()));
+  const live = liveMode();
+  if (!config?.apiKey?.startsWith("re_") || !config.from || (!live && !Array.isArray(config.testRecipients))) return;
+  // Outside production, only allow-listed test inboxes receive mail.
+  const recipients = new Set((config.testRecipients ?? []).map(value => value.toLowerCase()));
   const rows = await db.collection("appointmentEmails").where("nextAt", "<=", now).where("nextAt", ">", 0).orderBy("nextAt").limit(5).get();
   for (const row of rows.docs) {
     const email = row.data() as EmailMessage;
-    if (email.sentAt || !recipients.has(email.to.toLowerCase()) || now - email.createdAt > 23 * 3_600_000) {
+    if (email.sentAt || (!live && !recipients.has(email.to.toLowerCase())) || now - email.createdAt > 23 * 3_600_000) {
       await row.ref.update({ nextAt: null, state: email.sentAt ? "sent" : "needs_review" });
       continue;
     }

@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.stripeConfig = stripeConfig;
 exports.checkoutBranding = checkoutBranding;
 exports.createStripeSession = createStripeSession;
+exports.isSessionId = isSessionId;
 exports.stripeSession = stripeSession;
 exports.findCheckoutAttempt = findCheckoutAttempt;
 exports.stripeMoneyChange = stripeMoneyChange;
@@ -12,7 +13,9 @@ const node_crypto_1 = require("node:crypto");
 const appointment_secrets_1 = require("./appointment-secrets");
 async function stripeConfig() {
     const config = await (0, appointment_secrets_1.integrationConfig)("APPOINTMENT_STRIPE_CONFIG");
-    if (!config || !/^(sk|rk)_test_\w+$/.test(config.secretKey) || !/^whsec_\w+$/.test(config.webhookSecret))
+    // Keys must match the mode, so a test key can never run production or a live key staging.
+    const keyPattern = (0, appointment_secrets_1.liveMode)() ? /^(sk|rk)_live_\w+$/ : /^(sk|rk)_test_\w+$/;
+    if (!config || !keyPattern.test(config.secretKey) || !/^whsec_\w+$/.test(config.webhookSecret))
         return null;
     return config;
 }
@@ -83,8 +86,11 @@ function checkoutSessionBody(input) {
         cancel_url: `${origin}/appointment?checkout=back`,
     };
 }
+function isSessionId(id) {
+    return ((0, appointment_secrets_1.liveMode)() ? /^cs_live_\w+$/ : /^cs_test_\w+$/).test(id);
+}
 function stripeSession(config, id) {
-    if (!/^cs_test_\w+$/.test(id))
+    if (!isSessionId(id))
         throw new Error("invalid_stripe_session");
     return stripeRequest(config, `checkout/sessions/${id}`);
 }
@@ -95,7 +101,7 @@ async function findCheckoutAttempt(config, id, attempt, from, until) {
     });
     for (;;) {
         const page = await stripeRequest(config, `checkout/sessions?${query}`);
-        const match = page.data.find(session => session.livemode === false && session.metadata?.appointmentId === id &&
+        const match = page.data.find(session => session.livemode === (0, appointment_secrets_1.liveMode)() && session.metadata?.appointmentId === id &&
             session.metadata.attemptId === attempt);
         if (match)
             return match;
@@ -114,10 +120,10 @@ async function stripeMoneyChange(config, event) {
     if (!(isRefund ? /^(ch|py)_\w+$/ : /^dp_\w+$/).test(id))
         return null;
     const object = await stripeRequest(config, `${isRefund ? "charges" : "disputes"}/${id}`);
-    if (object.livemode !== false || object.currency !== "usd" || !/^pi_\w+$/.test(object.payment_intent))
+    if (object.livemode !== (0, appointment_secrets_1.liveMode)() || object.currency !== "usd" || !/^pi_\w+$/.test(object.payment_intent))
         return null;
     const intent = await stripeRequest(config, `payment_intents/${object.payment_intent}`);
-    if (intent.livemode !== false || !intent.metadata?.appointmentId)
+    if (intent.livemode !== (0, appointment_secrets_1.liveMode)() || !intent.metadata?.appointmentId)
         return null;
     const amount = isRefund ? object.amount_refunded : object.amount;
     if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount < 0)
@@ -149,7 +155,7 @@ function verifyStripeEvent(raw, signature, secret, now = Date.now()) {
         return null;
     try {
         const event = JSON.parse(raw.toString("utf8"));
-        return event.livemode === false && /^evt_\w+$/.test(event.id) && typeof event.type === "string" &&
+        return event.livemode === (0, appointment_secrets_1.liveMode)() && /^evt_\w+$/.test(event.id) && typeof event.type === "string" &&
             typeof event.data?.object?.id === "string" ? event : null;
     }
     catch {

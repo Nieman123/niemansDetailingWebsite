@@ -44,11 +44,11 @@ async function read() {
 }
 form.onsubmit = run(async event => {
   const publish = event.submitter?.value === "publish";
-  if (publish && !confirm("Publish this content to the staging site?")) return;
+  if (publish && !confirm("Publish this content to the public site?")) return;
   const result = await request(publish ? "cms-publish" : "cms-save", { revision, content: content() });
   loadDraft(result.draft);
   if (publish) await read();
-  status.textContent = publish ? "Published to staging." : "Draft saved.";
+  status.textContent = publish ? "Published." : "Draft saved.";
 });
 id("cms-restore").onclick = run(async () => {
   if (!picker.value) { status.textContent = "Choose a published revision."; return; }
@@ -80,7 +80,7 @@ onAuthStateChanged(auth, async user => {
   id("cms-sign-in").hidden = !!user;
   loadVacation(user).catch(() => {});
   if (!user) { status.textContent = "Sign in to edit site content."; return; }
-  if (!appointmentsEnabled) { status.textContent = "Site copy editing is available on staging."; return; }
+  if (!appointmentsEnabled) { status.textContent = "Site copy editing isn't turned on for this site yet."; return; }
   try {
     await read();
     if (version !== accessVersion) return;
