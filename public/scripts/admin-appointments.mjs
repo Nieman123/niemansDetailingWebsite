@@ -1,9 +1,9 @@
 import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { easternInput, slotPicker } from "./slot-picker.mjs";
-import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect, vehicleLabels } from "./appointment-utils.mjs";
+import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
 import { servicePicker } from "./service-picker.mjs";
-import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, rescheduleWorkspace, setupBookingSettings, statusLabels } from "./appointment-admin-tools.mjs";
+import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, rescheduleWorkspace, setupBookingSettings, setupTaxSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);
 const form = byId("create-booking");
@@ -62,6 +62,8 @@ const messages = {
   payment_review_required: "Reconcile the Stripe refund or dispute before recording another payment.",
   invalid_booking_settings: "Check the days, hours, ZIP codes, blocked dates, and service lines.",
   settings_updated: "These settings were updated elsewhere. Reload before saving.",
+  invalid_tax_settings: "Enter a tax rate between 0.01% and 20%, and a tax account number using letters, numbers, dashes, or spaces.",
+  tax_settings_changed: "The sales tax setting changed. Reload the appointment and try again.",
   maintenance_unavailable: "This job is outside the maintenance invitation window.",
 };
 
@@ -369,7 +371,12 @@ function renderDetail(record) {
   fact("Vehicle", record.vehicle);
   fact("Phone", record.phone);
   fact("Email", record.email);
-  fact(record.finalCents != null ? "Final total" : "Estimate", record.finalCents != null ? appointmentMoney(record.finalCents) : record.estimateCents != null ? appointmentMoney(record.estimateCents) : "");
+  if (record.taxCents) {
+    fact("Subtotal", appointmentMoney(record.finalCents));
+    fact(`Sales tax (${taxRateLabel(record.taxRateBasisPoints)})`, appointmentMoney(record.taxCents));
+  }
+  fact(record.finalCents != null ? "Final total" : "Estimate", record.finalCents != null ? appointmentMoney(record.totalCents ?? record.finalCents)
+    : record.estimateCents != null ? appointmentMoney(record.estimateCents) + (record.estimateTaxCents ? ` + ${appointmentMoney(record.estimateTaxCents)} tax` : "") : "");
   fact("Deposit", record.paidDeposit ? appointmentMoney(record.paidDeposit) + " received" : record.depositCents ? appointmentMoney(record.depositCents) + " due" : "Waived");
   if (record.balanceCents != null) fact("Balance", record.balanceCents ? appointmentMoney(record.balanceCents) : "Paid");
   hub.append(facts);
@@ -635,6 +642,7 @@ if (!appointmentsEnabled) {
       if (!byId("view-new").hidden) refreshCalendar();
     }, { signal: authScope.signal });
     setupBookingSettings(byId("booking-settings"), ownerRequest, explain);
+    setupTaxSettings(byId("tax-settings"), ownerRequest, explain);
     await refreshList();
   });
 }

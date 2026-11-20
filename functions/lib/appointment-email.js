@@ -3,11 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.queueAppointmentEmail = queueAppointmentEmail;
 exports.deliverAppointmentEmails = deliverAppointmentEmails;
 const appointment_secrets_1 = require("./appointment-secrets");
-function queueAppointmentEmail(db, tx, key, to, subject, text, maintenance) {
+const appointment_email_template_1 = require("./appointment-email-template");
+function queueAppointmentEmail(db, tx, key, to, subject, content, maintenance) {
     if (!to)
         return;
     const now = Date.now();
-    tx.set(db.collection("appointmentEmails").doc(key), { to, subject, text, createdAt: now, nextAt: now, ...(maintenance ? { maintenance } : {}) });
+    tx.set(db.collection("appointmentEmails").doc(key), {
+        to, subject, text: (0, appointment_email_template_1.emailText)(content), html: (0, appointment_email_template_1.emailHtml)(content, subject), createdAt: now, nextAt: now, ...(maintenance ? { maintenance } : {}),
+    });
 }
 async function deliverAppointmentEmails(db, now, maintenanceEligible) {
     const config = await (0, appointment_secrets_1.integrationConfig)("APPOINTMENT_EMAIL_CONFIG").catch(() => null);
@@ -31,7 +34,7 @@ async function deliverAppointmentEmails(db, now, maintenanceEligible) {
             const response = await fetch("https://api.resend.com/emails", {
                 method: "POST", signal: AbortSignal.timeout(6000),
                 headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json", "Idempotency-Key": `detailing/${row.id}` },
-                body: JSON.stringify({ from: config.from, to: [email.to], text: email.text, subject: email.subject }),
+                body: JSON.stringify({ from: config.from, to: [email.to], text: email.text, ...(email.html ? { html: email.html } : {}), subject: email.subject }),
             });
             if (!response.ok)
                 throw new Error("email_delivery_failed");

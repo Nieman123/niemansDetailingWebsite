@@ -1,4 +1,4 @@
-import { appointmentMoney, appointmentRequest, appointmentTime, calendarFile, easternStart, googleCalendarUrl } from "./appointment-utils.mjs";
+import { appointmentMoney, appointmentRequest, appointmentTime, calendarFile, easternStart, googleCalendarUrl, taxRateLabel } from "./appointment-utils.mjs";
 
 const byId = id => document.getElementById(id);
 const status = byId("appointment-status");
@@ -57,9 +57,19 @@ function render() {
   byId("appointment-vehicle").textContent = vehicle;
   byId("vehicle-label").hidden = byId("appointment-vehicle").hidden = !vehicle;
   const price = finalCents ?? estimateCents;
+  // Sales tax: the invoiced amount once the job is done, otherwise an estimate at the booking's rate.
+  const tax = finalCents !== null ? appointment.taxCents ?? 0 : appointment.estimateTaxCents ?? 0;
+  const final = finalCents !== null;
   byId("estimate-label").hidden = byId("appointment-estimate").hidden = price === null;
-  byId("estimate-label").textContent = finalCents === null ? "Estimated total" : "Final total";
+  byId("estimate-label").textContent = tax ? (final ? "Subtotal" : "Estimated subtotal") : final ? "Final total" : "Estimated total";
   if (price !== null) byId("appointment-estimate").textContent = appointmentMoney(price);
+  byId("tax-label").hidden = byId("appointment-tax").hidden = byId("total-label").hidden = byId("appointment-total").hidden = !tax || price === null;
+  if (tax && price !== null) {
+    byId("tax-label").textContent = `${final ? "" : "Estimated "}Sales tax (${taxRateLabel(appointment.taxRateBasisPoints)})`;
+    byId("appointment-tax").textContent = appointmentMoney(tax);
+    byId("total-label").textContent = final ? "Final total" : "Estimated total";
+    byId("appointment-total").textContent = appointmentMoney(price + tax) + (final && appointment.taxId ? ` · NC sales tax account ${appointment.taxId}` : "");
+  }
   byId("balance-label").hidden = byId("appointment-balance").hidden = balanceCents === null;
   if (balanceCents !== null) {
     byId("appointment-balance").textContent = appointment.paymentUnderReview ? "Under review" : balanceCents ? appointmentMoney(balanceCents) : "Paid";

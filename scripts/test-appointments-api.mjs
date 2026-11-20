@@ -138,6 +138,36 @@ assert.equal((await asOwner('clear-check', cleared)).result.balanceCents, 0);
 assert.equal((await asOwner('clear-check', cleared)).result.balanceCents, 0);
 assert.equal((await invitations()).size, 1);
 
+// Sales tax ships off. Once on, booking captures the rate for estimates, completion freezes the tax on the
+// subtotal, payments cover the service price before the tax, and the export reports the tax collected.
+assert.equal((await asOwner('tax-settings')).result.enabled, false);
+assert.equal((await post('sales-tax', {})).result.enabled, false);
+assert.equal((await asOwner('save-tax-settings', { enabled: true, rateBasisPoints: 0 })).error, 'invalid_tax_settings');
+const taxSaved = (await asOwner('save-tax-settings', { enabled: true, rateBasisPoints: 700, taxId: '600-1234567', revision: '' })).result;
+assert.equal(taxSaved.rateBasisPoints, 700);
+assert.equal((await post('sales-tax', {})).result.rateBasisPoints, 700);
+const taxed = (await asOwner('create', { ...appointment, requestId: randomUUID(), start: paidLater + 2 * 86_400_000 })).result;
+assert.equal(taxed.taxRateBasisPoints, 700);
+assert.equal(taxed.estimateTaxCents, 2100);
+assert.equal((await asOwner('finish-job', { id: taxed.id, finalCents: 30_000 })).error, 'tax_settings_changed');
+const taxedDone = (await asOwner('finish-job', { id: taxed.id, finalCents: 30_000, taxRateBasisPoints: 700 })).result;
+assert.equal(taxedDone.taxCents, 2100);
+assert.equal(taxedDone.totalCents, 32_100);
+assert.equal(taxedDone.balanceCents, 32_100);
+assert.equal(taxedDone.taxId, '600-1234567');
+const servicePart = { id: taxed.id, amountCents: 30_000, method: 'cash', requestId: randomUUID() };
+assert.equal((await asOwner('record-payment', servicePart)).result.balanceCents, 2100);
+const taxPart = { id: taxed.id, amountCents: 2100, method: 'venmo', requestId: randomUUID() };
+const taxPaid = (await asOwner('record-payment', taxPart)).result;
+assert.equal(taxPaid.balanceCents, 0);
+assert.equal(taxPaid.payments.find(entry => entry.id === servicePart.requestId).taxCents, undefined);
+assert.equal(taxPaid.payments.find(entry => entry.id === taxPart.requestId).taxCents, 2100);
+const taxExport = (await asOwner('payment-export')).result.csv;
+assert.match(taxExport, /amount_cents,tax_cents/);
+assert.match(taxExport, /venmo.*,2100,2100/);
+const taxOff = await asOwner('save-tax-settings', { enabled: false, rateBasisPoints: 700, taxId: '600-1234567', revision: taxSaved.revision });
+assert.equal(taxOff.result.enabled, false);
+
 await db.collection('adminUsers').doc(stranger.localId).set({ role: 'editor' });
 assert.equal((await post('list', {}, stranger.idToken)).status, 403);
 assert.equal((await post('cms-read', {}, stranger.idToken)).status, 200);

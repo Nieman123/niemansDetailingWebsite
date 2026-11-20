@@ -1,7 +1,7 @@
 import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { slotPicker } from "./slot-picker.mjs";
 import { servicePicker } from "./service-picker.mjs";
-import { appointmentRequest, appointmentMoney, appointmentTime, durationLabel, vehicleLabels } from "./appointment-utils.mjs";
+import { appointmentRequest, appointmentMoney, appointmentTime, durationLabel, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
 
 const el = id => document.getElementById(id);
 const form = el("public-booking");
@@ -55,12 +55,17 @@ function showSummary() {
   const duration = service.duration;
   const length = durationLabel(duration);
   const deposit = appointmentMoney(options.depositCents);
+  // Sales tax goes on the final invoice, so the estimate is shown before tax with the rate beside it.
+  const taxRate = options.salesTax?.enabled ? options.salesTax.rateBasisPoints : 0;
+  const plusTax = taxRate ? " + tax" : "";
+  el("summary-tax-label").hidden = el("summary-tax").hidden = !taxRate;
+  if (taxRate) el("summary-tax").textContent = taxRateLabel(taxRate) + " added to the final invoice";
   el("summary-service").textContent = service.name;
   el("summary-duration").textContent = length;
   el("summary-price").textContent = estimate;
   el("summary-deposit").textContent = deposit;
-  el("service-facts").textContent = length + " · " + estimate + " estimated · " + deposit + " deposit";
-  el("contact-cost").textContent = service.name + " · " + estimate + " estimated · " + deposit + " deposit";
+  el("service-facts").textContent = length + " · " + estimate + plusTax + " estimated · " + deposit + " deposit";
+  el("contact-cost").textContent = service.name + " · " + estimate + plusTax + " estimated · " + deposit + " deposit";
   el("summary-time").textContent = start ? appointmentTime({ start, end: start + duration * 60000 }) : "Choose a date and start time.";
 }
 const vehicleChoices = [...document.querySelectorAll('[name="vehicleChoice"]')];
