@@ -16,6 +16,7 @@ jobs:
   deploy:
     if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     environment:
       name: staging
       url: https://${{ vars.STAGING_FIREBASE_PROJECT_ID }}.web.app
@@ -64,6 +65,15 @@ jobs:
           printf '%s\n' 'APPOINTMENT_INTEGRATIONS_PROJECT=demo-detailing-staging' 'HOSTING_ORIGIN=https://demo-detailing-staging.web.app' > "$emulator_env"
           firebase emulators:exec --non-interactive --project demo-detailing-staging \
             --only auth,firestore,functions,hosting 'node scripts/test-appointments-api.mjs'
+
+      # tools/build-images.mjs reuses a variant when its source bytes and settings are unchanged,
+      # so restoring an older cache only rebuilds the images that changed since then.
+      - name: Restore optimized images
+        uses: actions/cache@v4
+        with:
+          path: public/images
+          key: images-${{ hashFiles('tools/build-images.mjs', 'assets/images/**') }}
+          restore-keys: images-
 
       - name: Build staging site
         run: |

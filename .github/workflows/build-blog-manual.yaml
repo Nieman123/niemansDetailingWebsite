@@ -1,34 +1,77 @@
-name: Manually Build Static Blog
+name: Publish blog to production
 
+# Rebuilds the static blog from production Firestore and releases Hosting only.
+# Run it from Actions on the main branch after publishing posts in /admin/blog.
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+
 jobs:
-  build-and-deploy:
+  publish-blog:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://niemansdetailing.com/blog
+    env:
+      FIREBASE_PROJECT_ID: niemansdetailing
+      FIREBASE_CLI_VERSION: 15.32.0
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - name: Install deps
-        run: npm ci
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
 
-      - name: Build Static Blog
-        run: npm run build:blog
-
-      - name: Deploy Live
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Restore optimized images
+        uses: actions/cache@v4
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING }}
-          projectId: niemansdetailing
-          channelId: live
+          path: public/images
+          key: images-${{ hashFiles('tools/build-images.mjs', 'assets/images/**') }}
+          restore-keys: images-
+
+      - name: Build site
+        run: |
+          npm run images:copy
+          npm run build:images
+          npm run build:blog
+          npm run img:rewire
+
+      - name: Install Firebase CLI
+        run: npm install --global "firebase-tools@$FIREBASE_CLI_VERSION"
+
+      - name: Authenticate to the production project
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
+
+          let credentials;
+          try {
+            credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+          } catch {
+            throw new Error('FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING must be the JSON key of the deploy service account.');
+          }
+          if (credentials?.type !== 'service_account' || credentials.project_id !== process.env.FIREBASE_PROJECT_ID) {
+            throw new Error('The deployment credential must belong to the production Firebase project.');
+          }
+          const credentialsPath = join(process.env.RUNNER_TEMP, 'firebase-production-service-account.json');
+          writeFileSync(credentialsPath, JSON.stringify(credentials), { mode: 0o600 });
+          writeFileSync(process.env.GITHUB_ENV, `GOOGLE_APPLICATION_CREDENTIALS=${credentialsPath}\n`, { flag: 'a' });
+          NODE
+
+      - name: Deploy Hosting
+        run: firebase deploy --non-interactive --project "$FIREBASE_PROJECT_ID" --only hosting

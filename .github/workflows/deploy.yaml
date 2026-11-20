@@ -1,54 +1,111 @@
-name: Build images & deploy to Firebase Hosting
+name: Deploy production
 
+# Production deploys only from main. See docs/production-setup.md for every secret and setting.
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-      pull-requests: write
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+permissions:
+  contents: read
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+# Shared with the manual blog workflow so two production releases never overlap.
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: https://niemansdetailing.com
+    env:
+      FIREBASE_PROJECT_ID: niemansdetailing
+      FIREBASE_CLI_VERSION: 15.32.0
+      HOSTING_ORIGIN: ${{ vars.HOSTING_ORIGIN || secrets.HOSTING_ORIGIN || 'https://niemansdetailing.com' }}
+      # Appointments stay off in production until this environment variable is set to true.
+      ENABLE_APPOINTMENTS: ${{ vars.ENABLE_APPOINTMENTS == 'true' && 'true' || 'false' }}
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          registry-url: 'https://registry.npmjs.org'
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
 
-      - name: Install deps
-        run: npm ci
+      - name: Check production settings
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING }}
+        run: |
+          missing=()
+          [ -n "$FIREBASE_SERVICE_ACCOUNT" ] || missing+=(FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING)
+          [ -n "$TELEGRAM_BOT_TOKEN" ] || missing+=(TELEGRAM_BOT_TOKEN)
+          [ -n "$TELEGRAM_CHAT_ID" ] || missing+=(TELEGRAM_CHAT_ID)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Add these secrets to the production environment (or the repository): ${missing[*]}"
+            exit 1
+          fi
+          case "$HOSTING_ORIGIN" in
+            https://*[!/]) ;;
+            *) echo "::error::HOSTING_ORIGIN must be an https origin without a trailing slash."; exit 1 ;;
+          esac
 
-      - name: Cache generated images
-        id: cache-images
+      - name: Install Functions dependencies and build
+        working-directory: functions
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Install site dependencies and run unit tests
+        run: |
+          npm ci --no-audit --no-fund
+          node scripts/test-addon-notifications.cjs
+          node scripts/test-ceramic-notifications.cjs
+          node scripts/test-appointment-calendar.mjs
+          node scripts/test-appointment-integrations.mjs
+
+      - name: Install Firebase CLI
+        run: npm install --global "firebase-tools@$FIREBASE_CLI_VERSION"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Test appointment API against Firebase emulators
+        run: |
+          emulator_env=functions/.env.local
+          trap 'rm -f "$emulator_env"' EXIT
+          printf '%s\n' 'APPOINTMENT_INTEGRATIONS_PROJECT=demo-detailing-prod' 'HOSTING_ORIGIN=https://demo-detailing-prod.web.app' > "$emulator_env"
+          firebase emulators:exec --non-interactive --project demo-detailing-prod \
+            --only auth,firestore,functions,hosting 'node scripts/test-appointments-api.mjs'
+
+      # tools/build-images.mjs reuses a variant when its source bytes and settings are unchanged,
+      # so restoring an older cache only rebuilds the images that changed since then.
+      - name: Restore optimized images
         uses: actions/cache@v4
         with:
-          path: |
-            public/images
-          key: ${{ runner.os }}-images-${{ hashFiles('tools/build-images.mjs', 'assets/images/**') }}
+          path: public/images
+          key: images-${{ hashFiles('tools/build-images.mjs', 'assets/images/**') }}
+          restore-keys: images-
 
-      - name: Build responsive images (incremental)
-        if: steps.cache-images.outputs.cache-hit != 'true'
-        run: npm run build:images
-
-      # If you have a site build step, add it here
       - name: Build site
-        run: echo "No build step configured"
+        run: |
+          npm run images:copy
+          npm run build:images
+          npm run build:blog
+          npm run img:rewire
 
-      - name: Build Static Blog
-        run: npm run build:blog
-
-      - name: Rewire HTML to responsive images
-        run: npm run img:rewire
-
-      - name: Lighthouse CI (pre-deploy)
+      - name: Lighthouse CI (report only)
         run: npm run lhci
         continue-on-error: true
 
@@ -61,57 +118,77 @@ jobs:
           if-no-files-found: ignore
           include-hidden-files: true
 
-      - name: Setup Firebase auth (main)
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - name: Authenticate to the production project
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING }}
         run: |
-          SA_PATH="$RUNNER_TEMP/firebase-sa.json"
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$SA_PATH"
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$SA_PATH" >> "$GITHUB_ENV"
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
 
-      - name: Install Firebase CLI (main)
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        run: npm install --global firebase-tools@15.32.0
+          let credentials;
+          try {
+            credentials = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+          } catch {
+            throw new Error('FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING must be the JSON key of the deploy service account.');
+          }
+          if (credentials?.type !== 'service_account' ||
+              credentials.project_id !== process.env.FIREBASE_PROJECT_ID ||
+              !credentials.client_email || !credentials.private_key) {
+            throw new Error('The deployment credential must belong to the production Firebase project.');
+          }
+          const credentialsPath = join(process.env.RUNNER_TEMP, 'firebase-production-service-account.json');
+          writeFileSync(credentialsPath, JSON.stringify(credentials), { mode: 0o600 });
+          writeFileSync(process.env.GITHUB_ENV, `GOOGLE_APPLICATION_CREDENTIALS=${credentialsPath}\n`, { flag: 'a' });
+          NODE
 
-      - name: Write Functions env file (main)
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - name: Write Functions environment
         env:
-          HOSTING_ORIGIN: ${{ secrets.HOSTING_ORIGIN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          HOSTING_ORIGIN="${HOSTING_ORIGIN:-https://niemansdetailing.com}"
-          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
-            echo "Missing required GitHub secrets: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID"
-            exit 1
-          fi
           {
             printf 'HOSTING_ORIGIN=%s\n' "$HOSTING_ORIGIN"
             printf 'TELEGRAM_BOT_TOKEN=%s\n' "$TELEGRAM_BOT_TOKEN"
             printf 'TELEGRAM_CHAT_ID=%s\n' "$TELEGRAM_CHAT_ID"
+            printf 'ENABLE_APPOINTMENTS=%s\n' "$ENABLE_APPOINTMENTS"
+            if [ "$ENABLE_APPOINTMENTS" = true ]; then
+              printf 'APPOINTMENT_INTEGRATIONS_PROJECT=%s\n' "$FIREBASE_PROJECT_ID"
+            fi
           } > functions/.env
 
-      - name: Build Functions (main)
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - name: Deploy Functions and Firestore rules/indexes
         run: |
-          npm --prefix functions ci
-          npm --prefix functions run build
+          targets=functions:api,functions:notifyLeadAddonUpdate,firestore:rules,firestore:indexes
+          # The reconciliation job runs every 5 minutes, so deploy it only once appointments are on.
+          if [ "$ENABLE_APPOINTMENTS" = true ]; then targets="$targets,functions:appointmentMaintenance"; fi
+          firebase deploy --non-interactive --project "$FIREBASE_PROJECT_ID" --only "$targets"
 
-      - name: Deploy Functions + Firestore rules/indexes (main)
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      - name: Deploy Hosting
+        run: firebase deploy --non-interactive --project "$FIREBASE_PROJECT_ID" --only hosting
+
+      - name: Smoke test production
         run: |
-          firebase deploy \
-            --project niemansdetailing \
-            --only functions:api,firestore:rules,firestore:indexes \
-            --non-interactive
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
 
-      # Live deploy on pushes to main
-      - name: Deploy Live (main)
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_NIEMANSDETAILING }}
-          projectId: niemansdetailing
-          channelId: live
+          const origin = process.env.HOSTING_ORIGIN;
+          const request = (path, options) => fetch(`${origin}${path}`, {
+            ...options, redirect: 'manual', signal: AbortSignal.timeout(30_000),
+          });
+          for (const path of ['/', '/quote', '/schedule', '/blog', '/admin']) {
+            const page = await request(path);
+            assert.equal(page.status, 200, path);
+            assert.match(page.headers.get('content-type') ?? '', /html/, path);
+          }
+          const config = await request('/scripts/firebase-config.mjs');
+          assert.match(config.headers.get('content-type') ?? '', /javascript/, 'firebase-config.mjs should be deployed');
+          assert.ok((await config.text()).includes(`"${process.env.FIREBASE_PROJECT_ID}"`), 'Production Firebase config');
+
+          const lead = await request('/api/createLead', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: '{}',
+          });
+          assert.equal(lead.status, 400, 'createLead should reject an empty quote');
+          assert.equal(lead.headers.get('access-control-allow-origin'), origin, 'HOSTING_ORIGIN must match the site origin');
+          console.log(`Production smoke checks passed at ${origin}`);
+          NODE
