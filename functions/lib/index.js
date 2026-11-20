@@ -33,9 +33,10 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.api = exports.notifyLeadAddonUpdate = void 0;
+exports.api = exports.notifyLeadAddonUpdate = exports.appointmentMaintenance = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const firestore_1 = require("firebase-functions/v2/firestore");
+const scheduler_1 = require("firebase-functions/v2/scheduler");
 const firebase_functions_1 = require("firebase-functions");
 const params_1 = require("firebase-functions/params");
 const admin = __importStar(require("firebase-admin"));
@@ -43,6 +44,14 @@ const node_crypto_1 = require("node:crypto");
 const firestore_2 = require("firebase-admin/firestore");
 admin.initializeApp();
 const db = admin.firestore();
+exports.appointmentMaintenance = (0, scheduler_1.onSchedule)({
+    schedule: "every 5 minutes", region: "us-east1", timeoutSeconds: 300, maxInstances: 1, concurrency: 1,
+}, async () => {
+    if (process.env.ENABLE_APPOINTMENTS !== "true")
+        return;
+    const { reconcileAppointments } = await Promise.resolve().then(() => __importStar(require("./appointments")));
+    await reconcileAppointments(db);
+});
 const COATING_LABELS = {
     single_step: "Single-step correction + coating", two_step: "Two-step correction + coating", recommend: "Help me choose",
 };
@@ -193,8 +202,11 @@ function coerceUtm(input) {
     return utm;
 }
 const HOSTING_ORIGIN_PARAM = (0, params_1.defineString)("HOSTING_ORIGIN", { default: "https://niemansdetailing.com" });
-const TELEGRAM_BOT_TOKEN = (0, params_1.defineString)("TELEGRAM_BOT_TOKEN");
-const TELEGRAM_CHAT_ID = (0, params_1.defineString)("TELEGRAM_CHAT_ID");
+const TELEGRAM_BOT_TOKEN = (0, params_1.defineString)("TELEGRAM_BOT_TOKEN", { default: "" });
+const TELEGRAM_CHAT_ID = (0, params_1.defineString)("TELEGRAM_CHAT_ID", { default: "" });
+function telegramEnabled() {
+    return !process.env.FUNCTIONS_EMULATOR && process.env.ENABLE_TELEGRAM_NOTIFICATIONS !== "false";
+}
 async function sendTelegramMessage(text) {
     const botToken = TELEGRAM_BOT_TOKEN.value();
     const chatId = TELEGRAM_CHAT_ID.value();
@@ -217,7 +229,7 @@ async function sendTelegramMessage(text) {
 exports.notifyLeadAddonUpdate = (0, firestore_1.onDocumentUpdated)({
     document: "leads/{leadId}", region: "us-east1", retry: true,
 }, async (event) => {
-    if (!event.data || process.env.FUNCTIONS_EMULATOR)
+    if (!event.data || !telegramEnabled())
         return;
     const before = event.data.before.data();
     const after = event.data.after.data();
@@ -270,7 +282,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
         res.setHeader("Vary", "Origin");
     }
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.setHeader("Access-Control-Max-Age", "3600");
     if (req.method === "OPTIONS") {
         res.status(204).send("");
@@ -282,6 +294,23 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
     const isQuoteProgressRoute = path.endsWith("/quoteProgress");
     const isLeadOptionsRoute = path.endsWith("/leadOptions");
     res.setHeader("Cache-Control", "no-store");
+    if (path.startsWith("/api/appointments/")) {
+        if (process.env.ENABLE_APPOINTMENTS !== "true" && process.env.FUNCTIONS_EMULATOR !== "true") {
+            res.status(404).json({ ok: false, error: "not_found" });
+            return;
+        }
+        if (origin && !allowOrigin) {
+            res.status(403).json({ ok: false, error: "access_denied" });
+            return;
+        }
+        const { handleAppointments, handleStripeWebhook } = await Promise.resolve().then(() => __importStar(require("./appointments")));
+        if (path === "/api/appointments/stripe-webhook") {
+            await handleStripeWebhook(db, req, res);
+            return;
+        }
+        await handleAppointments(db, admin.auth(), req, res, path.slice("/api/appointments/".length));
+        return;
+    }
     if (!isCreateLeadRoute && !isQuoteProgressRoute && !isLeadOptionsRoute) {
         res.status(404).json({ ok: false, error: "not_found" });
         return;
@@ -491,12 +520,7 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
         }
         // Send Telegram notification
         try {
-            const botToken = TELEGRAM_BOT_TOKEN.value();
-            const chatId = TELEGRAM_CHAT_ID.value();
-            if (!botToken || !chatId) {
-                firebase_functions_1.logger.error("Missing Telegram config via .env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)");
-            }
-            else if (!honeypot && !process.env.FUNCTIONS_EMULATOR) {
+            if (!honeypot && telegramEnabled()) {
                 const vLabel = (service === "ceramic" ? CERAMIC_VEHICLE_LABELS : VEHICLE_LABELS)[vehicle];
                 const sLabel = SERVICE_LABELS[service];
                 const pricePart = quote.consult ? "consult" : `$${quote.total}`;

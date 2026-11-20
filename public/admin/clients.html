@@ -615,12 +615,17 @@
       }
     }
   </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/brand.css?v=20261120">
+  <link rel="stylesheet" href="/styles/workspace.css">
 </head>
 
-<body>
+<body class="owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="clients"></nav></header>
   <div id="admin-status">Initializing...</div>
 
-  <div id="auth-view" class="auth-container">
+  <div id="auth-view" class="auth-container" hidden>
     <h1>Nieman's Client Manager</h1>
     <p class="muted" style="max-width:620px;">Sign in with your Google account to manage client contacts, booking history, and follow-up reminders.</p>
     <button id="sign-in-btn" class="btn btn-primary" type="button">Sign in with Google</button>
@@ -640,10 +645,7 @@
         <button id="refresh-clients-btn" class="btn" type="button">Refresh</button>
       </div>
 
-      <div class="btn-group">
-        <a class="btn btn-primary" href="/admin/index">Lead Dashboard</a>
-        <a class="btn" href="/admin/blog">Blog Admin</a>
-      </div>
+      
 
       <div class="btn-group">
         <button id="new-client-btn" class="btn" type="button">New Client</button>
@@ -740,7 +742,7 @@
 
     <main class="main">
       <div class="main-content">
-        <section class="card">
+        <details class="work-disclosure"><summary>Follow-up dashboard</summary><section class="card">
           <div class="detail-header" style="padding-bottom:0; border-bottom:none;">
             <div>
               <h3>Follow-up Dashboard</h3>
@@ -760,7 +762,7 @@
           </div>
 
           <ul id="followup-list" class="followup-list"></ul>
-        </section>
+        </section></details>
 
         <section id="import-summary" class="card import-summary" hidden>
           <h4 style="margin:0;">Import Summary</h4>
@@ -785,6 +787,7 @@
               <a id="client-action-email" class="btn" href="#">Email</a>
               <button id="client-action-copy-link" class="btn" type="button">Copy Link</button>
               <a id="client-action-open-lead" class="btn" href="/admin/index" hidden>Open Lead</a>
+              <a id="client-action-appointment" class="btn" href="/admin/appointments" hidden>Create appointment</a>
             </div>
           </header>
 
@@ -841,7 +844,7 @@
             <div class="form-grid" style="margin-top:10px;">
               <div>
                 <label for="client-address-input">Street Address</label>
-                <input id="client-address-input" type="text" maxlength="180" placeholder="Street address" />
+                <input id="client-address-input" type="text" maxlength="180" placeholder="Start typing an address" data-address-autocomplete="street" data-city-field="#client-city-input" data-state-field="#client-state-input" data-zip-field="#client-zip-input" data-country-field="#client-country-input" />
               </div>
               <div>
                 <label for="client-city-input">City</label>
@@ -942,7 +945,16 @@
     </main>
   </div>
 
-  <script type="module" src="/scripts/admin-clients.js?v=20261013"></script>
+  <script type="module">
+    import("/scripts/admin-clients.js?v=20261119").catch(error => {
+      console.error("Client manager initialization failed", error);
+      const status = document.getElementById("admin-status");
+      status.textContent = "Could not load the Client Manager. Reload to try again.";
+      status.dataset.type = "error";
+    });
+  </script>
+<script type="module" src="/scripts/workspace.mjs"></script>
+  <script type="module" src="/scripts/address-autocomplete.mjs"></script>
 </body>
 
 </html>

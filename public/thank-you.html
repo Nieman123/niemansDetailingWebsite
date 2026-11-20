@@ -7,8 +7,12 @@
   <meta name="referrer" content="no-referrer">
   <title>Quote requested | Nieman’s Detailing</title>
   <link rel="icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/brand.css?v=20261120">
   <link rel="stylesheet" href="/quote.css?v=20260907a">
-  <script src="/thank-you.js?v=20261013" defer></script>
+  <script src="/thank-you.js?v=20261120" defer></script>
 </head>
 <body class="thank-you-page">
   <main class="wrap thank-you-wrap">
@@ -18,6 +22,11 @@
       <h1 id="thanks-title">Your quote request</h1>
       <p id="thanks-message">Loading your request…</p>
     </header>
+    <section class="panel thanks-booking" id="quote-booking" hidden>
+      <p class="quote-line" id="booking-estimate"></p>
+      <a class="btn primary" id="choose-time" href="/schedule">Choose an appointment time</a>
+      <p class="note">Use the name and number from your quote to book.</p>
+    </section>
     <p id="receipt-error" class="note" role="status" hidden></p>
     <section id="ceramic-receipt" class="panel" hidden aria-labelledby="ceramic-next-title">
       <p id="ceramic-saved-quote" class="quote-line" aria-live="polite"></p>
@@ -38,9 +47,9 @@
       <p class="note">Final pricing is confirmed by text based on your vehicle’s condition.</p>
       <div class="addon-save-bar"><p id="addon-status" class="addon-status" role="status" aria-live="polite">Choose any extras, then save below.</p>
       <button class="btn cta" id="save-addons" disabled>Save my add-ons</button></div>
-      <p class="thanks-skip"><a href="/schedule">Skip extras and view booking options →</a></p>
+      <p id="quote-skip" class="thanks-skip"><a href="/schedule">Skip extras and view booking options →</a></p>
     </section>
-    <nav class="thanks-links" aria-label="Next steps"><a class="btn secondary" href="sms:+18282733894">Text Nieman</a><a class="btn secondary" href="/schedule">View booking options</a></nav>
+    <nav class="thanks-links" aria-label="Next steps"><a class="btn secondary" href="sms:+18282733894">Text Nieman</a><a class="btn secondary" id="secondary-booking-link" href="/schedule">View booking options</a></nav>
     <p class="note">No payment has been taken. Your appointment is confirmed separately.</p>
   </main>
 </body>

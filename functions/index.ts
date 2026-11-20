@@ -1,5 +1,6 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import { logger } from "firebase-functions";
 import { defineString } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -8,6 +9,14 @@ import { FieldValue } from "firebase-admin/firestore";
 
 admin.initializeApp();
 const db = admin.firestore();
+
+export const appointmentMaintenance = onSchedule({
+  schedule: "every 5 minutes", region: "us-east1", timeoutSeconds: 300, maxInstances: 1, concurrency: 1,
+}, async () => {
+  if (process.env.ENABLE_APPOINTMENTS !== "true") return;
+  const { reconcileAppointments } = await import("./appointments");
+  await reconcileAppointments(db);
+});
 
 type Vehicle = "sedan" | "suv_truck" | "van_3row";
 type Service = "quick" | "full" | "interior_only" | "other" | "ceramic";
@@ -166,8 +175,12 @@ function coerceUtm(input: unknown): Record<string, string> {
 }
 
 const HOSTING_ORIGIN_PARAM = defineString("HOSTING_ORIGIN", { default: "https://niemansdetailing.com" });
-const TELEGRAM_BOT_TOKEN = defineString("TELEGRAM_BOT_TOKEN");
-const TELEGRAM_CHAT_ID = defineString("TELEGRAM_CHAT_ID");
+const TELEGRAM_BOT_TOKEN = defineString("TELEGRAM_BOT_TOKEN", { default: "" });
+const TELEGRAM_CHAT_ID = defineString("TELEGRAM_CHAT_ID", { default: "" });
+
+function telegramEnabled(): boolean {
+  return !process.env.FUNCTIONS_EMULATOR && process.env.ENABLE_TELEGRAM_NOTIFICATIONS !== "false";
+}
 
 async function sendTelegramMessage(text: string): Promise<void> {
   const botToken = TELEGRAM_BOT_TOKEN.value();
@@ -189,7 +202,7 @@ async function sendTelegramMessage(text: string): Promise<void> {
 export const notifyLeadAddonUpdate = onDocumentUpdated({
   document: "leads/{leadId}", region: "us-east1", retry: true,
 }, async (event) => {
-  if (!event.data || process.env.FUNCTIONS_EMULATOR) return;
+  if (!event.data || !telegramEnabled()) return;
   const before = event.data.before.data();
   const after = event.data.after.data();
   if (after.honeypot || after.status === "spam") return;
@@ -242,7 +255,7 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
     res.setHeader("Vary", "Origin");
   }
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Max-Age", "3600");
 
   if (req.method === "OPTIONS") { res.status(204).send(""); return; }
@@ -253,6 +266,20 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
   const isQuoteProgressRoute = path.endsWith("/quoteProgress");
   const isLeadOptionsRoute = path.endsWith("/leadOptions");
   res.setHeader("Cache-Control", "no-store");
+  if (path.startsWith("/api/appointments/")) {
+    if (process.env.ENABLE_APPOINTMENTS !== "true" && process.env.FUNCTIONS_EMULATOR !== "true") {
+      res.status(404).json({ ok: false, error: "not_found" });
+      return;
+    }
+    if (origin && !allowOrigin) { res.status(403).json({ ok: false, error: "access_denied" }); return; }
+    const { handleAppointments, handleStripeWebhook } = await import("./appointments");
+    if (path === "/api/appointments/stripe-webhook") {
+      await handleStripeWebhook(db, req, res);
+      return;
+    }
+    await handleAppointments(db, admin.auth(), req, res, path.slice("/api/appointments/".length));
+    return;
+  }
   if (!isCreateLeadRoute && !isQuoteProgressRoute && !isLeadOptionsRoute) { res.status(404).json({ ok: false, error: "not_found" }); return; }
 
   if (req.method !== "POST") { res.status(405).json({ ok: false, error: "method_not_allowed" }); return; }
@@ -445,11 +472,7 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
 
     // Send Telegram notification
     try {
-      const botToken = TELEGRAM_BOT_TOKEN.value();
-      const chatId = TELEGRAM_CHAT_ID.value();
-      if (!botToken || !chatId) {
-        logger.error("Missing Telegram config via .env (TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID)");
-      } else if (!honeypot && !process.env.FUNCTIONS_EMULATOR) {
+      if (!honeypot && telegramEnabled()) {
         const vLabel = (service === "ceramic" ? CERAMIC_VEHICLE_LABELS : VEHICLE_LABELS)[vehicle as Vehicle];
         const sLabel = SERVICE_LABELS[service as Service];
         const pricePart = quote.consult ? "consult" : `$${quote.total}`;

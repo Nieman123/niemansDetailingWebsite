@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Site content | Nieman's Detailing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/brand.css?v=20261120">
+  <link rel="stylesheet" href="/quote.css">
+  <link rel="stylesheet" href="/styles/appointments.css">
+<link rel="stylesheet" href="/styles/workspace.css">
+</head>
+<body class="quote-page appointment-app owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="content"></nav></header>
+  <main class="wrap">
+    <nav class="publish-nav" aria-label="Publishing tools"><a data-stage-nav href="/admin/content" aria-current="page">Site copy</a><a href="/admin/blog" >Blog and photos</a></nav>
+    <h1>Site content</h1>
+    <p id="cms-status" role="status">Checking access…</p>
+    <button class="btn primary" id="cms-sign-in" type="button" hidden>Sign in with Google</button>
+    <form id="vacation-form" class="panel" hidden>
+      <h2>Vacation notice</h2>
+      <p>Schedule a notice on the website while you're away.</p>
+      <label class="appointment-checkbox"><input name="enabled" type="checkbox"> Show notice during these dates</label>
+      <div class="appointment-fields">
+        <label class="field"><span>Start date</span><input name="startDate" type="date" required></label>
+        <label class="field"><span>End date</span><input name="endDate" type="date" required></label>
+      </div>
+      <label class="field"><span>Headline</span><input name="headline" maxlength="90" required></label>
+      <label class="field"><span>Message</span><textarea name="message" maxlength="420" rows="3" required></textarea></label>
+      <aside id="vacation-preview" class="appointment-notice" aria-label="Notice preview" hidden>
+        <strong id="vacation-preview-heading"></strong><p id="vacation-preview-message"></p>
+      </aside>
+      <button type="submit" class="btn primary" disabled>Save vacation notice</button>
+      <p id="vacation-status" role="status"></p>
+    </form>
+    <form id="cms-form" class="panel" hidden>
+      <h2>Site copy</h2><p>Clear a field to restore the original site copy. Additional FAQ copy is optional.</p><h3>Homepage</h3><label class="field"><span>Homepage headline</span><input name="headline" maxlength="140"></label>
+      <label class="field"><span>Homepage introduction</span><textarea name="introduction" maxlength="1300" rows="3"></textarea></label>
+      <h2>Customer information</h2><label class="field"><span>Booking notice</span><textarea name="bookingNotice" maxlength="500" rows="2"></textarea></label>
+      <label class="field"><span>Contact note</span><textarea name="contactNote" maxlength="700" rows="2"></textarea></label>
+      <label class="field"><span>Service areas</span><textarea name="serviceAreas" maxlength="1200" rows="2"></textarea></label>
+      <label class="field"><span>Testimonials</span><textarea name="testimonials" maxlength="3000" rows="4"></textarea></label>
+      <label class="field"><span>Additional FAQs</span><textarea name="faq" maxlength="4500" rows="5"></textarea></label>
+      <label class="field"><span>Service guide</span><textarea name="serviceDescriptions" maxlength="7000" rows="5"></textarea></label>
+      <div class="appointment-actions">
+        <button type="button" class="btn secondary" id="cms-preview">Preview draft</button>
+        <button type="submit" class="btn secondary" name="action" value="save">Save draft</button>
+        <button type="submit" class="btn primary" name="action" value="publish">Publish to staging</button>
+      </div>
+      <p id="cms-feedback" role="status"></p><details><summary>Revision history</summary><label class="field"><span>Published revisions</span><select id="cms-revision"></select></label>
+      <button type="button" class="btn secondary" id="cms-restore">Restore as draft</button></details>
+    </form>
+    <section id="cms-draft-preview" class="panel" hidden aria-label="Draft preview"></section>
+  </main>
+  <script type="module" src="/scripts/appointment-cms.mjs"></script>
+<script type="module" src="/scripts/workspace.mjs"></script>
+</body>
+</html>

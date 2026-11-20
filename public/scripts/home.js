@@ -1,57 +1,15 @@
-// Register service worker for offline support
+// Homepage behavior: retire the old service worker and lazy-load the service area map.
 (function () {
   'use strict';
-  const isLocalhost = Boolean(
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '[::1]' ||
-    window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
-  );
+  const isLocalhost = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
   if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || isLocalhost)) {
-    navigator.serviceWorker.register('service-worker.js').catch(function (e) {
+    navigator.serviceWorker.register('/service-worker.js').catch(function (e) {
       console.error('Error during service worker registration:', e);
     });
   }
 })();
 
-// GA4 event helper
-function trackEvent(category, action, label) {
-  const clean = (value) =>
-    String(value || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '_')
-      .replace(/^_+|_+$/g, '')
-      .slice(0, 32);
-
-  const eventName = [clean(category), clean(action)].filter(Boolean).join('_') || 'site_event';
-  const params = {};
-  if (category) params.event_category = category;
-  if (action) params.event_action = action;
-  if (label) params.event_label = label;
-
-  if (typeof window.gtag === 'function') {
-    window.gtag('event', eventName, params);
-    return;
-  }
-
-  if (Array.isArray(window.dataLayer)) {
-    window.dataLayer.push({
-      event: eventName,
-      ...params
-    });
-  }
-}
-
-// Helper: run work during idle time to avoid blocking paint
-function onIdle(cb) {
-  if ('requestIdleCallback' in window) {
-    return requestIdleCallback(cb, { timeout: 2000 });
-  }
-  return setTimeout(cb, 0);
-}
-
-const TAB_HASHES = new Set(['#overview', '#services', '#about', '#contact']);
 const CENSUS_ZCTA_QUERY_URL = 'https://tigerweb.geo.census.gov/arcgis/rest/services/TIGERweb/PUMA_TAD_TAZ_UGA_ZCTA/MapServer/1/query';
-const panelHydrationCache = new Map();
 const preconnectedOrigins = new Set();
 const SERVICE_ZIP_COORDS = {
   '28801': { lat: 35.5951, lng: -82.5515 }, // Asheville (Downtown)
@@ -74,60 +32,87 @@ const SERVICE_ZIP_COORDS = {
   '28778': { lat: 35.5976, lng: -82.3990 }  // Swannanoa
 };
 
-// Initialize slideshow after DOM is ready but defer to idle
+const DARK_MAP_STYLES = [
+  { elementType: 'geometry', stylers: [{ color: '#14121f' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#a59fba' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0912' }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#3a3456' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#262138' }] },
+  { featureType: 'road', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3a3157' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#07060d' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#171427' }] }
+];
+
+// Recent-work gallery: slow crossfade, paused on hover, focus, or when off screen.
+function initFadeGallery() {
+  const gallery = document.querySelector('[data-fade-gallery]');
+  if (!gallery) return;
+  const slides = Array.from(gallery.querySelectorAll('.fade-gallery__slide'));
+  const dots = Array.from(gallery.querySelectorAll('.fade-gallery__dots button'));
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let index = 0;
+  let timer = null;
+  let visible = false;
+  let paused = false;
+
+  const show = (next) => {
+    index = (next + slides.length) % slides.length;
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('is-active', i === index);
+      slide.setAttribute('aria-hidden', String(i !== index));
+    });
+    dots.forEach((dot, i) => {
+      if (i === index) dot.setAttribute('aria-current', 'true');
+      else dot.removeAttribute('aria-current');
+    });
+    const upcoming = slides[(index + 1) % slides.length]?.querySelector('img');
+    if (upcoming) upcoming.loading = 'eager';
+  };
+  const stop = () => { clearInterval(timer); timer = null; };
+  const start = () => {
+    stop();
+    if (!reduceMotion && visible && !paused) timer = setInterval(() => show(index + 1), 5500);
+  };
+
+  dots.forEach((dot, i) => dot.addEventListener('click', () => { show(i); start(); }));
+  gallery.addEventListener('mouseenter', () => { paused = true; stop(); });
+  gallery.addEventListener('mouseleave', () => { paused = false; start(); });
+  gallery.addEventListener('focusin', () => { paused = true; stop(); });
+  gallery.addEventListener('focusout', () => { paused = false; start(); });
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => {
+      visible = entries.some(entry => entry.isIntersecting);
+      if (visible) start(); else stop();
+    }, { threshold: 0.25 }).observe(gallery);
+  } else {
+    visible = true;
+    start();
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
-  // Lazy import minimal slider after idle; zero JS on first paint
-  onIdle(() => {
-    if (window.sliderHydrated) return;
-    import('/scripts/home-slider.js').then(m => {
-      try { m.hydrateSlider && m.hydrateSlider('.slideshow'); window.sliderHydrated = true; } catch (_) {}
-    }).catch(() => {});
-  });
-
-  const igSection = document.getElementById('instagram-section');
-  if (igSection) {
-    const igObserver = new IntersectionObserver((entries, observer) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          loadInstagram();
-          observer.disconnect();
-        }
-      });
-    });
-    igObserver.observe(igSection);
-  }
-
+  initFadeGallery();
   const serviceSection = document.getElementById('service-area');
-  if (serviceSection) {
-    const mapObserver = new IntersectionObserver((entries, observer) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          loadMap();
-          observer.disconnect();
-        }
-      });
-    });
-    mapObserver.observe(serviceSection);
-  }
-
-  initHashDrivenTabs();
-  initDesktopHeaderCollapse();
-  initMobileMenu();
-  initOverviewActionReveal();
-  initDelayedCallFab();
+  if (!serviceSection || !('IntersectionObserver' in window)) return;
+  const mapObserver = new IntersectionObserver((entries, observer) => {
+    if (entries.some(entry => entry.isIntersecting)) {
+      loadMap();
+      observer.disconnect();
+    }
+  }, { rootMargin: '300px 0px' });
+  mapObserver.observe(serviceSection);
 });
 
 function ensurePreconnect(url) {
   const origin = new URL(url, window.location.origin).origin;
   if (preconnectedOrigins.has(origin)) return;
-
   const link = document.createElement('link');
   link.rel = 'preconnect';
   link.href = origin;
-  if (origin !== window.location.origin) {
-    link.crossOrigin = '';
-  }
-
+  if (origin !== window.location.origin) link.crossOrigin = '';
   document.head.appendChild(link);
   preconnectedOrigins.add(origin);
 }
@@ -266,16 +251,16 @@ function drawZipCenterFallback(map, zipCodes) {
       title: `ZIP ${zip}`,
       label: {
         text: zip,
-        color: '#1f1744',
+        color: '#17120a',
         fontSize: '10px',
         fontWeight: '700'
       },
       icon: {
         path: google.maps.SymbolPath.CIRCLE,
         scale: 18,
-        fillColor: '#e9defc',
+        fillColor: '#e4bb5c',
         fillOpacity: 0.95,
-        strokeColor: '#673AB7',
+        strokeColor: '#7b52e6',
         strokeWeight: 2
       }
     });
@@ -284,10 +269,10 @@ function drawZipCenterFallback(map, zipCodes) {
       map,
       center: location,
       radius: 5500,
-      strokeColor: '#673AB7',
+      strokeColor: '#7b52e6',
       strokeOpacity: 0.45,
       strokeWeight: 1.5,
-      fillColor: '#673AB7',
+      fillColor: '#7b52e6',
       fillOpacity: 0.1
     });
 
@@ -303,35 +288,6 @@ function drawZipCenterFallback(map, zipCodes) {
       if (map.getZoom() > 10) map.setZoom(10);
     });
   }
-}
-
-// Lazy-load Instagram and Pixlee widgets
-function loadInstagram() {
-  if (window.instagramLoaded) return;
-  window.instagramLoaded = true;
-  ensurePreconnect('https://instafeed.assets.pixlee.com');
-  ensurePreconnect('https://www.instagram.com');
-
-  window.PixleeAsyncInit = function() {
-    if (window.Pixlee) {
-      const container = document.getElementById('pixlee_container');
-      if (container) {
-        container.innerHTML = '';
-      }
-      Pixlee.init({apiKey:'gJFLksbWhYk1jWdGalcu'});
-      Pixlee.addSimpleWidget({widgetId:'14925'});
-    }
-  };
-
-  const pixlee = document.createElement('script');
-  pixlee.src = 'https://instafeed.assets.pixlee.com/assets/pixlee_widget_1_0_0.js';
-  pixlee.defer = true;
-  document.body.appendChild(pixlee);
-
-  const ig = document.createElement('script');
-  ig.src = 'https://www.instagram.com/embed.js';
-  ig.async = true;
-  document.body.appendChild(ig);
 }
 
 // Lazy-load Google Maps API
@@ -352,256 +308,8 @@ function loadMap() {
   script.onerror = () => {
     console.error('Google Maps script failed to load');
     try {
-      mapEl.textContent = 'Map failed to load.';
+      mapEl.querySelector('.area__map-fallback span').textContent = 'The map could not load. Call or text to confirm your address.';
     } catch (_) {}
   };
   document.head.appendChild(script);
-}
-
-// Sync tabs with URL hash for deep linking
-function initHashDrivenTabs() {
-  const tabLinks = Array.from(document.querySelectorAll('.mdl-layout__tab[href^="#"]'))
-    .map((tab) => ({ tab, hash: tab.getAttribute('href') }))
-    .filter(({ hash }) => TAB_HASHES.has(hash));
-
-  if (!tabLinks.length) return;
-
-  tabLinks.forEach(({ tab, hash }) => {
-    tab.addEventListener('click', function (event) {
-      event.preventDefault();
-      if (window.location.hash !== hash) {
-        history.pushState(null, '', hash);
-      }
-      void activateTabFromHash(hash);
-    });
-  });
-
-  requestAnimationFrame(function () {
-    if (TAB_HASHES.has(window.location.hash)) {
-      void activateTabFromHash(window.location.hash);
-      return;
-    }
-    void activateTabFromHash('#overview');
-  });
-
-  const sync = () => { void activateTabFromHash(window.location.hash); };
-  window.addEventListener('hashchange', sync);
-}
-
-function hydrateTabPanel(panelId) {
-  const panel = document.getElementById(panelId);
-  if (!panel) return Promise.resolve(null);
-
-  const fragmentUrl = panel.dataset.fragment;
-  if (!fragmentUrl || panel.dataset.hydrated === 'true') {
-    return Promise.resolve(panel);
-  }
-
-  if (panelHydrationCache.has(panelId)) {
-    return panelHydrationCache.get(panelId);
-  }
-
-  panel.dataset.hydrated = 'loading';
-
-  const request = fetch(fragmentUrl, { credentials: 'same-origin' })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`Panel request failed with status ${response.status}`);
-      }
-      return response.text();
-    })
-    .then((html) => {
-      panel.innerHTML = html;
-      panel.dataset.hydrated = 'true';
-      return panel;
-    })
-    .catch((error) => {
-      console.error(`Failed to hydrate ${panelId} panel`, error);
-      panel.dataset.hydrated = 'error';
-      panel.innerHTML = `
-        <section class="section--center">
-          <div class="panel-shell">
-            <p>That section failed to load.</p>
-            <button class="mdl-button service-more-btn panel-shell__retry" type="button" onclick="retryLazyPanel('${panelId}')">Try Again</button>
-          </div>
-        </section>
-      `;
-      return panel;
-    });
-
-  panelHydrationCache.set(panelId, request);
-  return request;
-}
-
-function retryLazyPanel(panelId) {
-  panelHydrationCache.delete(panelId);
-  const panel = document.getElementById(panelId);
-  if (panel) {
-    delete panel.dataset.hydrated;
-  }
-  return hydrateTabPanel(panelId).then(() => activateTabFromHash(`#${panelId}`));
-}
-
-window.retryLazyPanel = retryLazyPanel;
-
-function activateTabFromHash(hash) {
-  if (!hash) return;
-  const normalized = hash.startsWith('#') ? hash : `#${hash}`;
-  if (!TAB_HASHES.has(normalized)) return;
-
-  document.querySelectorAll('.mdl-layout__tab[href^="#"]').forEach((tab) => {
-    const isActive = tab.getAttribute('href') === normalized;
-    tab.classList.toggle('is-active', isActive);
-    tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-  });
-
-  document.querySelectorAll('.mdl-layout__tab-panel').forEach((panel) => {
-    const isActive = `#${panel.id}` === normalized;
-    panel.classList.toggle('is-active', isActive);
-    panel.hidden = !isActive;
-  });
-
-  return hydrateTabPanel(normalized.slice(1));
-}
-
-function initMobileMenu() {
-  const toggle = document.querySelector('.mobile-nav-toggle');
-  const panel = document.getElementById('mobileNav');
-  const backdrop = document.querySelector('.mobile-nav-backdrop');
-  if (!toggle || !panel || !backdrop) return;
-
-  const closeMenu = () => {
-    document.body.classList.remove('mobile-menu-open');
-    toggle.setAttribute('aria-expanded', 'false');
-  };
-
-  const openMenu = () => {
-    document.body.classList.add('mobile-menu-open');
-    toggle.setAttribute('aria-expanded', 'true');
-  };
-
-  toggle.addEventListener('click', function () {
-    if (document.body.classList.contains('mobile-menu-open')) {
-      closeMenu();
-      return;
-    }
-    openMenu();
-  });
-
-  backdrop.addEventListener('click', closeMenu);
-  panel.querySelectorAll('a').forEach((link) => {
-    link.addEventListener('click', closeMenu);
-  });
-
-  window.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape') closeMenu();
-  });
-
-  window.addEventListener('resize', function () {
-    if (window.innerWidth > 768) closeMenu();
-  });
-}
-
-function initDesktopHeaderCollapse() {
-  const brandRow = document.querySelector('.desktop-header-brand-row');
-  const stackedLogo = document.querySelector('.desktop-header-logo-stack');
-  const horizontalLogo = document.querySelector('.desktop-header-logo-horizontal');
-  if (!brandRow || !window.matchMedia) return;
-
-  const desktopQuery = window.matchMedia('(min-width: 769px)');
-  let ticking = false;
-
-  const getThreshold = () => Math.max(24, Math.round((brandRow.offsetHeight || 0) * 0.35));
-
-  const syncLogoVisibility = (shouldCompact) => {
-    if (!stackedLogo || !horizontalLogo) return;
-    stackedLogo.hidden = shouldCompact;
-    horizontalLogo.hidden = !shouldCompact;
-  };
-
-  const syncState = () => {
-    ticking = false;
-    const shouldCompact = desktopQuery.matches && window.scrollY > getThreshold();
-    document.body.classList.toggle('desktop-header-compact', shouldCompact);
-    syncLogoVisibility(shouldCompact);
-  };
-
-  const requestSync = () => {
-    if (ticking) return;
-    ticking = true;
-    window.requestAnimationFrame(syncState);
-  };
-
-  syncState();
-  window.addEventListener('scroll', requestSync, { passive: true });
-  window.addEventListener('resize', requestSync);
-  window.addEventListener('load', requestSync, { once: true });
-
-  if (typeof desktopQuery.addEventListener === 'function') {
-    desktopQuery.addEventListener('change', syncState);
-  } else if (typeof desktopQuery.addListener === 'function') {
-    desktopQuery.addListener(syncState);
-  }
-}
-
-function initOverviewActionReveal() {
-  const actionRows = Array.from(document.querySelectorAll('#overview .overview-service-actions'));
-  if (!actionRows.length) return;
-
-  actionRows.forEach((row) => {
-    row.classList.add('overview-reveal');
-  });
-
-  if (!('IntersectionObserver' in window)) {
-    actionRows.forEach((row) => row.classList.add('is-visible'));
-    return;
-  }
-
-  const observer = new IntersectionObserver((entries, obs) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting) return;
-      entry.target.classList.add('is-visible');
-      obs.unobserve(entry.target);
-    });
-  }, {
-    threshold: 0.2,
-    rootMargin: '0px 0px -10% 0px'
-  });
-
-  actionRows.forEach((row) => observer.observe(row));
-}
-
-function initDelayedCallFab() {
-  const callFab = document.querySelector('.mdl-chip-float-contact');
-  if (!callFab) return;
-  if (window.matchMedia && window.matchMedia('(max-width: 768px)').matches) return;
-
-  const SHOW_DELAY_MS = 7000;
-  const BLURB_DURATION_MS = 4000;
-
-  window.setTimeout(() => {
-    callFab.classList.add('is-visible', 'show-blurb');
-    window.setTimeout(() => {
-      callFab.classList.remove('show-blurb');
-    }, BLURB_DURATION_MS);
-  }, SHOW_DELAY_MS);
-}
-
-// Programmatically open Services tab and jump to a specific service block.
-function navigateToService(serviceId) {
-  const targetId = (serviceId || '').trim();
-  if (!targetId) return false;
-
-  if (window.location.hash !== '#services') {
-    history.pushState(null, '', '#services');
-  }
-  void activateTabFromHash('#services').then(() => {
-    requestAnimationFrame(() => {
-      const target = document.getElementById(targetId);
-      if (!target) return;
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  });
-
-  return false;
 }

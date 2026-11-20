@@ -1,14 +1,6 @@
-<!DOCTYPE html><!--
-__/\\\\\\\\\\\\_____/\\\______________/\\\_
- _\/\\\////////\\\__\/\\\_____________\/\\\_
-  _\/\\\______\//\\\_\/\\\_____________\/\\\_
-   _\/\\\_______\/\\\_\//\\\____/\\\____/\\\__
-    _\/\\\_______\/\\\__\//\\\__/\\\\\__/\\\___
-     _\/\\\_______\/\\\___\//\\\/\\\/\\\/\\\____
-      _\/\\\_______/\\\_____\//\\\\\\//\\\\\_____
-       _\/\\\\\\\\\\\\/_______\//\\\__\//\\\______
-        _\////////////__________\///____\///_______
---><html lang="en"><head>
+<!doctype html>
+<html lang="en">
+<head>
   <!-- Google tag (gtag.js) -->
   <script>
     (function () {
@@ -34,1140 +26,465 @@ __/\\\\\\\\\\\\_____/\\\______________/\\\_
     }
   </script>
   <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <meta name="description" content="Mobile car detailing in Asheville, NC: interior deep cleaning, exterior detailing, paint correction, and ceramic coating. Get a personal quote from Nieman.">
-  <meta name="keywords" content="asheville, weaverville, detailing, mobile, mobile detailing, automotive detailing, car wash">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Nieman's Detailing — Mobile Car Detailing Asheville, NC</title>
-
-  <!-- Disable tap highlight on IE -->
-  <meta name="msapplication-tap-highlight" content="no">
-
-  <!-- Web Application Manifest -->
-  <link rel="manifest" href="manifest.json">
-
-  <!-- Add to homescreen for Chrome on Android -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="application-name" content="Nieman's Detailing">
-  <link rel="icon" sizes="192x192" href="images/touch/chrome-touch-icon-192x192.png">
-
-  <!-- Add to homescreen for Safari on iOS -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="Nieman's Detailing">
-  <link rel="apple-touch-icon" href="images/touch/apple-touch-icon.png">
-
-  <!-- Tile icon for Win8 (144x144 + tile color) -->
-  <meta name="msapplication-TileImage" content="images/touch/ms-touch-icon-144x144-precomposed.png">
-  <meta name="msapplication-TileColor" content="#2F3BA2">
-
-  <!-- Color the status bar on mobile devices -->
-  <meta name="theme-color" content="#0b1330">
+  <meta name="description" content="Mobile car detailing in Asheville, NC: interior deep cleaning, exterior detailing, paint correction, and ceramic coating. Upfront prices and online booking.">
+  <meta name="keywords" content="asheville, weaverville, detailing, mobile, mobile detailing, automotive detailing, car wash">
   <link rel="canonical" href="https://niemansdetailing.com/">
   <meta name="robots" content="index,follow">
+  <meta name="theme-color" content="#0a0912">
+  <meta name="color-scheme" content="dark">
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="/favicon.ico">
+  <link rel="icon" sizes="192x192" href="/images/touch/chrome-touch-icon-192x192.png">
+  <link rel="apple-touch-icon" href="/images/touch/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Nieman's Detailing">
 
-  <!-- Preload the exact hero candidate needed by layout (1024w cap) -->
-  <link rel="preload" as="image" href="/images/carpics/srv_pics/series-grey-1375.avif" imagesrcset="/images/carpics/srv_pics/series-grey-150.avif 150w, /images/carpics/srv_pics/series-grey-300.avif 300w, /images/carpics/srv_pics/series-grey-512.avif 512w, /images/carpics/srv_pics/series-grey-640.avif 640w, /images/carpics/srv_pics/series-grey-800.avif 800w, /images/carpics/srv_pics/series-grey-1024.avif 1024w, /images/carpics/srv_pics/series-grey-1375.avif 1375w" imagesizes="(max-width: 768px) calc(100vw - 32px), 608px" fetchpriority="high">
-
-  <!-- Inline critical CSS -->
-  <style>
-    /* Critical CSS (see public/styles/critical.css for source) */
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(180deg, #060a18 0%, #0b1330 52%, #050813 100%);
-      color: #f0ebff;
-      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
-    }
-
-    .material-icons {
-      display: inline-block;
-      width: 1em;
-      height: 1em;
-      vertical-align: -0.125em;
-      flex-shrink: 0;
-    }
-
-    .mdl-layout__header {
-      background: #0a0f22;
-      position: sticky;
-      top: 0;
-      z-index: 110;
-    }
-
-    .mdl-layout__tab-bar {
-      background: #341f67;
-      display: flex;
-      justify-content: center;
-      min-height: 56px;
-      padding-left: 0;
-    }
-
-    .mdl-layout__tab-bar .mdl-layout__tab {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 72px;
-      padding: 0 18px;
-      color: #fff;
-      text-decoration: none;
-    }
-
-    .mdl-layout__tab-bar .mdl-layout__tab.is-active::after {
-      content: "";
-      position: absolute;
-      left: 18px;
-      right: 18px;
-      bottom: 0;
-      height: 4px;
-      border-radius: 999px;
-      background-color: #fff;
-    }
-
-    .mdl-layout__header-row {
-      display: flex;
-      align-items: center;
-      min-height: 64px;
-      justify-content: center;
-      padding-left: 0;
-      padding-right: 0;
-    }
-
-    .mdl-layout--large-screen-only {
-      display: flex;
-    }
-
-    .mdl-layout--small-screen-only {
-      display: none;
-    }
-
-    .mobile-nav-toggle,
-    .mobile-nav-panel,
-    .mobile-nav-backdrop {
-      display: none;
-    }
-
-    .mdl-layout__content {
-      width: 100%;
-    }
-
-    .mdl-layout--large-screen-only.mdl-layout__header-row img {
-      display: block;
-      margin: 0;
-      height: auto;
-    }
-
-    .desktop-header-brand-row {
-      min-height: auto;
-      padding: 14px 24px 10px;
-      box-sizing: border-box;
-    }
-
-    .desktop-header-brand {
-      position: relative;
-      width: min(100%, 320px);
-      height: clamp(88px, 9vw, 120px);
-      transition: height .22s ease;
-    }
-
-    .desktop-header-logo-stack,
-    .desktop-header-logo-horizontal {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      display: block;
-      transform-origin: center;
-      transition: opacity .22s ease, transform .22s ease;
-    }
-
-    .desktop-header-logo-stack[hidden],
-    .desktop-header-logo-horizontal[hidden] {
-      display: none !important;
-    }
-
-    .desktop-header-logo-stack {
-      width: clamp(112px, 11vw, 150px);
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-
-    .desktop-header-logo-stack img,
-    .desktop-header-logo-horizontal img,
-    .desktop-header-logo-horizontal {
-      width: 100%;
-      height: auto;
-    }
-
-    .desktop-header-logo-horizontal {
-      width: clamp(200px, 22vw, 300px);
-      max-width: calc(100vw - 48px);
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(.94);
-    }
-
-    body.desktop-header-compact .desktop-header-brand {
-      height: 48px;
-    }
-
-    body.desktop-header-compact .desktop-header-logo-stack {
-      opacity: 0;
-      transform: translate(-50%, -58%) scale(.8);
-    }
-
-    body.desktop-header-compact .desktop-header-logo-horizontal {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-
-    .mdl-layout--small-screen-only.mdl-layout__header-row picture {
-      display: block;
-      width: 100%;
-      max-width: 320px;
-      min-width: 0;
-      margin: 0 auto;
-    }
-
-    .mdl-layout--small-screen-only.mdl-layout__header-row .h-logo {
-      display: block;
-      width: min(240px, calc(100vw - 156px));
-      max-width: 100%;
-      margin: 0 auto;
-      height: auto;
-      transform: translateX(-28px);
-    }
-
-    .h-logo {
-      max-width: 100%;
-      height: auto;
-    }
-
-    .main-title {
-      font-weight: 500;
-      margin: 0.5rem 0 0;
-      text-align: center;
-    }
-
-    .sub-title {
-      margin: 0 0 1rem;
-      text-align: center;
-    }
-
-    .hero-cta {
-      margin: 1rem 0;
-      text-align: center;
-    }
-
-    .hero-layout {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-    }
-
-    .hero-copy {
-      flex: 0 1 36%;
-      text-align: center;
-    }
-
-    .hero-copy .main-title,
-    .hero-copy .sub-title,
-    .hero-copy .hero-cta {
-      text-align: center;
-    }
-
-    .hero-layout .slideshow {
-      flex: 1 1 64%;
-      max-width: none;
-      margin: 0;
-    }
-
-    .slideshow {
-      max-width: 950px;
-      margin: 0 auto;
-    }
-
-    .section--center {
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .slideshow .slide {
-      aspect-ratio: 16/9;
-      margin: 0;
-    }
-
-    .slideshow img {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
-
-    .mdl-chip-float-contact {
-      position: fixed;
-      right: 200px;
-      bottom: 40px;
-      z-index: 99;
-      opacity: 0;
-      transform: translateY(10px);
-      pointer-events: none;
-    }
-
-    .desktop-book-fab {
-      display: none;
-    }
-
-    .mobile-sticky-cta {
-      display: none;
-    }
-
-    /* prevent any sneaky shifts */
-    .hero-img {
-      display: block;
-      width: 100%;
-      height: auto;
-    }
-
-    @media (max-width: 900px) {
-      .hero-layout {
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      .hero-layout .slideshow {
-        order: -1;
-        width: 100%;
-      }
-
-      .hero-copy {
-        width: 100%;
-        text-align: center;
-      }
-
-      .hero-copy .main-title,
-      .hero-copy .sub-title,
-      .hero-copy .hero-cta {
-        text-align: center;
-      }
-    }
-
-    @media (max-width: 768px) {
-      .mdl-layout--small-screen-only.mdl-layout__header-row {
-        display: flex !important;
-      }
-
-      .mdl-layout--large-screen-only.mdl-layout__header-row {
-        display: none !important;
-      }
-
-      .mdl-layout__tab-bar {
-        display: none;
-      }
-
-      .mobile-nav-toggle {
-        display: inline-flex;
-        position: fixed;
-        top: 8px;
-        left: 8px;
-        width: 40px;
-        height: 40px;
-        align-items: center;
-        justify-content: center;
-        color: #fff;
-        border: 0;
-        background: transparent;
-        z-index: 130;
-      }
-
-      .mobile-nav-toggle .material-icons {
-        font-size: 32px;
-        line-height: 1;
-      }
-
-      .mobile-nav-panel {
-        display: flex;
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: 100dvh;
-        padding: 78px 16px 24px;
-        box-sizing: border-box;
-        border: 0;
-        border-radius: 0;
-        background: linear-gradient(170deg, rgba(9, 13, 30, .98) 0%, rgba(13, 19, 45, .97) 48%, rgba(20, 13, 48, .98) 100%);
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        gap: 12px;
-        opacity: 0;
-        transform: translateY(-10px);
-        pointer-events: none;
-        transition: opacity .2s ease, transform .2s ease;
-        z-index: 129;
-      }
-
-      .mobile-nav-link {
-        display: inline-flex;
-        width: min(360px, calc(100vw - 48px));
-        min-height: 48px;
-        box-sizing: border-box;
-        align-items: center;
-        justify-content: center;
-        padding: 12px 18px;
-        color: #fff;
-        text-decoration: none;
-        text-align: center;
-        font-weight: 600;
-        font-size: 1rem;
-        letter-spacing: .01em;
-        border-radius: 999px;
-        border: 1px solid rgba(188, 169, 255, .4);
-        background: linear-gradient(145deg, rgba(126, 89, 221, .24) 0%, rgba(88, 55, 182, .32) 100%);
-        box-shadow: 0 10px 24px rgba(6, 8, 22, .35);
-      }
-
-      .mobile-nav-backdrop {
-        display: block;
-        position: fixed;
-        inset: 0;
-        background: rgba(4, 6, 16, .66);
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity .2s ease;
-        z-index: 128;
-      }
-
-      body.mobile-menu-open .mobile-nav-panel {
-        opacity: 1;
-        transform: translateY(0);
-        pointer-events: auto;
-      }
-
-      body.mobile-menu-open .mobile-nav-backdrop {
-        opacity: 1;
-        pointer-events: auto;
-      }
-
-      body.mobile-menu-open {
-        overflow: hidden;
-      }
-
-      .mdl-site .mdl-card .mdl-card__supporting-text {
-        width: 100%;
-      }
-
-      .main-title {
-        font-size: 1.6rem;
-      }
-
-      .sub-title {
-        font-size: 1.1rem;
-      }
-
-      /* Make hero square on mobile for stronger LCP dominance */
-      .slides-viewport .slide,
-      .slides-viewport .slide picture {
-        aspect-ratio: 1 / 1;
-      }
-    }
-
-    .slideshow .slide.is-active img {
-      transition: none !important;
-      opacity: 1;
-    }
-  </style>
-
-  <!-- Preload non-critical CSS -->
-  <link rel="preload" as="style" href="styles/home.css?v=20261013c">
-
-  <!-- Load CSS without render-blocking -->
-  <link rel="stylesheet" href="styles/home.css?v=20261013c" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="styles/vacation-notice.css?v=20260615">
-  <noscript>
-    <link rel="stylesheet" href="styles/home.css?v=20261013c">
-  </noscript>
-
-  <!-- Recommended: enable long-term caching and Brotli/gzip compression for static assets (css/js/webp/jpeg/png). -->
-
-  <!--I h8 facebook-->
   <meta property="og:url" content="https://niemansdetailing.com/">
   <meta property="og:title" content="Nieman's Detailing — Asheville's Premier Mobile Detailing Service">
-  <meta property="og:description" content="Mobile car detailing in Asheville, NC: interior deep cleaning, exterior detailing, paint correction, and ceramic coating. Get a personal quote from Nieman.">
+  <meta property="og:description" content="Mobile car detailing in Asheville, NC: interior deep cleaning, exterior detailing, paint correction, and ceramic coating.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://niemansdetailing.com/images/carpics/facebookogimage.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Nieman's Detailing — Mobile Car Detailing Asheville, NC">
-  <meta name="twitter:description" content="Mobile car detailing in Asheville, NC: interior deep cleaning, exterior detailing, paint correction, and ceramic coating. Get a personal quote from Nieman.">
+  <meta name="twitter:description" content="Mobile car detailing in Asheville, NC: interior deep cleaning, exterior detailing, paint correction, and ceramic coating.">
   <meta name="twitter:image" content="https://niemansdetailing.com/images/carpics/facebookogimage.png">
 
-  <!--micro data-->
+  <!-- site:head -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/brand.css?v=20261120">
+  <!-- /site:head -->
+
+  <link rel="preload" as="image" href="/images/carpics/srv_pics/rx7-foam-1024.webp" imagesrcset="/images/carpics/srv_pics/rx7-foam-640.webp 640w, /images/carpics/srv_pics/rx7-foam-1024.webp 1024w, /images/carpics/srv_pics/rx7-foam-1375.webp 1375w" imagesizes="(max-width: 900px) 100vw, 560px" fetchpriority="high">
+  <link rel="stylesheet" href="/styles/home.css?v=20261120">
+  <link rel="stylesheet" href="/styles/vacation-notice.css?v=20261120">
+
   <script type="application/ld+json">
-{
-	"@context": "http://schema.org",
-	"@type": "AutoDetailing",
-	"name": "Nieman's Detailing",
-	"address": {
-		"@type": "PostalAddress",
-		"streetAddress": "",
-		"addressLocality": "Weaverville",
-		"addressRegion": "NC",
-		"postalCode": "28787"
-	},
-	"image": "https://niemansdetailing.com/images/web-image.jpg",
-        "email": "nieman@niemansdetailing.com",
-        "telephone": "+1-828-273-3894",
-        "url": "https://niemansdetailing.com",
-	"paymentAccepted": [ "cash", "check", "paypal" ],
-	"openingHours": "Mo,Tu,We,Th,Fr,Sa,Su 09:00-17:00",
-	"openingHoursSpecification": [ {
-		"@type": "OpeningHoursSpecification",
-		"dayOfWeek": [
-			"Monday",
-			"Tuesday",
-			"Wednesday",
-			"Thursday",
-			"Friday",
-			"Saturday",
-			"Sunday"
-		],
-		"opens": "09:00",
-		"closes": "17:00"
-	} ],
-	"geo": {
-		"@type": "GeoCoordinates",
-		"latitude": "35.598234",
-		"longitude": "-82.548904"
-	},
-	"priceRange":"$$$"
-
-}
-</script>
-
-  <style>
-    .hero-cta {
-      margin: 1rem 0;
-      text-align: center;
-    }
-
-    .hero-cta .mdl-button {
-      font-size: 1.3rem;
-      padding: 0.8rem 2rem;
-    }
-
-    .testimonial-list {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .testimonial-list blockquote {
-      font-style: italic;
-      border-left: 4px solid #673ab7;
-      padding-left: 1rem;
-    }
-
-    .testimonial-list footer {
-      display: block;
-      margin-top: 0.5rem;
-      text-align: right;
-      font-weight: bold;
-    }
-
-    .instagram-profile-embed {
-      display: flex;
-      align-items: center;
-      margin-top: 1rem;
-    }
-
-    .instagram-profile-embed img {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      margin-right: 0.5rem;
-    }
-
-    .instagram-profile-embed span {
-      font-size: 1.1rem;
-      font-weight: bold;
-    }
-
-    /* slideshow arrows */
-    .slideshow-container {
-      position: relative;
-    }
-
-    .slide-prev,
-    .slide-next {
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 2rem;
-      background: none;
-      border: none;
-      color: white;
-      opacity: 0;
-      transition: opacity 0.3s;
-      cursor: pointer;
-    }
-
-    .slideshow-container:hover .slide-prev,
-    .slideshow-container:hover .slide-next {
-      opacity: 0.7;
-    }
-
-    .slide-prev {
-      left: 10px;
-    }
-
-    .slide-next {
-      right: 10px;
-    }
-
-    /* button hover state */
-    .mdl-button--colored:hover {
-      background-color: #5a2e91;
-    }
-
-    /* tightened testimonials */
-    .testimonial-list blockquote {
-      line-height: 1.4;
-      border-left-color: #673ab7;
-    }
-
-    /* services CTA placeholder */
-    .services-cta {
-      text-align: center;
-      margin: 1rem 0;
-    }
-  </style>
+  {
+    "@context": "https://schema.org",
+    "@type": "AutoDetailing",
+    "name": "Nieman's Detailing",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "",
+      "addressLocality": "Weaverville",
+      "addressRegion": "NC",
+      "postalCode": "28787"
+    },
+    "image": "https://niemansdetailing.com/images/web-image.jpg",
+    "email": "nieman@niemansdetailing.com",
+    "telephone": "+1-828-273-3894",
+    "url": "https://niemansdetailing.com",
+    "paymentAccepted": ["cash", "check", "paypal"],
+    "openingHours": "Mo,Tu,We,Th,Fr,Sa,Su 09:00-17:00",
+    "openingHoursSpecification": [{
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      "opens": "09:00",
+      "closes": "17:00"
+    }],
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": "35.598234",
+      "longitude": "-82.548904"
+    },
+    "priceRange": "$$$"
+  }
+  </script>
 </head>
 
-<body class="mdl-site mdl-base">
+<body class="nd has-action-bar">
+  <!-- site:sprite -->
   <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" style="position:absolute;width:0;height:0;overflow:hidden">
-    <symbol id="icon-menu" viewBox="0 0 24 24">
-      <path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
-    </symbol>
-    <symbol id="icon-phone" viewBox="0 0 24 24">
-      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.89.33 1.77.61 2.62a2 2 0 0 1-.45 2.11L8 9.91a16 16 0 0 0 6 6l1.46-1.27a2 2 0 0 1 2.11-.45c.85.28 1.73.49 2.62.61A2 2 0 0 1 22 16.92Z" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-    </symbol>
-    <symbol id="icon-event" viewBox="0 0 24 24">
-      <rect x="3" y="4" width="18" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
-      <path d="M8 2v4M16 2v4M3 10h18" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
-    </symbol>
-    <symbol id="icon-star" viewBox="0 0 24 24">
-      <path d="M12 3.2 14.78 8.83 21 9.74l-4.5 4.39 1.06 6.2L12 17.4l-5.56 2.93 1.06-6.2L3 9.74l6.22-.91L12 3.2Z" fill="currentColor"></path>
-    </symbol>
-    <symbol id="icon-directions_car" viewBox="0 0 24 24">
-      <path d="M7 6h10l2.2 5.5H4.8L7 6Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
-      <rect x="4" y="11.5" width="16" height="5.5" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
-      <circle cx="8" cy="17.5" r="1.3" fill="currentColor"></circle>
-      <circle cx="16" cy="17.5" r="1.3" fill="currentColor"></circle>
-      <path d="M7.5 8.8h9" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
-    </symbol>
-    <symbol id="icon-sms" viewBox="0 0 24 24">
-      <path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H10l-5 4v-4H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" fill="none" stroke="currentColor" stroke-linejoin="round" stroke-width="1.8"></path>
-      <circle cx="9" cy="11" r="1.1" fill="currentColor"></circle>
-      <circle cx="12" cy="11" r="1.1" fill="currentColor"></circle>
-      <circle cx="15" cy="11" r="1.1" fill="currentColor"></circle>
-    </symbol>
-    <symbol id="icon-attach_money" viewBox="0 0 24 24">
-      <path d="M12 3v18M15.5 7.5c0-1.66-1.57-3-3.5-3s-3.5 1.34-3.5 3 1.08 2.56 3.06 3.05l.88.21c1.98.49 3.06 1.49 3.06 3.24 0 1.66-1.57 3-3.5 3s-3.5-1.34-3.5-3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-    </symbol>
-    <symbol id="icon-email" viewBox="0 0 24 24">
-      <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"></rect>
-      <path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-    </symbol>
-    <symbol id="icon-link" viewBox="0 0 24 24">
-      <path d="M10 13.5 14 9.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.8"></path>
-      <path d="M7.5 15.5H6a4 4 0 0 1 0-8h3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-      <path d="M16.5 8.5H18a4 4 0 0 1 0 8h-3" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-    </symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.3 1.8.6 2.6a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.5-1.3a2 2 0 0 1 2.1-.4c.8.3 1.7.5 2.6.6a2 2 0 0 1 1.8 2z"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></g></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></g></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.5"/></g></symbol>
+    <symbol id="i-crown" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5z"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></g></symbol>
+    <symbol id="i-insta" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></g></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></g></symbol>
   </svg>
-  <div class="mdl-layout mdl-layout--fixed-header">
-    <header class="mdl-layout__header mdl-layout__header--scroll">
+  <!-- /site:sprite -->
 
-      <!--Large Screen Header and Logo-->
-      <div class="mdl-layout--large-screen-only mdl-layout__header-row desktop-header-brand-row">
-        <div class="desktop-header-brand">
-          <picture class="desktop-header-logo-stack"><source type="image/avif" srcset="/images/ND-logo-white-transparentbg-150.avif 150w, /images/ND-logo-white-transparentbg-300.avif 300w, /images/ND-logo-white-transparentbg-512.avif 512w, /images/ND-logo-white-transparentbg-640.avif 640w, /images/ND-logo-white-transparentbg-800.avif 800w, /images/ND-logo-white-transparentbg-1024.avif 1024w, /images/ND-logo-white-transparentbg-1375.avif 1375w" sizes="150px"><source type="image/webp" srcset="/images/ND-logo-white-transparentbg-150.webp 150w, /images/ND-logo-white-transparentbg-300.webp 300w, /images/ND-logo-white-transparentbg-512.webp 512w, /images/ND-logo-white-transparentbg-640.webp 640w, /images/ND-logo-white-transparentbg-800.webp 800w, /images/ND-logo-white-transparentbg-1024.webp 1024w, /images/ND-logo-white-transparentbg-1375.webp 1375w" sizes="150px"><img alt="Nieman's Detailing logo" title="Nieman's Detailing" width="150" height="150" decoding="async" src="/images/ND-logo-white-transparentbg-800.jpg" srcset="/images/ND-logo-white-transparentbg-150.jpg 150w, /images/ND-logo-white-transparentbg-300.jpg 300w, /images/ND-logo-white-transparentbg-512.jpg 512w, /images/ND-logo-white-transparentbg-640.jpg 640w, /images/ND-logo-white-transparentbg-800.jpg 800w, /images/ND-logo-white-transparentbg-1024.jpg 1024w, /images/ND-logo-white-transparentbg-1375.jpg 1375w" sizes="150px"></picture>
-          <picture class="desktop-header-logo-horizontal" hidden><source type="image/avif" srcset="/images/ND-logo-white-transparentbg-horizontal-150.avif 150w, /images/ND-logo-white-transparentbg-horizontal-300.avif 300w, /images/ND-logo-white-transparentbg-horizontal-512.avif 512w, /images/ND-logo-white-transparentbg-horizontal-640.avif 640w, /images/ND-logo-white-transparentbg-horizontal-800.avif 800w, /images/ND-logo-white-transparentbg-horizontal-1024.avif 1024w, /images/ND-logo-white-transparentbg-horizontal-1375.avif 1375w" sizes="300px"><source type="image/webp" srcset="/images/ND-logo-white-transparentbg-horizontal-150.webp 150w, /images/ND-logo-white-transparentbg-horizontal-300.webp 300w, /images/ND-logo-white-transparentbg-horizontal-512.webp 512w, /images/ND-logo-white-transparentbg-horizontal-640.webp 640w, /images/ND-logo-white-transparentbg-horizontal-800.webp 800w, /images/ND-logo-white-transparentbg-horizontal-1024.webp 1024w, /images/ND-logo-white-transparentbg-horizontal-1375.webp 1375w" sizes="300px"><img alt="" aria-hidden="true" width="500" height="50" decoding="async" src="/images/ND-logo-white-transparentbg-horizontal-800.jpg" srcset="/images/ND-logo-white-transparentbg-horizontal-150.jpg 150w, /images/ND-logo-white-transparentbg-horizontal-300.jpg 300w, /images/ND-logo-white-transparentbg-horizontal-512.jpg 512w, /images/ND-logo-white-transparentbg-horizontal-640.jpg 640w, /images/ND-logo-white-transparentbg-horizontal-800.jpg 800w, /images/ND-logo-white-transparentbg-horizontal-1024.jpg 1024w, /images/ND-logo-white-transparentbg-horizontal-1375.jpg 1375w" sizes="300px"></picture>
-        </div>
-      </div>
+  <a class="skip-link" href="#main">Skip to content</a>
 
-      <!--Small Screen Header and Logo-->
-      <div class="mdl-layout--small-screen-only mdl-layout__header-row">
-        <img class="h-logo" alt="Nieman's Detailing horizontal logo" title="Nieman's Detailing" width="500" height="50" decoding="async" src="/images/ND-logo-white-transparentbg-horizontal.png">
-      </div>
-      <button class="mobile-nav-toggle" type="button" aria-label="Open navigation menu" aria-expanded="false" aria-controls="mobileNav">
-        <svg class="material-icons" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-menu"></use></svg>
-      </button>
-      <nav id="mobileNav" class="mobile-nav-panel" aria-label="Mobile Navigation">
-        <a href="#overview" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile Overview');">Overview</a>
-        <a href="#services" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile Services');">Services</a>
-        <a href="#about" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile About');">About</a>
-        <a href="#contact" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile Contact');">Contact</a>
-        <a href="https://niemansdetailing.com/schedule" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile Schedule');">Schedule</a>
-        <a href="/faq" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile FAQ');">FAQ</a>
-        <a href="/blog" class="mobile-nav-link" onclick="trackEvent('Navigation','click','Mobile Blog');">Blog</a>
-      </nav>
-      <div class="mobile-nav-backdrop" aria-hidden="true"></div>
-      <div class="mdl-layout__tab-bar">
-        <a href="#overview" class="mdl-layout__tab is-active" onclick="trackEvent('Navigation','click','Overview Tab');">Overview</a>
-        <a href="#services" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','Services Tab');">Services</a>
-        <a href="#about" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','About Tab');">About</a>
-        <a href="#contact" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','Contact Tab');">Contact</a>
-        <a href="https://niemansdetailing.com/schedule" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','Schedule Tab');">Schedule</a>
-        <a href="/faq" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','FAQ Tab');">FAQ</a>
-        <a href="/blog" class="mdl-layout__tab" onclick="trackEvent('Navigation','click','Blog Tab');">Blog</a>
-
-      </div>
-    </header>
-
-    <main class="mdl-layout__content">
-
-      <!--Contact Chip-->
-      <div class="mdl-chip-float-contact">
-        <div class="call-fab-blurb" role="status" aria-live="polite">
-          Feel free to call me and leave a voicemail if I don't pick up, texting works too!
-        </div>
-        <span class="mdl-chip mdl-chip--contact mdl-chip-bg">
-          <span class="mdl-chip__contact mdl-color--primary mdl-color-text--white"><svg class="phone-icon material-icons md-light" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-phone"></use></svg></span>
-          <span class="mdl-chip__text">Questions? Call <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone'); gtag('event','conversion',{'send_to':'AW-17602789326/QubCCJ7smf0bEM7_1MlB'});">(828) 273-3894</a></strong></span>
-        </span>
-      </div>
-      <a class="desktop-book-fab" href="https://niemansdetailing.com/schedule" aria-label="Book detailing appointment" onclick="trackEvent('CTA','click','Desktop Book FAB');">
-        <svg class="material-icons" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-event"></use></svg>
-        <span>Book Now</span>
+  <!-- site:header -->
+  <header class="site-header">
+    <div class="container site-header__inner">
+      <a class="site-brand" href="/" aria-label="Nieman's Detailing home">
+        <img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" srcset="/images/ND-logo-white-transparentbg-horizontal-300.webp 1x, /images/ND-logo-white-transparentbg-horizontal-640.webp 2x" alt="Nieman's Detailing" width="300" height="30">
       </a>
-      <div class="mobile-sticky-cta" aria-label="Quick contact actions">
-        <a class="mobile-cta-btn mobile-cta-call" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Mobile Sticky Call'); gtag('event','conversion',{'send_to':'AW-17602789326/QubCCJ7smf0bEM7_1MlB'});">
-          <svg class="material-icons" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-phone"></use></svg>
-          <span>Call</span>
-        </a>
-        <a class="mobile-cta-btn mobile-cta-book" href="https://niemansdetailing.com/schedule" onclick="trackEvent('CTA','click','Mobile Sticky Book');">
-          <svg class="material-icons" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-event"></use></svg>
-          <span>Book</span>
-        </a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/#services">Services</a>
+        <a href="/quote">Pricing</a>
+        <a href="/#reviews">Reviews</a>
+        <a href="/#service-area">Service area</a>
+        <a href="/faq">FAQ</a>
+        <a href="/blog">Blog</a>
+      </nav>
+      <div class="site-header__actions">
+        <a class="site-phone" href="tel:+18282733894" data-track="Header Phone"><svg aria-hidden="true"><use href="#i-phone"/></svg>(828) 273-3894</a>
+        <a class="btn btn-primary" href="/schedule" data-track="Header Book">Book now</a>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Open menu"><svg aria-hidden="true"><use href="#i-menu"/></svg></button>
       </div>
-      <div class="vacation-notice-root" data-vacation-notice-root></div>
+    </div>
+  </header>
+  <nav id="mobile-menu" class="mobile-menu" aria-label="Mobile" hidden>
+    <a href="/#services">Services</a>
+    <a href="/quote">Pricing and quotes</a>
+    <a href="/#reviews">Reviews</a>
+    <a href="/#service-area">Service area</a>
+    <a href="/faq">FAQ</a>
+    <a href="/blog">Blog</a>
+    <a href="/account">My appointments</a>
+    <div class="btn-row">
+      <a class="btn btn-ghost" href="tel:+18282733894" data-track="Menu Phone">Call</a>
+      <a class="btn btn-ghost" href="sms:+18282733894" data-track="Menu Text">Text</a>
+    </div>
+  </nav>
+  <!-- /site:header -->
 
-      <!--Main Panel-->
-      <div class="mdl-layout__tab-panel is-active" id="overview">
+  <main id="main">
+    <div class="vacation-notice-root container" data-vacation-notice-root></div>
 
-        <!--Slideshow Card-->
-        <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
-          <div class="mdl-card mdl-cell mdl-cell--12-col">
-
-            <div class="mdl-card__supporting-text hero-layout">
-              <div class="hero-copy">
-                <h1 class="main-title">Mobile Car Detailing in Asheville, NC</h1>
-                <h3 class="sub-title">Bringing the shine right to your driveway!</h3>
-                <div class="hero-cta">
-                  <a href="https://niemansdetailing.com/schedule" class="mdl-button mdl-button--raised mdl-button--colored" onclick="trackEvent('CTA','click','Book Now');">Book Now</a>
-                </div>
-                <div class="hero-trust-strip" aria-label="Why customers book">
-                  <span class="hero-trust-item"><svg class="material-icons" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-star"></use></svg>5-star local
-                    service</span>
-                  <span class="hero-trust-item"><svg class="material-icons" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-directions_car"></use></svg>Fully
-                    mobile</span>
-                  <span class="hero-trust-item"><svg class="material-icons" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-sms"></use></svg>Call or text
-                    friendly</span>
-                </div>
-              </div>
-              <!--Slideshow here-->
-              <div class="slideshow">
-                <div class="slides-viewport" aria-live="polite">
-                  <div class="slides-track">
-                    <figure class="slide is-active">
-                      <picture><source type="image/avif" srcset="/images/carpics/srv_pics/series-grey-150.avif 150w, /images/carpics/srv_pics/series-grey-300.avif 300w, /images/carpics/srv_pics/series-grey-512.avif 512w, /images/carpics/srv_pics/series-grey-640.avif 640w, /images/carpics/srv_pics/series-grey-800.avif 800w, /images/carpics/srv_pics/series-grey-1024.avif 1024w, /images/carpics/srv_pics/series-grey-1375.avif 1375w" sizes="(max-width: 768px) calc(100vw - 32px), 608px"><source type="image/webp" srcset="/images/carpics/srv_pics/series-grey-150.webp 150w, /images/carpics/srv_pics/series-grey-300.webp 300w, /images/carpics/srv_pics/series-grey-512.webp 512w, /images/carpics/srv_pics/series-grey-640.webp 640w, /images/carpics/srv_pics/series-grey-800.webp 800w, /images/carpics/srv_pics/series-grey-1024.webp 1024w, /images/carpics/srv_pics/series-grey-1375.webp 1375w" sizes="(max-width: 768px) calc(100vw - 32px), 608px"><img class="hero-img" alt="Subaru WRX full-mobile-detailing Asheville NC" title="Detailed WRX" width="968" height="969" decoding="async" loading="eager" fetchpriority="high" src="/images/carpics/srv_pics/series-grey-800.jpg" srcset="/images/carpics/srv_pics/series-grey-150.jpg 150w, /images/carpics/srv_pics/series-grey-300.jpg 300w, /images/carpics/srv_pics/series-grey-512.jpg 512w, /images/carpics/srv_pics/series-grey-640.jpg 640w, /images/carpics/srv_pics/series-grey-800.jpg 800w, /images/carpics/srv_pics/series-grey-1024.jpg 1024w, /images/carpics/srv_pics/series-grey-1375.jpg 1375w" sizes="(max-width: 768px) calc(100vw - 32px), 608px"></picture>
-                    </figure>
-                  </div>
-                </div>
-                <button class="slide-prev" aria-label="Previous slide" hidden="">‹</button>
-                <button class="slide-next" aria-label="Next slide" hidden="">›</button>
-                <template id="slides-template">
-                  <figure class="slide">
-                    <picture><source type="image/avif" srcset="/images/carpics/srv_pics/red-wrx-150.avif 150w, /images/carpics/srv_pics/red-wrx-300.avif 300w, /images/carpics/srv_pics/red-wrx-512.avif 512w, /images/carpics/srv_pics/red-wrx-640.avif 640w, /images/carpics/srv_pics/red-wrx-800.avif 800w, /images/carpics/srv_pics/red-wrx-1024.avif 1024w, /images/carpics/srv_pics/red-wrx-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/red-wrx-150.webp 150w, /images/carpics/srv_pics/red-wrx-300.webp 300w, /images/carpics/srv_pics/red-wrx-512.webp 512w, /images/carpics/srv_pics/red-wrx-640.webp 640w, /images/carpics/srv_pics/red-wrx-800.webp 800w, /images/carpics/srv_pics/red-wrx-1024.webp 1024w, /images/carpics/srv_pics/red-wrx-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="modified-wrx-impreza" title="Red Subaru WRX" width="921" height="920" loading="lazy" decoding="async" src="/images/carpics/srv_pics/red-wrx-800.jpg" srcset="/images/carpics/srv_pics/red-wrx-150.jpg 150w, /images/carpics/srv_pics/red-wrx-300.jpg 300w, /images/carpics/srv_pics/red-wrx-512.jpg 512w, /images/carpics/srv_pics/red-wrx-640.jpg 640w, /images/carpics/srv_pics/red-wrx-800.jpg 800w, /images/carpics/srv_pics/red-wrx-1024.jpg 1024w, /images/carpics/srv_pics/red-wrx-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  </figure>
-                  <figure class="slide">
-                    <picture><source type="image/avif" srcset="/images/carpics/merc-150.avif 150w, /images/carpics/merc-300.avif 300w, /images/carpics/merc-512.avif 512w, /images/carpics/merc-640.avif 640w, /images/carpics/merc-800.avif 800w, /images/carpics/merc-1024.avif 1024w, /images/carpics/merc-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/merc-150.webp 150w, /images/carpics/merc-300.webp 300w, /images/carpics/merc-512.webp 512w, /images/carpics/merc-640.webp 640w, /images/carpics/merc-800.webp 800w, /images/carpics/merc-1024.webp 1024w, /images/carpics/merc-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="white-mercedes-280sl-detailed" title="Gently Cleaned and Protected" width="950" height="950" loading="lazy" decoding="async" src="/images/carpics/merc-800.jpg" srcset="/images/carpics/merc-150.jpg 150w, /images/carpics/merc-300.jpg 300w, /images/carpics/merc-512.jpg 512w, /images/carpics/merc-640.jpg 640w, /images/carpics/merc-800.jpg 800w, /images/carpics/merc-1024.jpg 1024w, /images/carpics/merc-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  </figure>
-                  <figure class="slide">
-                    <picture><source type="image/avif" srcset="/images/carpics/red-e30-150.avif 150w, /images/carpics/red-e30-300.avif 300w, /images/carpics/red-e30-512.avif 512w, /images/carpics/red-e30-640.avif 640w, /images/carpics/red-e30-800.avif 800w, /images/carpics/red-e30-1024.avif 1024w, /images/carpics/red-e30-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/red-e30-150.webp 150w, /images/carpics/red-e30-300.webp 300w, /images/carpics/red-e30-512.webp 512w, /images/carpics/red-e30-640.webp 640w, /images/carpics/red-e30-800.webp 800w, /images/carpics/red-e30-1024.webp 1024w, /images/carpics/red-e30-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="red-bmw-e30-after-detailing" title="Red BMW E30 Detail" width="1500" height="1500" loading="lazy" decoding="async" src="/images/carpics/red-e30-800.jpg" srcset="/images/carpics/red-e30-150.jpg 150w, /images/carpics/red-e30-300.jpg 300w, /images/carpics/red-e30-512.jpg 512w, /images/carpics/red-e30-640.jpg 640w, /images/carpics/red-e30-800.jpg 800w, /images/carpics/red-e30-1024.jpg 1024w, /images/carpics/red-e30-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  </figure>
-                  <figure class="slide">
-                    <picture><source type="image/avif" srcset="/images/carpics/srv_pics/headlight-150.avif 150w, /images/carpics/srv_pics/headlight-300.avif 300w, /images/carpics/srv_pics/headlight-512.avif 512w, /images/carpics/srv_pics/headlight-640.avif 640w, /images/carpics/srv_pics/headlight-800.avif 800w, /images/carpics/srv_pics/headlight-1024.avif 1024w, /images/carpics/srv_pics/headlight-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/headlight-150.webp 150w, /images/carpics/srv_pics/headlight-300.webp 300w, /images/carpics/srv_pics/headlight-512.webp 512w, /images/carpics/srv_pics/headlight-640.webp 640w, /images/carpics/srv_pics/headlight-800.webp 800w, /images/carpics/srv_pics/headlight-1024.webp 1024w, /images/carpics/srv_pics/headlight-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="headlight-restoration-fifty-fifty-shot" title="Headlight Fifty-Fifty" width="969" height="969" loading="lazy" decoding="async" src="/images/carpics/srv_pics/headlight-800.jpg" srcset="/images/carpics/srv_pics/headlight-150.jpg 150w, /images/carpics/srv_pics/headlight-300.jpg 300w, /images/carpics/srv_pics/headlight-512.jpg 512w, /images/carpics/srv_pics/headlight-640.jpg 640w, /images/carpics/srv_pics/headlight-800.jpg 800w, /images/carpics/srv_pics/headlight-1024.jpg 1024w, /images/carpics/srv_pics/headlight-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  </figure>
-                  <figure class="slide">
-                    <picture><source type="image/avif" srcset="/images/carpics/srv_pics/hwspots-150.avif 150w, /images/carpics/srv_pics/hwspots-300.avif 300w, /images/carpics/srv_pics/hwspots-512.avif 512w, /images/carpics/srv_pics/hwspots-640.avif 640w, /images/carpics/srv_pics/hwspots-800.avif 800w, /images/carpics/srv_pics/hwspots-1024.avif 1024w, /images/carpics/srv_pics/hwspots-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/srv_pics/hwspots-150.webp 150w, /images/carpics/srv_pics/hwspots-300.webp 300w, /images/carpics/srv_pics/hwspots-512.webp 512w, /images/carpics/srv_pics/hwspots-640.webp 640w, /images/carpics/srv_pics/hwspots-800.webp 800w, /images/carpics/srv_pics/hwspots-1024.webp 1024w, /images/carpics/srv_pics/hwspots-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="hw-spot-removal-fifty-fifty-shot" title="Hard Water Spot Removal Fifty-Fifty" width="400" height="400" loading="lazy" decoding="async" src="/images/carpics/srv_pics/hwspots-800.jpg" srcset="/images/carpics/srv_pics/hwspots-150.jpg 150w, /images/carpics/srv_pics/hwspots-300.jpg 300w, /images/carpics/srv_pics/hwspots-512.jpg 512w, /images/carpics/srv_pics/hwspots-640.jpg 640w, /images/carpics/srv_pics/hwspots-800.jpg 800w, /images/carpics/srv_pics/hwspots-1024.jpg 1024w, /images/carpics/srv_pics/hwspots-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  </figure>
-                  <figure class="slide">
-                    <picture><source type="image/avif" srcset="/images/carpics/wrx-wheel-150.avif 150w, /images/carpics/wrx-wheel-300.avif 300w, /images/carpics/wrx-wheel-512.avif 512w, /images/carpics/wrx-wheel-640.avif 640w, /images/carpics/wrx-wheel-800.avif 800w, /images/carpics/wrx-wheel-1024.avif 1024w, /images/carpics/wrx-wheel-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/wrx-wheel-150.webp 150w, /images/carpics/wrx-wheel-300.webp 300w, /images/carpics/wrx-wheel-512.webp 512w, /images/carpics/wrx-wheel-640.webp 640w, /images/carpics/wrx-wheel-800.webp 800w, /images/carpics/wrx-wheel-1024.webp 1024w, /images/carpics/wrx-wheel-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="wheel-cleaning" title="Wheel Cleaning Fifty-Fifty" width="969" height="969" loading="lazy" decoding="async" src="/images/carpics/wrx-wheel-800.jpg" srcset="/images/carpics/wrx-wheel-150.jpg 150w, /images/carpics/wrx-wheel-300.jpg 300w, /images/carpics/wrx-wheel-512.jpg 512w, /images/carpics/wrx-wheel-640.jpg 640w, /images/carpics/wrx-wheel-800.jpg 800w, /images/carpics/wrx-wheel-1024.jpg 1024w, /images/carpics/wrx-wheel-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  </figure>
-                  <figure class="slide">
-                    <picture><source type="image/avif" srcset="/images/carpics/engine-150.avif 150w, /images/carpics/engine-300.avif 300w, /images/carpics/engine-512.avif 512w, /images/carpics/engine-640.avif 640w, /images/carpics/engine-800.avif 800w, /images/carpics/engine-1024.avif 1024w, /images/carpics/engine-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/engine-150.webp 150w, /images/carpics/engine-300.webp 300w, /images/carpics/engine-512.webp 512w, /images/carpics/engine-640.webp 640w, /images/carpics/engine-800.webp 800w, /images/carpics/engine-1024.webp 1024w, /images/carpics/engine-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="cleaned-and-protected-engine-bay-bmw" title="Cleaned and UV Protected" width="925" height="925" loading="lazy" decoding="async" src="/images/carpics/engine-800.jpg" srcset="/images/carpics/engine-150.jpg 150w, /images/carpics/engine-300.jpg 300w, /images/carpics/engine-512.jpg 512w, /images/carpics/engine-640.jpg 640w, /images/carpics/engine-800.jpg 800w, /images/carpics/engine-1024.jpg 1024w, /images/carpics/engine-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  </figure>
-                  <figure class="slide">
-                    <picture><source type="image/avif" srcset="/images/carpics/foam-150.avif 150w, /images/carpics/foam-300.avif 300w, /images/carpics/foam-512.avif 512w, /images/carpics/foam-640.avif 640w, /images/carpics/foam-800.avif 800w, /images/carpics/foam-1024.avif 1024w, /images/carpics/foam-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/foam-150.webp 150w, /images/carpics/foam-300.webp 300w, /images/carpics/foam-512.webp 512w, /images/carpics/foam-640.webp 640w, /images/carpics/foam-800.webp 800w, /images/carpics/foam-1024.webp 1024w, /images/carpics/foam-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="honeydew-snowfoam-foam-cannon-car-forester" title="Foamed up Subaru" width="924" height="925" loading="lazy" decoding="async" src="/images/carpics/foam-800.jpg" srcset="/images/carpics/foam-150.jpg 150w, /images/carpics/foam-300.jpg 300w, /images/carpics/foam-512.jpg 512w, /images/carpics/foam-640.jpg 640w, /images/carpics/foam-800.jpg 800w, /images/carpics/foam-1024.jpg 1024w, /images/carpics/foam-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  </figure>
-                  <figure class="slide">
-                    <picture><source type="image/avif" srcset="/images/carpics/g-wagen-150.avif 150w, /images/carpics/g-wagen-300.avif 300w, /images/carpics/g-wagen-512.avif 512w, /images/carpics/g-wagen-640.avif 640w, /images/carpics/g-wagen-800.avif 800w, /images/carpics/g-wagen-1024.avif 1024w, /images/carpics/g-wagen-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/g-wagen-150.webp 150w, /images/carpics/g-wagen-300.webp 300w, /images/carpics/g-wagen-512.webp 512w, /images/carpics/g-wagen-640.webp 640w, /images/carpics/g-wagen-800.webp 800w, /images/carpics/g-wagen-1024.webp 1024w, /images/carpics/g-wagen-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="black-mercedes-g-wagen-after-detailing" title="Mercedes G-Wagen Detail" width="2504" height="2505" loading="lazy" decoding="async" src="/images/carpics/g-wagen-800.jpg" srcset="/images/carpics/g-wagen-150.jpg 150w, /images/carpics/g-wagen-300.jpg 300w, /images/carpics/g-wagen-512.jpg 512w, /images/carpics/g-wagen-640.jpg 640w, /images/carpics/g-wagen-800.jpg 800w, /images/carpics/g-wagen-1024.jpg 1024w, /images/carpics/g-wagen-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  </figure>
-                  <figure class="slide">
-                    <picture><source type="image/avif" srcset="/images/carpics/pillar-150.avif 150w, /images/carpics/pillar-300.avif 300w, /images/carpics/pillar-512.avif 512w, /images/carpics/pillar-640.avif 640w, /images/carpics/pillar-800.avif 800w, /images/carpics/pillar-1024.avif 1024w, /images/carpics/pillar-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/carpics/pillar-150.webp 150w, /images/carpics/pillar-300.webp 300w, /images/carpics/pillar-512.webp 512w, /images/carpics/pillar-640.webp 640w, /images/carpics/pillar-800.webp 800w, /images/carpics/pillar-1024.webp 1024w, /images/carpics/pillar-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="fifty-fifty-cleaned-smoke-car-pillar" title="Smoke Damage Removal" width="974" height="974" loading="lazy" decoding="async" src="/images/carpics/pillar-800.jpg" srcset="/images/carpics/pillar-150.jpg 150w, /images/carpics/pillar-300.jpg 300w, /images/carpics/pillar-512.jpg 512w, /images/carpics/pillar-640.jpg 640w, /images/carpics/pillar-800.jpg 800w, /images/carpics/pillar-1024.jpg 1024w, /images/carpics/pillar-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-                  </figure>
-                </template>
-              </div>
-            </div>
+    <section class="hero" id="overview">
+      <div class="container hero__grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Mobile detailing · Asheville, NC</p>
+          <h1 class="h-display">Showroom-clean mobile detailing in Asheville</h1>
+          <p class="sub-title lede">Owner-operated detailing that comes to your home or office. See your price up front, book a time online, and get back to your day.</p>
+          <div class="btn-row hero__actions">
+            <a class="btn btn-primary btn-lg" href="/schedule" data-track="Hero Book"><svg aria-hidden="true"><use href="#i-calendar"/></svg>Book a detail</a>
+            <a class="btn btn-ghost btn-lg" href="/quote" data-track="Hero Quote">Get my price</a>
           </div>
-        </section>
-
-
-        <!--Services Card-->
-        <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
-          <div class="mdl-card mdl-cell mdl-cell--12-col">
-            <div class="mdl-card__supporting-text mdl-grid mdl-grid--no-spacing overview-services">
-              <h2 class="mdl-cell mdl-cell--12-col section-title">Services</h2>
-
-              <div class="overview-service-media mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-                <picture><source type="image/avif" srcset="/images/carpics/bmw-150.avif 150w, /images/carpics/bmw-300.avif 300w, /images/carpics/bmw-512.avif 512w, /images/carpics/bmw-640.avif 640w, /images/carpics/bmw-800.avif 800w, /images/carpics/bmw-1024.avif 1024w, /images/carpics/bmw-1375.avif 1375w" sizes="(max-width: 768px) 200px, 180px"><source type="image/webp" srcset="/images/carpics/bmw-150.webp 150w, /images/carpics/bmw-300.webp 300w, /images/carpics/bmw-512.webp 512w, /images/carpics/bmw-640.webp 640w, /images/carpics/bmw-800.webp 800w, /images/carpics/bmw-1024.webp 1024w, /images/carpics/bmw-1375.webp 1375w" sizes="(max-width: 768px) 200px, 180px"><img loading="lazy" decoding="async" alt="BMW 3-Series Mobile Auto Detailing Asheville" title="BMW 3-Series after The Works" class="circle-pic" width="180" height="180" src="/images/carpics/bmw-800.jpg" srcset="/images/carpics/bmw-150.jpg 150w, /images/carpics/bmw-300.jpg 300w, /images/carpics/bmw-512.jpg 512w, /images/carpics/bmw-640.jpg 640w, /images/carpics/bmw-800.jpg 800w, /images/carpics/bmw-1024.jpg 1024w, /images/carpics/bmw-1375.jpg 1375w" sizes="(max-width: 768px) 200px, 180px"></picture>
-              </div>
-              <!--<div class="section__circle-container mdl-cell mdl-cell&#45;&#45;2-col mdl-cell&#45;&#45;1-col-phone">-->
-              <!--<div class="section__circle-container__circle mdl-color&#45;&#45;primary"></div>-->
-              <!--</div>-->
-
-              <div class="overview-service-copy section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
-                <h3 class="section-title">The Works</h3>
-                This package is a safe and comprehensive cleaning of both the interior and exterior including wheel,
-                tire, and engine bay detailing, steam cleaning, a premium wax and more.
-                <div class="overview-service-actions">
-                  <div class="overview-service-meta">
-                    <span class="mdl-chip mdl-chip--contact">
-                      <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                        <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                      </span>
-                      <span class="mdl-chip__text">Sedan $300 · SUV/Truck $350 · 3-Row/Van $400</span>
-                    </span>
-                    <span class="mdl-chip mdl-chip--contact overview-popular-chip">
-                      <span class="mdl-chip__contact mdl-color--primary mdl-color-text--white">
-                        <svg class="material-icons md-light" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-star"></use></svg>
-                      </span>
-                      <span class="mdl-chip__text">Most Popular</span>
-                    </span>
-                  </div>
-                  <div class="service-more-wrap">
-                    <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More The Works'); return navigateToService('full-detail');">More
-                      &gt;</a>
-                  </div>
-                </div>
-              </div>
-
-              <div class="overview-service-media mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-                <picture><source type="image/avif" srcset="/images/carpics/srv_pics/headlight-150.avif 150w, /images/carpics/srv_pics/headlight-300.avif 300w, /images/carpics/srv_pics/headlight-512.avif 512w, /images/carpics/srv_pics/headlight-640.avif 640w, /images/carpics/srv_pics/headlight-800.avif 800w, /images/carpics/srv_pics/headlight-1024.avif 1024w, /images/carpics/srv_pics/headlight-1375.avif 1375w" sizes="(max-width: 768px) 200px, 180px"><source type="image/webp" srcset="/images/carpics/srv_pics/headlight-150.webp 150w, /images/carpics/srv_pics/headlight-300.webp 300w, /images/carpics/srv_pics/headlight-512.webp 512w, /images/carpics/srv_pics/headlight-640.webp 640w, /images/carpics/srv_pics/headlight-800.webp 800w, /images/carpics/srv_pics/headlight-1024.webp 1024w, /images/carpics/srv_pics/headlight-1375.webp 1375w" sizes="(max-width: 768px) 200px, 180px"><img loading="lazy" decoding="async" alt="fifty-fifty-headlight-restoration-subaru-outback" title="Headlight before and after restoration" class="circle-pic" width="180" height="180" src="/images/carpics/srv_pics/headlight-800.jpg" srcset="/images/carpics/srv_pics/headlight-150.jpg 150w, /images/carpics/srv_pics/headlight-300.jpg 300w, /images/carpics/srv_pics/headlight-512.jpg 512w, /images/carpics/srv_pics/headlight-640.jpg 640w, /images/carpics/srv_pics/headlight-800.jpg 800w, /images/carpics/srv_pics/headlight-1024.jpg 1024w, /images/carpics/srv_pics/headlight-1375.jpg 1375w" sizes="(max-width: 768px) 200px, 180px"></picture>
-              </div>
-
-              <div class="overview-service-copy section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
-                <h3 class="section-title">Headlight Restoration</h3>
-                A dull and yellowed headlight gives your car a dated and dull look while reducing safety at night.
-                Return your lights permanently to their original condition and see clearly at night.
-                <div class="overview-service-actions">
-                  <div class="overview-service-meta">
-                    <span class="mdl-chip mdl-chip--contact">
-                      <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                        <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                      </span>
-                      <span class="mdl-chip__text">Sedan $75 · SUV/Truck $85 · 3-Row/Van $95</span>
-                    </span>
-                  </div>
-                  <div class="service-more-wrap">
-                    <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Headlight'); return navigateToService('h-restoration');">More
-                      &gt;</a>
-                  </div>
-                </div>
-              </div>
-
-              <div class="overview-service-media mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-                <picture><source type="image/avif" srcset="/images/carpics/bmw-300.avif 300w, /images/carpics/bmw-512.avif 512w, /images/carpics/bmw-800.avif 800w" sizes="(max-width: 768px) 200px, 180px"><source type="image/webp" srcset="/images/carpics/bmw-300.webp 300w, /images/carpics/bmw-512.webp 512w, /images/carpics/bmw-800.webp 800w" sizes="(max-width: 768px) 200px, 180px"><img src="/images/carpics/bmw-800.jpg" alt="Glossy BMW exterior from Nieman's Detailing's work gallery" class="circle-pic" width="180" height="180" loading="lazy" decoding="async"></picture>
-              </div>
-              <div class="overview-service-copy section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
-                <h3 class="section-title">Ceramic Coating</h3>
-                Enjoy deeper gloss, easier washing, and a protective layer for your paint. Ceramic coating packages
-                include single-step or two-step paint correction, matched to your finish.
-                <div class="overview-service-actions">
-                  <div class="overview-service-meta"><span class="mdl-chip"><span class="mdl-chip__text">Sedans from $1,000 · SUVs from $1,400</span></span></div>
-                  <div class="service-more-wrap"><a href="/services/ceramic-coating" class="mdl-button service-more-btn">Ceramic Coating Details &gt;</a><a href="/ceramic-quote" class="mdl-button service-more-btn">Get My Ceramic Quote &gt;</a></div>
-                </div>
-              </div>
-
-              <div class="overview-service-media mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-                <picture><source type="image/avif" srcset="/images/carpics/srv_pics/correction-150.avif 150w, /images/carpics/srv_pics/correction-300.avif 300w, /images/carpics/srv_pics/correction-512.avif 512w, /images/carpics/srv_pics/correction-640.avif 640w, /images/carpics/srv_pics/correction-800.avif 800w, /images/carpics/srv_pics/correction-1024.avif 1024w, /images/carpics/srv_pics/correction-1375.avif 1375w" sizes="(max-width: 768px) 200px, 180px"><source type="image/webp" srcset="/images/carpics/srv_pics/correction-150.webp 150w, /images/carpics/srv_pics/correction-300.webp 300w, /images/carpics/srv_pics/correction-512.webp 512w, /images/carpics/srv_pics/correction-640.webp 640w, /images/carpics/srv_pics/correction-800.webp 800w, /images/carpics/srv_pics/correction-1024.webp 1024w, /images/carpics/srv_pics/correction-1375.webp 1375w" sizes="(max-width: 768px) 200px, 180px"><img loading="lazy" decoding="async" alt="blue-auto-paint-corrected-polishing-polished" title="Car paint after correction" class="circle-pic" width="180" height="180" src="/images/carpics/srv_pics/correction-800.jpg" srcset="/images/carpics/srv_pics/correction-150.jpg 150w, /images/carpics/srv_pics/correction-300.jpg 300w, /images/carpics/srv_pics/correction-512.jpg 512w, /images/carpics/srv_pics/correction-640.jpg 640w, /images/carpics/srv_pics/correction-800.jpg 800w, /images/carpics/srv_pics/correction-1024.jpg 1024w, /images/carpics/srv_pics/correction-1375.jpg 1375w" sizes="(max-width: 768px) 200px, 180px"></picture>
-              </div>
-
-              <div class="overview-service-copy section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
-                <h3 class="section-title">Paint Correction and Polishing</h3>
-                Reduce swirl marks, light scratches, haze, and oxidation for clearer, glossier paint. Add
-                <a href="/services/ceramic-coating">ceramic coating</a> to protect the freshly corrected finish.
-                <div class="overview-service-actions">
-                  <div class="overview-service-meta">
-                    <span class="mdl-chip mdl-chip--contact">
-                      <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                        <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                      </span>
-                      <span class="mdl-chip__text">Call for quote</span>
-                    </span>
-                  </div>
-                  <div class="service-more-wrap">
-                    <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Paint Correction'); return navigateToService('p-restoration');">More
-                      &gt;</a>
-                  </div>
-                </div>
-              </div>
-
-              <div class="overview-service-media mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--12-col-phone">
-                <picture><source type="image/avif" srcset="/images/carpics/srv_pics/trim-150.avif 150w, /images/carpics/srv_pics/trim-300.avif 300w, /images/carpics/srv_pics/trim-512.avif 512w, /images/carpics/srv_pics/trim-640.avif 640w, /images/carpics/srv_pics/trim-800.avif 800w, /images/carpics/srv_pics/trim-1024.avif 1024w, /images/carpics/srv_pics/trim-1375.avif 1375w" sizes="(max-width: 768px) 200px, 180px"><source type="image/webp" srcset="/images/carpics/srv_pics/trim-150.webp 150w, /images/carpics/srv_pics/trim-300.webp 300w, /images/carpics/srv_pics/trim-512.webp 512w, /images/carpics/srv_pics/trim-640.webp 640w, /images/carpics/srv_pics/trim-800.webp 800w, /images/carpics/srv_pics/trim-1024.webp 1024w, /images/carpics/srv_pics/trim-1375.webp 1375w" sizes="(max-width: 768px) 200px, 180px"><img loading="lazy" decoding="async" alt="fifty-fifty-trim-restoration-white-black" title="Trim before and after restoration" class="circle-pic" width="180" height="180" src="/images/carpics/srv_pics/trim-800.jpg" srcset="/images/carpics/srv_pics/trim-150.jpg 150w, /images/carpics/srv_pics/trim-300.jpg 300w, /images/carpics/srv_pics/trim-512.jpg 512w, /images/carpics/srv_pics/trim-640.jpg 640w, /images/carpics/srv_pics/trim-800.jpg 800w, /images/carpics/srv_pics/trim-1024.jpg 1024w, /images/carpics/srv_pics/trim-1375.jpg 1375w" sizes="(max-width: 768px) 200px, 180px"></picture>
-              </div>
-
-              <div class="overview-service-copy section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--8-col-tablet mdl-cell--3-col-phone">
-                <h3 class="section-title">Trim Restoration</h3>
-                Permanently restore the grey UV damaged plastics on your vehicle to the deep rich black finish that
-                came from the factory
-                <div class="overview-service-actions">
-                  <div class="overview-service-meta">
-                    <span class="mdl-chip mdl-chip--contact">
-                      <span class="mdl-chip__contact mdl-color--orange mdl-color-text--white">
-                        <svg class="material-icons md-light dollar-icon" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-attach_money"></use></svg>
-                      </span>
-                      <span class="mdl-chip__text">$120</span>
-                    </span>
-                  </div>
-                  <div class="service-more-wrap">
-                    <a href="#services" class="mdl-button service-more-btn" onclick="trackEvent('Navigation','click','More Trim'); return navigateToService('t-restoration');">More
-                      &gt;</a>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-            <div class="mdl-card__actions">
-              <a href="https://niemansdetailing.com/#services" class="mdl-button">View All Services &amp; Pricing</a>
-            </div>
-          </div>
-        </section>
-
-        <!-- Testimonials Section -->
-        <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
-          <div class="mdl-card mdl-cell mdl-cell--12-col">
-            <div class="mdl-card__supporting-text">
-              <h2 class="mdl-cell mdl-cell--12-col section-title">Testimonials</h2>
-              <div class="testimonial-list">
-                <blockquote>"Nieman runs a serious business when it comes to car/motorcycle care. His meticulous eye for
-                  detail makes his work top notch. He offers multiple services for different types of interiors, has
-                  experience in headlight restoration, and made my appointment even easier by coming to me. Thank you,
-                  Nieman!!”<footer><span class="testimonial-stars" aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span><span>Mindy, Asheville</span></footer>
-                </blockquote>
-                <blockquote>“Nieman is the best! At an affordable price, he provides all the punctuality, courtesy,
-                  equipment, and elbow grease you need to make your car shine. Mine looks as good as new, if not better
-                  than new, after three hard months of ferrying plants and pots in a move from Atlanta. I give him my
-                  highest recommendation.”<footer><span class="testimonial-stars" aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span><span>Beverly, Weaverville</span></footer>
-                </blockquote>
-                <blockquote>"My Subaru was yelling for a lot of TLC. Neither the dogs nor I had done anything except
-                  messed it up. Nieman was very responsive to my contact, easy to schedule and did a great job — inside
-                  and out. He’s on my calendar for regular detailing! Definitely recommended!”<footer><span class="testimonial-stars" aria-hidden="true">&#9733;&#9733;&#9733;&#9733;&#9733;</span><span>Emily, North
-                    Asheville</span></footer>
-                </blockquote>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!--service area-->
-        <section id="service-area" class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
-
-          <div class="mdl-card mdl-cell mdl-cell--12-col">
-            <div class="mdl-card__supporting-text srv-area-img">
-              <h2 class="mdl-cell mdl-cell--12-col section-title">Service Area</h2>
-              <div id="map" class="map-container" data-api-key="AIzaSyDCfKKzPwktXlP3YJayc1jf3AIXEVZfu5I" data-zip-codes="28791,28792,28801,28803,28804,28805,28806,28787,28711,28732,28704,28715,28701,28748,28753,28754,28759,28716,28730,28778">
-                <div class="map-fallback">
-                  <strong>Service area map loads when this section nears view.</strong>
-                  <span>Call or text to confirm your exact address before booking.</span>
-                  <a class="mdl-button service-more-btn" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Map Placeholder Call');">Call to Confirm</a>
-                </div>
-              </div>
-            </div>
-            <div class="mdl-card__supporting-text srv-area-txt">
-              <h3><strong>Serving <a href="/asheville-detailing" style="color: inherit; text-decoration: underline;">Asheville</a>, <a href="/weaverville-detailing" style="color: inherit; text-decoration: underline;">Weaverville</a>, <a href="/hendersonville-detailing" style="color: inherit; text-decoration: underline;">Hendersonville</a>, <a href="/black-mountain-detailing" style="color: inherit; text-decoration: underline;">Black Mountain</a>, <a href="/arden-detailing" style="color: inherit; text-decoration: underline;">Arden</a>, and
-                  <a href="/fletcher-detailing" style="color: inherit; text-decoration: underline;">Fletcher</a></strong>
-              </h3>
-              <h3>Searching for <strong>car detailing near me</strong>? Leave your car where it is, I come to you!</h3>
-              <h3><strong>Don't drop it off when a professional can come to you!</strong></h3>
-              <h2><strong>Unsure if I'll come to your address? Get in <a href="#contact">touch</a>!</strong></h2>
-            </div>
-          </div>
-
-        </section>
-
-        <!--insta section-->
-        <section id="instagram-section" class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
-
-          <div class="mdl-card mdl-cell mdl-cell--12-col">
-            <div class="mdl-card__supporting-text srv-area-img">
-              <h2 class="main-title">Find me on Instagram</h2>
-              <div id="pixlee_container">
-                <div class="instagram-fallback">
-                  <a class="mdl-button service-more-btn" href="https://www.instagram.com/niemansdetailing/" onclick="trackEvent('Social','click','Instagram Placeholder');">Open Instagram</a>
-                </div>
-              </div>
-              <!-- Instagram Profile Preview -->
-              <div class="instagram-profile-embed">
-                <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/niemansdetailing/?utm_source=ig_embed&amp;utm_campaign=loading" data-instgrm-version="14" style="background:#02050D;border:0;border-radius:3px;box-shadow:0 0 1px 0 rgba(0,0,0,0.5),0 1px 10px 0 rgba(0,0,0,0.15);margin:1px;max-width:540px;min-width:326px;padding:0;width:99.375%;">
-                </blockquote>
-              </div>
-            </div>
-          </div>
-
-        </section>
-
-        <!--contact section-->
-
-        <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp">
-          <div class="contact-card mdl-card mdl-cell mdl-cell--12-col">
-            <div class="mdl-card__supporting-text mdl-grid mdl-grid--no-spacing">
-              <h2 class="mdl-cell mdl-cell--12-col section-title">Contact Me</h2>
-
-              <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
-                <div class="section__circle-container__circle mdl-color--primary"><svg class="material-icons md-light" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-phone"></use></svg></div>
-              </div>
-
-              <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone" style="text-align:center;">
-                <h3><strong>By Phone</strong></h3>
-                Call or Text <strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone'); gtag('event','conversion',{'send_to':'AW-17602789326/QubCCJ7smf0bEM7_1MlB'});">(828) 273-3894</a></strong>
-              </div>
-
-              <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
-                <div class="section__circle-container__circle mdl-color--primary"><svg class="material-icons md-light" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-email"></use></svg></div>
-              </div>
-
-              <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3><strong>E-Mail</strong></h3>
-                Send me a message at <a href="mailto:nieman@niemansdetailing.com" onclick="trackEvent('Contact','click','Email');">nieman@niemansdetailing.com</a>
-              </div>
-
-              <div class="section__circle-container mdl-cell mdl-cell--2-col mdl-cell--1-col-phone">
-                <div class="section__circle-container__circle mdl-color--primary"><svg class="material-icons md-light" aria-hidden="true" viewBox="0 0 24 24" width="1em" height="1em"><use href="#icon-link"></use></svg></div>
-              </div>
-
-              <div class="section__text mdl-cell mdl-cell--10-col-desktop mdl-cell--6-col-tablet mdl-cell--3-col-phone">
-                <h3><strong>Find me on Social Media</strong></h3>
-                Visit my <a href="https://www.facebook.com/niemansdetailing" onclick="trackEvent('Social','click','Facebook');">Facebook</a> or <a href="https://www.instagram.com/niemansdetailing" onclick="trackEvent('Social','click','Instagram');">Instagram</a>.
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <!--Services panel-->
-      <div class="mdl-layout__tab-panel" id="services" data-fragment="/fragments/home-services-panel?v=20261013c" hidden="">
-        <div class="panel-shell panel-shell--loading" aria-hidden="true">
-          <p>Services load on demand.</p>
-        </div>
-      </div>
-
-      <!--About panel-->
-      <div class="mdl-layout__tab-panel" id="about" data-fragment="/fragments/home-about-panel" hidden="">
-        <div class="panel-shell panel-shell--loading" aria-hidden="true">
-          <p>About content loads on demand.</p>
-        </div>
-      </div>
-
-      <!--Contact panel-->
-      <div class="mdl-layout__tab-panel" id="contact" data-fragment="/fragments/home-contact-panel" hidden="">
-        <div class="panel-shell panel-shell--loading" aria-hidden="true">
-          <p>Contact details load on demand.</p>
-        </div>
-      </div>
-
-      <!--Footer-->
-      <footer class="mdl-mega-footer">
-        <div class="mdl-mega-footer--middle-section">
-          <div class="mdl-mega-footer--drop-down-section">
-            <input class="mdl-mega-footer--heading-checkbox" type="checkbox" checked="">
-            <h2 class="mdl-mega-footer--heading">Find Me on Social Media</h2>
-            <ul class="mdl-mega-footer--link-list">
-              <li><a href="https://www.facebook.com/niemansdetailing" onclick="trackEvent('Social','click','Facebook');">Facebook</a></li>
-              <li><a href="https://www.instagram.com/niemansdetailing/" onclick="trackEvent('Social','click','Instagram');">Instagram</a></li>
-              <li><a href="https://www.reddit.com/user/niemansdetailing" onclick="trackEvent('Social','click','Reddit');">Reddit</a></li>
-            </ul>
-          </div>
-
-          <div class="mdl-mega-footer--drop-down-section">
-            <input class="mdl-mega-footer--heading-checkbox" type="checkbox" checked="">
-            <h2 class="mdl-mega-footer--heading">Call My Phone</h2>
-            <ul class="mdl-mega-footer--link-list">
-              <li><strong><a class="phone-link" href="tel:+1-828-273-3894" onclick="trackEvent('Contact','click','Phone'); gtag('event','conversion',{'send_to':'AW-17602789326/QubCCJ7smf0bEM7_1MlB'});">(828) 273-3894</a></strong></li>
-            </ul>
-          </div>
-
-          <div class="mdl-mega-footer--drop-down-section">
-            <input class="mdl-mega-footer--heading-checkbox" type="checkbox" checked="">
-            <h2 class="mdl-mega-footer--heading">Send Me an E-Mail</h2>
-            <ul class="mdl-mega-footer--link-list">
-              <li><a href="mailto:nieman@niemansdetailing.com" onclick="trackEvent('Contact','click','Email');">nieman@niemansdetailing.com</a></li>
-            </ul>
-          </div>
-
-          <div class="mdl-mega-footer--drop-down-section footer-add-contact">
-            <input class="mdl-mega-footer--heading-checkbox" type="checkbox" checked="">
-            <h2 class="mdl-mega-footer--heading">Add to Contacts</h2>
-            <div class="add-contact-qr" style="text-align:center;margin-top:8px;">
-              <picture><source type="image/avif" srcset="/images/qr-add-contact-150.avif 150w, /images/qr-add-contact-300.avif 300w, /images/qr-add-contact-512.avif 512w, /images/qr-add-contact-640.avif 640w, /images/qr-add-contact-800.avif 800w, /images/qr-add-contact-1024.avif 1024w, /images/qr-add-contact-1375.avif 1375w" sizes="(max-width: 900px) 100vw, 900px"><source type="image/webp" srcset="/images/qr-add-contact-150.webp 150w, /images/qr-add-contact-300.webp 300w, /images/qr-add-contact-512.webp 512w, /images/qr-add-contact-640.webp 640w, /images/qr-add-contact-800.webp 800w, /images/qr-add-contact-1024.webp 1024w, /images/qr-add-contact-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 900px"><img alt="Scan to add Nieman's Detailing to contacts" width="180" height="180" decoding="async" loading="lazy" src="/images/qr-add-contact-800.jpg" srcset="/images/qr-add-contact-150.jpg 150w, /images/qr-add-contact-300.jpg 300w, /images/qr-add-contact-512.jpg 512w, /images/qr-add-contact-640.jpg 640w, /images/qr-add-contact-800.jpg 800w, /images/qr-add-contact-1024.jpg 1024w, /images/qr-add-contact-1375.jpg 1375w" sizes="(max-width: 900px) 100vw, 900px"></picture>
-              <div class="mdl-typography--caption add-contact-caption">Scan to add my contact</div>
-            </div>
-          </div>
-
-          <div class="mdl-mega-footer--drop-down-section">
-            <input class="mdl-mega-footer--heading-checkbox" type="checkbox" checked="">
-            <ul class="mdl-mega-footer--link-list">
-              <p></p>
-              <p></p>
-              <li><a href="/terms">Terms and Conditions</a></li>
-              <li><a href="/privacy">Privacy Policy</a></li>
-              <li><a href="/faq">FAQ</a></li>
-              <li><a href="/blog">Detailing Blog</a></li>
-              <li><a href="/arden-detailing">Arden Detailing</a></li>
-              <li><a href="/asheville-detailing">Asheville Detailing</a></li>
-              <li><a href="/black-mountain-detailing">Black Mountain Detailing</a></li>
-              <li><a href="/fletcher-detailing">Fletcher Detailing</a></li>
-              <li><a href="/hendersonville-detailing">Hendersonville Detailing</a></li>
-              <li><a href="/weaverville-detailing">Weaverville Detailing</a></li>
-            </ul>
-          </div>
-
-          <!--<div class="mdl-mega-footer&#45;&#45;drop-down-section">-->
-          <!--<input class="mdl-mega-footer&#45;&#45;heading-checkbox" type="checkbox" checked>-->
-          <!--<h1 class="mdl-mega-footer&#45;&#45;heading">FAQ</h1>-->
-          <!--<ul class="mdl-mega-footer&#45;&#45;link-list">-->
-          <!--<li><a href="#">Questions</a></li>-->
-          <!--<li><a href="#">Answers</a></li>-->
-          <!--<li><a href="#">Contact us</a></li>-->
-          <!--</ul>-->
-          <!--</div>-->
-        </div>
-        <div class="mdl-mega-footer--bottom-section">
-          <ul class="mdl-mega-footer--link-list">
-
+          <ul class="hero__proof" aria-label="Why customers book">
+            <li><span class="stars" aria-hidden="true">★★★★★</span> Five-star rated on Google</li>
+            <li><svg aria-hidden="true"><use href="#i-pin"/></svg> Comes to you</li>
           </ul>
         </div>
-      </footer>
-    </main>
+        <figure class="hero__media">
+          <img src="/images/carpics/srv_pics/rx7-foam-1024.webp" srcset="/images/carpics/srv_pics/rx7-foam-640.webp 640w, /images/carpics/srv_pics/rx7-foam-1024.webp 1024w, /images/carpics/srv_pics/rx7-foam-1375.webp 1375w" sizes="(max-width: 900px) 100vw, 560px" alt="Mazda RX-7 covered in snow foam under purple underglow" width="1024" height="1024" fetchpriority="high">
+        </figure>
+      </div>
+    </section>
+
+    <section class="price-strip" aria-labelledby="price-heading">
+      <div class="container">
+        <div class="price-strip__inner card">
+          <div class="price-strip__intro">
+            <h2 id="price-heading" class="h-card">What are you driving?</h2>
+            <p class="muted">Full-detail prices. The $50 deposit goes toward your total.</p>
+          </div>
+          <div class="price-strip__options">
+            <a class="vehicle-price" href="/quote?vehicle=sedan&amp;service=full" data-track="Price Sedan">
+              <span class="vehicle-price__label">Sedan or coupe</span>
+              <span class="price">$300</span>
+            </a>
+            <a class="vehicle-price" href="/quote?vehicle=suv_truck&amp;service=full" data-track="Price SUV">
+              <span class="vehicle-price__label">SUV or truck</span>
+              <span class="price">$350</span>
+            </a>
+            <a class="vehicle-price" href="/quote?vehicle=van_3row&amp;service=full" data-track="Price Van">
+              <span class="vehicle-price__label">Van or 3-row SUV</span>
+              <span class="price">$400</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="services" aria-labelledby="services-heading">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Services</p>
+            <h2 id="services-heading" class="h-section">Pick your level of clean</h2>
+          </div>
+          <a class="text-link" href="/quote">Get an exact quote</a>
+        </div>
+
+        <div class="service-feature-grid overview-services">
+          <article class="service-feature service-feature--top">
+            <img src="/images/carpics/srv_pics/works-800.webp" srcset="/images/carpics/srv_pics/works-512.webp 512w, /images/carpics/srv_pics/works-800.webp 800w" sizes="(max-width: 760px) 100vw, 380px" alt="Interior and exterior after The Works full detail" width="800" height="800" loading="lazy">
+            <div class="service-feature__body">
+              <span class="badge badge-gold"><svg aria-hidden="true" width="14" height="14"><use href="#i-crown"/></svg> Most booked</span>
+              <h3 class="h-card">The Works</h3>
+              <p class="overview-service-copy">The complete reset: interior and exterior, wheels, tires, and engine bay, steam cleaning, and a premium wax.</p>
+              <p class="service-feature__price">From <span class="price">$300</span></p>
+              <a class="text-link" href="/services/the-works">What's included</a>
+            </div>
+          </article>
+          <article class="service-feature">
+            <img src="/images/carpics/srv_pics/series-grey-800.webp" srcset="/images/carpics/srv_pics/series-grey-512.webp 512w, /images/carpics/srv_pics/series-grey-800.webp 800w" sizes="(max-width: 760px) 100vw, 380px" alt="Silver Subaru WRX after a maintenance detail" width="800" height="800" loading="lazy">
+            <div class="service-feature__body">
+              <span class="badge badge-purple">Upkeep</span>
+              <h3 class="h-card">Quick Once Over</h3>
+              <p class="overview-service-copy">A lighter detail for cars in decent shape: wheels, glass, vacuum and wipe-down, finished with an SiO₂ spray sealant.</p>
+              <p class="service-feature__price">From <span class="price">$200</span></p>
+              <a class="text-link" href="/services/quick-once-over">What's included</a>
+            </div>
+          </article>
+          <article class="service-feature">
+            <img src="/images/carpics/srv_pics/red-wrx-800.webp" srcset="/images/carpics/srv_pics/red-wrx-512.webp 512w, /images/carpics/srv_pics/red-wrx-800.webp 800w" sizes="(max-width: 760px) 100vw, 380px" alt="Red Subaru WRX with deep, glossy paint" width="800" height="800" loading="lazy">
+            <div class="service-feature__body">
+              <span class="badge badge-purple">Protection</span>
+              <h3 class="h-card">Ceramic coating</h3>
+              <p class="overview-service-copy">Deeper gloss and easier washes. Every package includes paint correction matched to your finish.</p>
+              <p class="service-feature__price">Sedans from <span class="price">$1,000</span></p>
+              <a class="text-link" href="/services/ceramic-coating">Coating packages</a>
+            </div>
+          </article>
+        </div>
+
+        <h3 class="service-list-title">Specialty services</h3>
+        <ul class="service-list">
+          <li><a href="/services/headlight-restoration"><span>Headlight restoration</span><span class="service-list__price">$75–$95</span></a></li>
+          <li><a href="/services/paint-correction-polishing"><span>Paint correction and polishing</span><span class="service-list__price">Quote</span></a></li>
+          <li><a href="/services/trim-restoration"><span>Trim restoration</span><span class="service-list__price">$120</span></a></li>
+          <li><a href="/services/monthly-mini"><span>Monthly Mini maintenance</span><span class="service-list__price">$85–$100</span></a></li>
+          <li><a href="/services/new-car-decontamination-protection"><span>New car decontamination</span><span class="service-list__price">$125</span></a></li>
+          <li><a href="/services/hard-water-spot-removal"><span>Hard water spot removal</span><span class="service-list__price">From $80</span></a></li>
+          <li><a href="/services/odor-removal"><span>Odor removal</span><span class="service-list__price">Quote</span></a></li>
+          <li><a href="/services/overspray-removal"><span>Overspray removal</span><span class="service-list__price">Quote</span></a></li>
+          <li><a href="/services/metal-polishing"><span>Metal polishing</span><span class="service-list__price">Quote</span></a></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section section--raised" aria-labelledby="how-heading">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">How it works</p>
+            <h2 id="how-heading" class="h-section">Booked in two minutes</h2>
+          </div>
+        </div>
+        <ol class="steps">
+          <li>
+            <span class="steps__num">01</span>
+            <h3>Pick a time</h3>
+            <p>Choose from real openings on Nieman's calendar. No back-and-forth texting to find a day.</p>
+          </li>
+          <li>
+            <span class="steps__num">02</span>
+            <h3>Hold it with $50</h3>
+            <p>The deposit goes toward your total, and it's fully refundable up to four days before your appointment.</p>
+          </li>
+          <li>
+            <span class="steps__num">03</span>
+            <h3>Nieman comes to you</h3>
+            <p>Detailing happens at your home or work. You get a confirmation and a private link to manage your booking.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="work-heading">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Recent work</p>
+            <h2 id="work-heading" class="h-section">Daily drivers to garage queens</h2>
+          </div>
+          <a class="text-link" href="https://www.instagram.com/niemansdetailing/" data-track="Gallery Instagram">More on Instagram</a>
+        </div>
+        <div class="fade-gallery" data-fade-gallery aria-roledescription="carousel" aria-label="Recent detailing work">
+          <figure class="fade-gallery__slide is-active"><img src="/images/carpics/red-e30-1024.webp" srcset="/images/carpics/red-e30-640.webp 640w, /images/carpics/red-e30-1024.webp 1024w" sizes="(max-width: 1100px) 100vw, 1100px" alt="Red BMW E30 M3 after detailing" width="1024" height="1024" loading="lazy"><figcaption>BMW E30 M3</figcaption></figure>
+          <figure class="fade-gallery__slide" aria-hidden="true"><img src="/images/carpics/g-wagen-1024.webp" srcset="/images/carpics/g-wagen-640.webp 640w, /images/carpics/g-wagen-1024.webp 1024w" sizes="(max-width: 1100px) 100vw, 1100px" alt="Black Mercedes G-Wagen after a full detail" width="1024" height="1024" loading="lazy"><figcaption>Mercedes G-Wagen</figcaption></figure>
+          <figure class="fade-gallery__slide" aria-hidden="true"><img src="/images/carpics/srv_pics/tesla-1024.webp" srcset="/images/carpics/srv_pics/tesla-640.webp 640w, /images/carpics/srv_pics/tesla-1024.webp 1024w" sizes="(max-width: 1100px) 100vw, 1100px" alt="Blue Tesla Model X after an exterior detail" width="1024" height="1024" loading="lazy"><figcaption>Tesla Model X</figcaption></figure>
+          <figure class="fade-gallery__slide" aria-hidden="true"><img src="/images/carpics/srv_pics/red-wrx-1024.webp" srcset="/images/carpics/srv_pics/red-wrx-640.webp 640w, /images/carpics/srv_pics/red-wrx-1024.webp 1024w" sizes="(max-width: 1100px) 100vw, 1100px" alt="Red Subaru WRX with glossy paint" width="1024" height="1024" loading="lazy"><figcaption>Subaru WRX</figcaption></figure>
+          <figure class="fade-gallery__slide" aria-hidden="true"><img src="/images/carpics/merc-1024.webp" srcset="/images/carpics/merc-640.webp 640w, /images/carpics/merc-1024.webp 1024w" sizes="(max-width: 1100px) 100vw, 1100px" alt="Vintage white Mercedes sedan, cleaned and polished" width="1024" height="1024" loading="lazy"><figcaption>Classic Mercedes</figcaption></figure>
+          <figure class="fade-gallery__slide" aria-hidden="true"><img src="/images/carpics/srv_pics/cleaninterior-1024.webp" srcset="/images/carpics/srv_pics/cleaninterior-640.webp 640w, /images/carpics/srv_pics/cleaninterior-1024.webp 1024w" sizes="(max-width: 1100px) 100vw, 1100px" alt="Spotless white Tesla interior" width="1024" height="1024" loading="lazy"><figcaption>Interior reset</figcaption></figure>
+          <figure class="fade-gallery__slide" aria-hidden="true"><img src="/images/carpics/srv_pics/headlight-1024.webp" srcset="/images/carpics/srv_pics/headlight-640.webp 640w, /images/carpics/srv_pics/headlight-1024.webp 1024w" sizes="(max-width: 1100px) 100vw, 1100px" alt="Restored, crystal-clear headlight" width="1024" height="1024" loading="lazy"><figcaption>Headlight restoration</figcaption></figure>
+          <figure class="fade-gallery__slide" aria-hidden="true"><img src="/images/carpics/engine-1024.webp" srcset="/images/carpics/engine-640.webp 640w, /images/carpics/engine-1024.webp 1024w" sizes="(max-width: 1100px) 100vw, 1100px" alt="Detailed engine bay" width="1024" height="1024" loading="lazy"><figcaption>Engine bay detail</figcaption></figure>
+          <div class="fade-gallery__dots" role="group" aria-label="Choose a photo">
+            <button type="button" aria-label="Show BMW E30 M3" aria-current="true"></button>
+            <button type="button" aria-label="Show Mercedes G-Wagen"></button>
+            <button type="button" aria-label="Show Tesla Model X"></button>
+            <button type="button" aria-label="Show Subaru WRX"></button>
+            <button type="button" aria-label="Show Classic Mercedes"></button>
+            <button type="button" aria-label="Show Interior reset"></button>
+            <button type="button" aria-label="Show Headlight restoration"></button>
+            <button type="button" aria-label="Show Engine bay detail"></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--raised" id="reviews" aria-labelledby="reviews-heading">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Reviews</p>
+            <h2 id="reviews-heading" class="h-section">Neighbors who'd book again</h2>
+          </div>
+          <p class="reviews-score"><span class="stars" aria-hidden="true">★★★★★</span> Five-star rated on Google</p>
+        </div>
+        <div class="testimonial-list">
+          <blockquote>
+            <p>"Nieman runs a serious business when it comes to car/motorcycle care. His meticulous eye for detail makes his work top notch. He offers multiple services for different types of interiors, has experience in headlight restoration, and made my appointment even easier by coming to me. Thank you, Nieman!!"</p>
+            <footer><span class="stars" aria-label="5 stars">★★★★★</span><cite>Mindy, Asheville</cite></footer>
+          </blockquote>
+          <blockquote>
+            <p>"Nieman is the best! At an affordable price, he provides all the punctuality, courtesy, equipment, and elbow grease you need to make your car shine. Mine looks as good as new, if not better than new, after three hard months of ferrying plants and pots in a move from Atlanta. I give him my highest recommendation."</p>
+            <footer><span class="stars" aria-label="5 stars">★★★★★</span><cite>Beverly, Weaverville</cite></footer>
+          </blockquote>
+          <blockquote>
+            <p>"My Subaru was yelling for a lot of TLC. Neither the dogs nor I had done anything except messed it up. Nieman was very responsive to my contact, easy to schedule and did a great job — inside and out. He's on my calendar for regular detailing! Definitely recommended!"</p>
+            <footer><span class="stars" aria-label="5 stars">★★★★★</span><cite>Emily, North Asheville</cite></footer>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="about" aria-labelledby="about-heading">
+      <div class="container about">
+        <figure class="about__photo">
+          <img src="/images/profile/nieman-640.webp" srcset="/images/profile/nieman-512.webp 512w, /images/profile/nieman-800.webp 800w" sizes="(max-width: 760px) 100vw, 420px" alt="Nieman, owner of Nieman's Detailing" width="640" height="640" loading="lazy">
+        </figure>
+        <div class="about__copy">
+          <p class="eyebrow">The detailer</p>
+          <h2 id="about-heading" class="h-section">One owner. Every car, by hand.</h2>
+          <p class="lede">I started Nieman's Detailing because I love cars, and my customers love theirs just as much.</p>
+          <p>Too many "detailing" services cut corners, hide dirt, and use harsh chemicals to turn cars over fast. A real detail is a careful, safe process that protects your paint and finish, so I take the time to do it right.</p>
+          <p>When I'm not detailing, you'll find me mountain biking at Big Ivy or Kitsuma, or hanging out with my cats.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--raised" id="service-area" aria-labelledby="area-heading">
+      <div class="container area">
+        <div class="area__copy">
+          <p class="eyebrow">Service area</p>
+          <h2 id="area-heading" class="h-section">Detailing comes to you</h2>
+          <div class="srv-area-txt">
+          <h3>Serving <a href="/asheville-detailing">Asheville</a>, <a href="/weaverville-detailing">Weaverville</a>, <a href="/hendersonville-detailing">Hendersonville</a>, <a href="/black-mountain-detailing">Black Mountain</a>, <a href="/arden-detailing">Arden</a>, and <a href="/fletcher-detailing">Fletcher</a>.</h3>
+          <p class="area__note">Not sure if I come to your address? Call or text and you'll get a quick answer.</p>
+          </div>
+          <div class="btn-row">
+            <a class="btn btn-ghost" href="sms:+18282733894" data-track="Area Text"><svg aria-hidden="true"><use href="#i-chat"/></svg>Text Nieman</a>
+            <a class="btn btn-ghost" href="tel:+18282733894" data-track="Area Phone"><svg aria-hidden="true"><use href="#i-phone"/></svg>(828) 273-3894</a>
+          </div>
+        </div>
+        <div id="map" class="area__map" data-api-key="AIzaSyDCfKKzPwktXlP3YJayc1jf3AIXEVZfu5I" data-zip-codes="28791,28792,28801,28803,28804,28805,28806,28787,28711,28732,28704,28715,28701,28748,28753,28754,28759,28716,28730,28778" role="region" aria-label="Service area map">
+          <div class="area__map-fallback">
+            <svg aria-hidden="true" width="32" height="32"><use href="#i-pin"/></svg>
+            <span>The service area map loads when you scroll here.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="contact" aria-labelledby="contact-heading">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Contact</p>
+            <h2 id="contact-heading" class="h-section">Questions? Reach Nieman directly</h2>
+            <p>Call and leave a voicemail if I don't pick up. Texting works great too.</p>
+          </div>
+        </div>
+        <div class="contact-grid">
+          <a class="contact-tile" href="tel:+18282733894" data-track="Contact Phone">
+            <svg aria-hidden="true"><use href="#i-phone"/></svg>
+            <span class="contact-tile__label">Call</span>
+            <span class="contact-tile__value">(828) 273-3894</span>
+          </a>
+          <a class="contact-tile" href="sms:+18282733894" data-track="Contact Text">
+            <svg aria-hidden="true"><use href="#i-chat"/></svg>
+            <span class="contact-tile__label">Text</span>
+            <span class="contact-tile__value">(828) 273-3894</span>
+          </a>
+          <a class="contact-tile" href="mailto:nieman@niemansdetailing.com" data-track="Contact Email">
+            <svg aria-hidden="true"><use href="#i-mail"/></svg>
+            <span class="contact-tile__label">Email</span>
+            <span class="contact-tile__value">nieman@niemansdetailing.com</span>
+          </a>
+          <a class="contact-tile" href="/nieman.vcf" download rel="nofollow" data-track="Contact Card">
+            <svg aria-hidden="true"><use href="#i-user"/></svg>
+            <span class="contact-tile__label">Save contact</span>
+            <span class="contact-tile__value">Add to your phone</span>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- site:footer -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="site-footer__cta">
+        <div>
+          <h2>Ready for that showroom shine?</h2>
+          <p>Pick a time online, or text Nieman with questions.</p>
+        </div>
+        <div class="btn-row">
+          <a class="btn btn-gold btn-lg" href="/schedule" data-track="Footer Book">Book a detail</a>
+          <a class="btn btn-ghost btn-lg" href="/quote" data-track="Footer Quote">Get my price</a>
+        </div>
+      </div>
+      <div class="site-footer__grid">
+        <div class="site-footer__brand">
+          <img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman's Detailing" width="300" height="30" loading="lazy">
+          <p>Owner-operated mobile detailing serving Asheville and Western North Carolina.</p>
+        </div>
+        <div>
+          <h3>Services</h3>
+          <ul>
+            <li><a href="/services/the-works">The Works</a></li>
+            <li><a href="/services/quick-once-over">Quick Once Over</a></li>
+            <li><a href="/services/ceramic-coating">Ceramic coating</a></li>
+            <li><a href="/services/paint-correction-polishing">Paint correction</a></li>
+            <li><a href="/services/headlight-restoration">Headlight restoration</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Areas</h3>
+          <ul>
+            <li><a href="/asheville-detailing">Asheville</a></li>
+            <li><a href="/weaverville-detailing">Weaverville</a></li>
+            <li><a href="/hendersonville-detailing">Hendersonville</a></li>
+            <li><a href="/black-mountain-detailing">Black Mountain</a></li>
+            <li><a href="/arden-detailing">Arden</a></li>
+            <li><a href="/fletcher-detailing">Fletcher</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Contact</h3>
+          <ul>
+            <li><a href="tel:+18282733894">(828) 273-3894</a></li>
+            <li><a href="mailto:nieman@niemansdetailing.com">Email Nieman</a></li>
+            <li><a href="/account">My appointments</a></li>
+            <li><a href="https://www.instagram.com/niemansdetailing/">Instagram</a></li>
+            <li><a href="https://www.facebook.com/niemansdetailing">Facebook</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="site-footer__bottom">
+        <span>© <span data-year>2026</span> Nieman's Detailing</span>
+        <span><a href="/faq">FAQ</a> · <a href="/blog">Blog</a> · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></span>
+      </div>
+    </div>
+  </footer>
+
+  <div class="action-bar" aria-label="Quick actions">
+    <a class="btn btn-ghost" href="tel:+18282733894" data-track="Action Bar Phone"><svg aria-hidden="true"><use href="#i-phone"/></svg>Call</a>
+    <a class="btn btn-primary" href="/schedule" data-track="Action Bar Book"><svg aria-hidden="true"><use href="#i-calendar"/></svg>Book now</a>
   </div>
+  <!-- /site:footer -->
 
-  <!--Scriptz-->
-  <!-- removed better-simple-slideshow; minimal slider hydrates on idle -->
-  <script defer="" src="scripts/home.js"></script>
-  <script defer="" src="scripts/vacation-notice.js?v=20260802"></script>
-
-
-
-
-</body></html>
+  <!-- site:scripts -->
+  <script defer src="/scripts/site.js?v=20261120"></script>
+  <!-- /site:scripts -->
+  <script defer src="/scripts/home.js?v=20261120"></script>
+  <script defer src="/scripts/vacation-notice.js?v=20260802"></script>
+</body>
+</html>

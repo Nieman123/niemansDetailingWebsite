@@ -1,0 +1,14 @@
+{
+  "id": "/admin/appointments",
+  "name": "Nieman’s Detailing Admin",
+  "short_name": "Detailing Admin",
+  "start_url": "/admin/appointments",
+  "scope": "/admin/",
+  "display": "standalone",
+  "background_color": "#0B1330",
+  "theme_color": "#0B1330",
+  "icons": [
+    { "src": "/images/touch/chrome-touch-icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/admin/appointment-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

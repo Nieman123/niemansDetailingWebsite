@@ -69,7 +69,12 @@ node_modules/
 .dataconnect
 .DS_Store
 .lighthouseci
-functions/.env.local
+functions/.env.*
+!functions/.env.sample
+firebase.staging.generated.json
+public-staging/
+firebase.production.generated.json
+public-production/
 firepit-log.txt
 
 # Image build output generated from assets/images

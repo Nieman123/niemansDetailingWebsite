@@ -1811,3 +1811,127 @@ a { color: var(--brand-2); }
   color: #fff;
   border-color: #9675dd;
 }
+
+.thanks-booking .quote-line { margin-block:0 12px; }
+.thanks-booking .btn.primary { color:#18131f; text-decoration:none; }
+.thanks-booking .note { margin-bottom:0; }
+
+/* ==========================================================================
+   Brand theme (Nov 2026). Loaded after the rules above so it wins on ties.
+   Uses tokens from /styles/brand.css; the fallbacks keep pages usable alone.
+   ========================================================================== */
+
+:root {
+  --bg: var(--nd-bg, #0a0912);
+  --card: var(--nd-surface, #16132a);
+  --surface: var(--nd-bg-raised, #100e1b);
+  --surface-raised: var(--nd-surface-2, #1e1a37);
+  --text: var(--nd-text, #f5f2fb);
+  --muted: var(--nd-text-2, #c9c3da);
+  --subtle: var(--nd-muted, #a59fba);
+  --brand: var(--nd-gold, #e4bb5c);
+  --brand-2: var(--nd-gold-hover, #efcb76);
+  --accent: var(--nd-purple, #6b3fd8);
+  --ok: var(--nd-success, #5fd3a2);
+  --err: var(--nd-danger, #ff8a80);
+  --line: var(--nd-line-strong, rgba(232, 224, 255, 0.2));
+  --focus: var(--nd-gold, #e4bb5c);
+}
+.quote-page {
+  --brand: var(--nd-gold, #e4bb5c);
+  --brand-2: var(--nd-gold-hover, #efcb76);
+  --focus: var(--nd-gold, #e4bb5c);
+  background:
+    radial-gradient(60% 50% at 90% 0%, rgba(107, 63, 216, 0.28), transparent 70%),
+    var(--nd-bg, #0a0912);
+}
+html, body {
+  font-family: var(--nd-font-sans, "Inter", system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+.quote-page h1, .quote-page h2, .quote-page h3 {
+  font-family: var(--nd-font-display, "Archivo", sans-serif);
+  letter-spacing: -0.01em;
+}
+.quote-page :focus-visible { outline: 3px solid var(--nd-gold, #e4bb5c); outline-offset: 3px; }
+
+.screen, .panel {
+  background: linear-gradient(180deg, var(--nd-surface, #16132a), var(--nd-bg-raised, #100e1b));
+  border: 1px solid var(--nd-line, rgba(232, 224, 255, 0.1));
+  border-radius: 16px;
+  box-shadow: none;
+}
+.funnel-quote {
+  background: var(--nd-bg-raised, #100e1b);
+  border: 1px solid var(--nd-gold-line, rgba(228, 187, 92, 0.45));
+  border-radius: 20px;
+  padding: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+.funnel-intro-kicker strong { color: var(--nd-gold, #e4bb5c); }
+.funnel-intro-sub, .hero-pricing-band p { color: var(--nd-text-2, #c9c3da); }
+.funnel-google-stars, .trust-stars, .trust-story-stars { color: var(--nd-gold, #e4bb5c); }
+
+.btn {
+  background: var(--nd-surface-2, #1e1a37);
+  border: 1.5px solid var(--nd-line-strong, rgba(232, 224, 255, 0.2));
+  border-radius: 14px;
+  color: var(--nd-text, #f5f2fb);
+  font-weight: 600;
+  transition: border-color .15s ease, background-color .15s ease, transform .15s ease;
+}
+.btn:hover { background: var(--nd-surface-3, #282346); border-color: rgba(232, 224, 255, 0.32); }
+.btn:focus { outline: none; }
+.btn:focus-visible { outline: 3px solid var(--nd-gold, #e4bb5c); outline-offset: 3px; }
+.btn:active { transform: translateY(1px); }
+.btn.option[aria-checked="true"], .btn.toggle[aria-pressed="true"] {
+  border-color: var(--nd-gold, #e4bb5c);
+  background: var(--nd-gold-tint, rgba(228, 187, 92, 0.13));
+  box-shadow: 0 0 0 3px rgba(228, 187, 92, 0.14);
+}
+.btn.primary {
+  background: var(--nd-purple, #6b3fd8);
+  border-color: var(--nd-purple, #6b3fd8);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(107, 63, 216, 0.35);
+}
+.btn.primary:hover { background: var(--nd-purple-hover, #7b52e6); border-color: var(--nd-purple-hover, #7b52e6); }
+.btn.secondary { background: transparent; }
+.btn.cta {
+  background: linear-gradient(180deg, var(--nd-gold-hover, #efcb76), var(--nd-gold, #e4bb5c));
+  border-color: var(--nd-gold, #e4bb5c);
+  color: #1a1408;
+}
+.btn.cta:hover { background: var(--nd-gold-hover, #efcb76); }
+.btn[disabled], .btn[aria-disabled="true"] { opacity: .55; cursor: not-allowed; transform: none; }
+
+.field span { color: var(--nd-text, #f5f2fb); font-size: 15px; }
+input, textarea, select {
+  background: var(--nd-bg-raised, #100e1b);
+  border: 1.5px solid var(--nd-line-strong, rgba(232, 224, 255, 0.2));
+  border-radius: 12px;
+  color: var(--nd-text, #f5f2fb);
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--nd-gold, #e4bb5c);
+  box-shadow: 0 0 0 4px var(--nd-gold-tint, rgba(228, 187, 92, 0.13));
+}
+input[type="checkbox"], input[type="radio"] { accent-color: var(--nd-purple, #6b3fd8); }
+
+.quote-line {
+  background: var(--nd-gold-tint, rgba(228, 187, 92, 0.13));
+  border: 1px solid var(--nd-gold-line, rgba(228, 187, 92, 0.45));
+  border-radius: 12px;
+  color: var(--nd-text, #f5f2fb);
+}
+#recap .pill { background: var(--nd-surface-2, #1e1a37); border: 1px solid var(--nd-line, rgba(232, 224, 255, 0.1)); }
+
+.progress-wrap { background: var(--nd-surface-2, #1e1a37); }
+.progress-bar { background: linear-gradient(90deg, var(--nd-purple, #6b3fd8), var(--nd-gold, #e4bb5c)); }
+.step-count { color: var(--nd-muted, #a59fba); }
+.trust { color: var(--nd-text-2, #c9c3da); }
+.trust li { border-color: var(--nd-line-strong, rgba(232, 224, 255, 0.2)); }
+#step-2 .btn.secondary { background: transparent; color: var(--nd-text, #f5f2fb); border-color: var(--nd-line-strong, rgba(232, 224, 255, 0.2)); }
+#step-2 .btn.secondary:hover { background: var(--nd-surface-3, #282346); }
+.call-fab { background: var(--nd-purple, #6b3fd8); color: #fff; }
+a.btn { text-decoration: none; }

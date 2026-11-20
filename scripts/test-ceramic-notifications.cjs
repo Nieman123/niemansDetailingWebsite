@@ -23,6 +23,7 @@ const sandbox = {
   require(name) {
     switch (name) {
       case 'firebase-functions/v2/https': return { onRequest: (_options, handler) => handler };
+      case 'firebase-functions/v2/scheduler': return { onSchedule: (_options, handler) => handler };
       case 'firebase-functions/v2/firestore': return { onDocumentUpdated: (_options, handler) => handler };
       case 'firebase-functions': return { logger: { error: (...args) => failures.push(args) } };
       case 'firebase-functions/params': return { defineString: name => ({ value: () => ({ HOSTING_ORIGIN: 'https://example.test', TELEGRAM_BOT_TOKEN: 'test-token', TELEGRAM_CHAT_ID: 'test-chat' })[name] }) };

@@ -1,0 +1,227 @@
+name: Deploy Firebase staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: staging
+      url: https://${{ vars.STAGING_FIREBASE_PROJECT_ID }}.web.app
+    env:
+      STAGING_FIREBASE_PROJECT_ID: ${{ vars.STAGING_FIREBASE_PROJECT_ID }}
+      STAGING_FIREBASE_WEB_CONFIG: ${{ vars.STAGING_FIREBASE_WEB_CONFIG }}
+      FIREBASE_CLI_VERSION: 15.32.0
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+
+      - name: Install Functions dependencies and build
+        working-directory: functions
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Install site dependencies and run unit tests
+        run: |
+          npm ci
+          node scripts/test-addon-notifications.cjs
+          node scripts/test-ceramic-notifications.cjs
+          node scripts/test-appointment-calendar.mjs
+          node scripts/test-appointment-integrations.mjs
+
+      - name: Install Firebase CLI
+        run: npm install --global "firebase-tools@$FIREBASE_CLI_VERSION"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Test appointment API against Firebase emulators
+        run: |
+          emulator_env=functions/.env.local
+          trap 'rm -f "$emulator_env"' EXIT
+          printf '%s\n' 'APPOINTMENT_INTEGRATIONS_PROJECT=demo-detailing-staging' 'HOSTING_ORIGIN=https://demo-detailing-staging.web.app' > "$emulator_env"
+          firebase emulators:exec --non-interactive --project demo-detailing-staging \
+            --only auth,firestore,functions,hosting 'node scripts/test-appointments-api.mjs'
+
+      # tools/build-images.mjs reuses a variant when its source bytes and settings are unchanged,
+      # so restoring an older cache only rebuilds the images that changed since then.
+      - name: Restore optimized images
+        uses: actions/cache@v4
+        with:
+          path: public/images
+          key: images-${{ hashFiles('tools/build-images.mjs', 'assets/images/**') }}
+          restore-keys: images-
+
+      - name: Build staging site
+        run: |
+          npm run images:sync
+          node scripts/prepare-staging.mjs
+
+      - name: Authenticate to the staging project
+        env:
+          STAGING_SERVICE_ACCOUNT: ${{ secrets.STAGING_FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { writeFileSync } from 'node:fs';
+          import { join } from 'node:path';
+
+          let credentials;
+          try {
+            credentials = JSON.parse(process.env.STAGING_SERVICE_ACCOUNT);
+          } catch {
+            throw new Error('Add STAGING_FIREBASE_SERVICE_ACCOUNT as a staging environment secret.');
+          }
+          if (credentials?.type !== 'service_account' ||
+              credentials.project_id !== process.env.STAGING_FIREBASE_PROJECT_ID ||
+              !credentials.client_email || !credentials.private_key) {
+            throw new Error('The deployment credential must belong to the staging Firebase project.');
+          }
+          const credentialsPath = join(process.env.RUNNER_TEMP, 'firebase-staging-service-account.json');
+          writeFileSync(credentialsPath, JSON.stringify(credentials), { mode: 0o600 });
+          writeFileSync(process.env.GITHUB_ENV, `GOOGLE_APPLICATION_CREDENTIALS=${credentialsPath}\n`, { flag: 'a' });
+          NODE
+
+      - name: Deploy staging backend and rules
+        run: |
+          # Telegram delivery is disabled in staging, so omit its Firestore trigger.
+          firebase deploy --non-interactive --config firebase.staging.generated.json \
+            --project "$STAGING_FIREBASE_PROJECT_ID" \
+            --only functions:api,functions:appointmentMaintenance,firestore:rules,firestore:indexes,storage
+
+      - name: Build static blog from staging Firestore
+        env:
+          SITE_PUBLIC_DIR: public-staging
+        run: npm run build:blog
+
+      - name: Deploy staging Hosting
+        run: |
+          firebase deploy --non-interactive --config firebase.staging.generated.json \
+            --project "$STAGING_FIREBASE_PROJECT_ID" --only hosting
+
+      - name: Smoke test staging Hosting and API
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+
+          const projectId = process.env.STAGING_FIREBASE_PROJECT_ID;
+          const origin = `https://${projectId}.web.app`;
+          const request = (path, options) => fetch(`${origin}${path}`, {
+            ...options, redirect: 'error', signal: AbortSignal.timeout(30_000),
+          });
+          const page = await request('/quote');
+          assert.equal(page.status, 200);
+          assert.match(page.headers.get('x-robots-tag') ?? '', /noindex/);
+
+          const config = await request('/scripts/firebase-config.mjs');
+          assert.equal(config.status, 200);
+          assert.match(config.headers.get('content-type') ?? '', /javascript/);
+          assert.ok((await config.text()).includes(`"projectId": "${projectId}"`));
+
+          let defaults;
+          for (let attempt = 0; attempt < 7; attempt++) {
+            if (attempt) await new Promise(resolve => setTimeout(resolve, 5_000));
+            const publishing = await request('/admin/content?deployment=' + Date.now());
+            const page = await publishing.text();
+            defaults = page.match(/<script id="site-copy-defaults" type="application\/json">([^<]+)<\/script>/);
+            if (publishing.ok && defaults) break;
+          }
+          assert.ok(defaults, 'Publishing editor should include the original site copy');
+          const siteCopy = JSON.parse(defaults[1]);
+          assert.match(siteCopy.headline, /Asheville/);
+          assert.ok(siteCopy.bookingNotice);
+
+          for (const [path, marker] of [
+            ['/scripts/slot-picker.mjs', 'export function slotPicker'],
+            ['/scripts/appointment-utils.mjs', 'export const vehicleLabels'],
+            ['/scripts/admin-vacation.mjs', 'export async function loadVacation'],
+            ['/scripts/admin-clients.js?v=20261119', 'async function handleAuth'],
+          ]) {
+            const asset = await request(path);
+            assert.equal(asset.status, 200, path);
+            assert.match(asset.headers.get('content-type') ?? '', /javascript/, path);
+            assert.ok((await asset.text()).includes(marker), path);
+          }
+
+          const schedule = await request('/schedule');
+          assert.equal(schedule.status, 200);
+          assert.ok(!(await schedule.text()).includes('calendar.google.com/calendar/appointments'));
+
+          const legacy = await fetch(origin + '/book', { redirect: 'manual' });
+          assert([301,302,307,308].includes(legacy.status));
+          assert.equal(new URL(legacy.headers.get('location'), origin).pathname, '/schedule');
+          const publicBooking = async (action, data = {}) => {
+            const response = await request('/api/appointments/' + action, { method: 'POST',
+              headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify(data) });
+            assert.equal(response.status, 200);
+            return (await response.json()).result;
+          };
+          assert.equal(await publicBooking('quote-context', { quoteReceipt: { id: 'invalid', token: 'invalid' } }), null);
+          const thanks = await request('/thank-you');
+          assert.equal(thanks.status, 200);
+          assert.match(await thanks.text(), /data-booking-handoff="true"/);
+          const options = await publicBooking('booking-options');
+          if (options.enabled && options.services.length) {
+            assert.ok(['sedan', 'suv_truck', 'van_3row'].every(key => Number.isSafeInteger(options.services[0].vehiclePrices[key])));
+            const month = new Date().toISOString().slice(0, 7);
+            const availability = await publicBooking('availability', { month, serviceId: options.services[0].id });
+            assert(Array.isArray(availability.slots));
+            console.log('Verified live monthly booking availability on staging.');
+          }
+
+          const response = await request('/api/createLead', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Origin: origin },
+            body: '{}',
+          });
+          assert.equal(response.status, 400);
+          assert.equal(response.headers.get('access-control-allow-origin'), origin);
+          assert.match((await response.json()).error, /^invalid_fields:/);
+
+          const webhook = await request('/api/appointments/stripe-webhook', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+          });
+          if (webhook.status === 503) {
+            console.warn('::warning::Staging webhook could not load the Stripe test configuration.');
+          } else {
+            assert.equal(webhook.status, 400, 'Configured webhook should reject an unsigned request');
+            console.log('Staging webhook loaded the Stripe test configuration and rejected an unsigned request.');
+          }
+
+          const ownerPage = await request('/admin/appointments');
+          assert.equal(ownerPage.status, 200);
+          assert.match(await ownerPage.text(), /New appointment/);
+          const unauthorized = await request('/api/appointments/list', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: '{}',
+          });
+          assert.equal(unauthorized.status, 401);
+          assert.equal((await unauthorized.json()).error, 'sign_in_required');
+          for (const [path, marker] of [['/schedule', 'Schedule your detail'], ['/account', 'My appointments'], ['/admin/content', 'Site content']]) {
+            const surface = await request(path);
+            assert.equal(surface.status, 200);
+            assert.ok((await surface.text()).includes(marker), path);
+          }
+          console.log(`Staging smoke checks passed at ${origin}`);
+          NODE

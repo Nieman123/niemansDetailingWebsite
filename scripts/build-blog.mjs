@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import * as cheerio from 'cheerio';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, getDocs, query, where } from 'firebase/firestore';
@@ -9,18 +9,11 @@ import { getFirestore, collection, getDocs, query, where } from 'firebase/firest
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.join(__dirname, '..');
-const blogRoot = path.join(projectRoot, 'public', 'blog');
+const publicRoot = path.resolve(projectRoot, process.env.SITE_PUBLIC_DIR || 'public');
+const blogRoot = path.join(publicRoot, 'blog');
 const blogManifestPath = path.join(blogRoot, '.generated-posts.json');
 const BLOG_INDEX_NAME = 'index.html';
 const BLOG_TEMPLATE_NAME = 'post.html';
-
-// Basic Firebase configuration for reading public posts
-const firebaseConfig = {
-    apiKey: "AIzaSyBgUntKRCQsi_SyJmNOgJLBI8Yj8gEsmA4",
-    authDomain: "niemansdetailing.firebaseapp.com",
-    projectId: "niemansdetailing",
-    storageBucket: "niemansdetailing.firebasestorage.app",
-};
 
 // --- Re-implementing necessary utils for Node.js context ---
 export function escapeHtml(value) {
@@ -392,6 +385,8 @@ function cleanupStaleOutputs(nextOutputEntries) {
 }
 
 async function fetchPosts() {
+    const configUrl = pathToFileURL(path.join(publicRoot, 'scripts', 'firebase-config.mjs'));
+    const { firebaseConfig } = await import(configUrl);
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const postsQuery = query(
@@ -605,7 +600,7 @@ function generatePostPages(posts) {
 
 // Generate an updated sitemap.xml to include all dynamic posts
 function updateSitemap(posts) {
-    const sitemapPath = path.join(projectRoot, 'public', 'sitemap.xml');
+    const sitemapPath = path.join(publicRoot, 'sitemap.xml');
     const xmlString = fs.readFileSync(sitemapPath, 'utf-8');
 
     // Manipulate sitemap via XML parser so repeated runs are idempotent.
