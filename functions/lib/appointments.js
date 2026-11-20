@@ -142,6 +142,7 @@ function adminDetails(id, appointment) {
         maintenanceEnrolled: !!appointment.maintenanceEnrolledAt,
         maintenanceInviteQueued: !!appointment.maintenanceInviteAfterPayment && !!appointment.maintenanceInvite,
         paymentReview: appointment.paymentReview ?? null,
+        startedAt: appointment.startedAt ?? null, invoiceLines: appointment.invoiceLines ?? [],
     };
 }
 function remainingBalance(appointment) {
@@ -356,14 +357,14 @@ async function changeAppointment(db, uid, id, action, body) {
                     supplied.reduce((total, item) => total + item.cents, 0) !== final)
                     throw new AppointmentError(400, "invalid_line_items");
                 const invoiceLines = supplied.map(item => ({ description: text(item.description, 140), cents: item.cents }));
-                const update = { ...work, status: "completed", finalCents: final, invoiceLines, completedAt: now, completedBy: uid,
+                const update = { ...work, ...calendarUpdate(now), status: "completed", finalCents: final, invoiceLines, completedAt: now, completedBy: uid,
                     maintenanceInviteAfterPayment: body.maintenanceInviteAfterPayment === true && !!appointment.email && maintenanceService(appointment.service), };
                 const completed = { ...appointment, ...update };
                 tx.update(ref, update);
                 queueOptedInMaintenance(db, tx, id, completed);
                 return adminDetails(id, completed);
             }
-            const update = action === "start-job" ? { status: "in_progress", startedAt: now, startedBy: uid } : work;
+            const update = action === "start-job" ? { status: "in_progress", startedAt: now, startedBy: uid, ...calendarUpdate(now) } : work;
             tx.update(ref, update);
             return adminDetails(id, { ...appointment, ...update });
         }

@@ -3,7 +3,7 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from
 import { easternInput, slotPicker } from "./slot-picker.mjs";
 import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect, vehicleLabels } from "./appointment-utils.mjs";
 import { servicePicker } from "./service-picker.mjs";
-import { clearJobNotes, hasUnsavedJobNotes, jobWorkspace, rescheduleWorkspace, setupBookingSettings, statusLabels } from "./appointment-admin-tools.mjs";
+import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, rescheduleWorkspace, setupBookingSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);
 const form = byId("create-booking");
@@ -315,11 +315,13 @@ function renderDetail(record) {
     viewHost.replaceChildren(back, heading, ...(Array.isArray(built) ? built : [built]));
     hub.hidden = true;
     viewHost.hidden = false;
+    document.body.dataset.recordView = key;
     heading.focus({ preventScroll: true });
     byId("view-detail").scrollIntoView({ block: "start" });
   }
   function showHub() {
-    openDetailView = null;
+    openDetailView = { id: record.id, key: null };
+    delete document.body.dataset.recordView;
     viewHost.hidden = true;
     viewHost.replaceChildren();
     hub.hidden = false;
@@ -410,9 +412,10 @@ function renderDetail(record) {
   if (["confirmed", "in_progress", "completed"].includes(record.status)) {
     const completed = record.status === "completed";
     tiles.append(addView("job", completed ? "Balance and payments" : record.status === "in_progress" ? "Job in progress" : "Start job",
-      completed ? "cash" : "wrench", () => detailsAsView(jobWorkspace(record, ownerRequest, refreshList, explain)).body,
+      completed ? "cash" : "wrench", () => completed ? detailsAsView(jobWorkspace(record, ownerRequest, refreshList, explain)).body : jobScreen(record, ownerRequest, refreshList, explain),
       { tone: "gold", hint: completed ? "Record payments and invitations" : "Notes, photos, and closeout" }));
   }
+  const jobOpen = record.status === "in_progress";
   if (["confirmed", "pending_approval"].includes(record.status)) {
     const view = () => detailsAsView(rescheduleWorkspace(record, ownerRequest, refreshList, explain)).body;
     tiles.append(addView("reschedule", record.rescheduleRequest ? "Review time request" : record.status === "pending_approval" ? "Offer another time" : "Reschedule",
@@ -462,6 +465,7 @@ function renderDetail(record) {
   hub.append(tiles);
 
   if (openDetailView?.id === record.id && views.has(openDetailView.key)) showRecordView(openDetailView.key);
+  else if (jobOpen && openDetailView?.id !== record.id && views.has("job")) showRecordView("job");
   else openDetailView = null;
   return card;
 }

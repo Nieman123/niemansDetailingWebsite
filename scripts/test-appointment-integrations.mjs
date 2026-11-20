@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 import stripe from '../functions/lib/appointment-stripe.js';
 import booking from '../functions/lib/appointment-booking.js';
+import calendarSync from '../functions/lib/appointment-calendar.js';
 
 const now = Date.parse('2027-01-17T13:00:00Z');
 const timestamp = Math.trunc(now / 1000);
@@ -29,6 +30,11 @@ assert.equal(booking.parseBookingSettings({ ...settings, services: [{ ...service
 assert.equal(booking.bookingSlots(settings, '2027-01-18', service, now)[0], Date.parse('2027-01-18T14:00:00Z'));
 assert.equal(booking.bookingSlots({ ...settings, blockedDates: ['2027-01-18'] }, '2027-01-18', service, now).length, 0);
 assert.equal(booking.bookingSlots(settings, '2027-01-19', service, now).length, 0);
+// Calendar mirrors carry the customer, address, and money details.
+const mirror = calendarSync.eventDetails('abc', { start: 0, end: 1, service: 'The Works', status: 'confirmed', name: 'Dana', phone: '828-555-0142', address: '1 Main St, Asheville', estimateCents: 35000, depositCents: 5000, paidDeposit: 5000 }, 'https://example.test');
+assert.equal(mirror.location, '1 Main St, Asheville');
+assert.equal(mirror.summary, 'The Works · Dana');
+assert(mirror.description.includes('Due at service: $300') && mirror.description.includes('Phone: 828-555-0142') && mirror.description.includes('/admin/appointments?appointment=abc'));
 // Per-day hours override the default open time and validate their own ranges.
 const weekend = { ...settings, days: [1, 6], hours: { '6': { open: '11:00', close: '17:00' } } };
 assert(booking.parseBookingSettings(weekend).hours['6']);

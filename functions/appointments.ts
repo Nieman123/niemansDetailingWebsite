@@ -71,6 +71,7 @@ type Appointment = {
   rescheduleRequest?: { start: number; requestedAt: number };
   alternateOffer?: { start: number; offeredAt: number; expiresAt: number } | null;
   calendarSequence?: number;
+  startedAt?: number;
   calendarDueAt?: number | null;
   calendarSyncedAt?: number;
   calendarFailure?: boolean;
@@ -205,6 +206,7 @@ function adminDetails(id: string, appointment: Appointment) {
     maintenanceEnrolled: !!appointment.maintenanceEnrolledAt,
     maintenanceInviteQueued: !!appointment.maintenanceInviteAfterPayment && !!appointment.maintenanceInvite,
     paymentReview: appointment.paymentReview ?? null,
+    startedAt: appointment.startedAt ?? null, invoiceLines: appointment.invoiceLines ?? [],
   };
 }
 
@@ -409,7 +411,7 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
             !supplied.every(item => item && text(item.description, 140) && Number.isSafeInteger(item.cents) && Math.abs(item.cents) <= 10_000_000) ||
             supplied.reduce((total, item) => total + item.cents, 0) !== final) throw new AppointmentError(400, "invalid_line_items");
         const invoiceLines = supplied.map(item => ({ description: text(item.description, 140), cents: item.cents as number }));
-        const update = { ...work, status: "completed" as const, finalCents: final, invoiceLines, completedAt: now, completedBy: uid,
+        const update = { ...work, ...calendarUpdate(now), status: "completed" as const, finalCents: final, invoiceLines, completedAt: now, completedBy: uid,
           maintenanceInviteAfterPayment: body.maintenanceInviteAfterPayment === true && !!appointment.email && maintenanceService(appointment.service),
         };
         const completed = { ...appointment, ...update };
@@ -417,7 +419,7 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
         queueOptedInMaintenance(db, tx, id, completed);
         return adminDetails(id, completed);
       }
-      const update = action === "start-job" ? { status: "in_progress" as const, startedAt: now, startedBy: uid } : work;
+      const update = action === "start-job" ? { status: "in_progress" as const, startedAt: now, startedBy: uid, ...calendarUpdate(now) } : work;
       tx.update(ref, update);
       return adminDetails(id, { ...appointment, ...update });
     }

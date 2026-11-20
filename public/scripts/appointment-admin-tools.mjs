@@ -1,5 +1,5 @@
 import { appointmentMoney, appointmentTime, easternStart, fillDurationSelect, vehicleLabels } from "./appointment-utils.mjs";
-import { jobPhotosSection } from "./appointment-photos.mjs";
+import { jobPhotoBoard, jobPhotosSection } from "./appointment-photos.mjs";
 import { standardServices } from "./service-picker.mjs";
 
 export const statusLabels = {
@@ -178,6 +178,219 @@ export function jobWorkspace(record, request, refresh, report) {
   }
   area.append(form, message, jobPhotosSection(record.id));
   return area;
+}
+
+// Quote add-on prices by vehicle size, in dollars, matching the quote form.
+const addOnPrices = {
+  "Pet hair": { sedan: 30, suv_truck: 40, van_3row: 50 },
+  "Heavy soil": { sedan: 40, suv_truck: 60, van_3row: 80 },
+  "Wax / sealant": { sedan: 25, suv_truck: 30, van_3row: 35 },
+  "Odor / ozone": { sedan: 35, suv_truck: 45, van_3row: 55 },
+  "Engine bay": { sedan: 25, suv_truck: 25, van_3row: 30 },
+  "Headlights": { sedan: 75, suv_truck: 85, van_3row: 95 },
+};
+const noteChips = ["Pet hair", "Heavy soil", "Stains noted", "Paint damage noted", "Customer not home", "Keys with customer", "No water access", "No power access"];
+const vehicleSize = text => /van|3-row|three-row|minivan|full-size/i.test(text) ? "van_3row" : /suv|truck|crossover|4runner|tahoe|pickup/i.test(text) ? "suv_truck" : "sedan";
+const elapsed = ms => {
+  const minutes = Math.max(0, Math.floor(ms / 60000));
+  return minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} hr ${String(minutes % 60).padStart(2, "0")} min`;
+};
+
+// The on-site job screen for confirmed and in-progress appointments: big targets, autosaving notes,
+// one-tap photos, and a closeout builder that adds up line items instead of free-typed text.
+export function jobScreen(record, request, refresh, report) {
+  const screen = elm("div", "", "job-screen");
+  const started = record.status === "in_progress";
+  const size = vehicleSize(record.vehicle || "");
+
+  const hero = elm("div", "", "job-hero");
+  const clock = elm("p", "", "job-clock");
+  const tick = () => {
+    clock.textContent = started && record.startedAt ? `On the clock · ${elapsed(Date.now() - record.startedAt)}` : `Scheduled · ${appointmentTime(record)}`;
+  };
+  tick();
+  if (started && record.startedAt) {
+    const timer = setInterval(() => { if (!clock.isConnected) clearInterval(timer); else tick(); }, 30000);
+  }
+  hero.append(clock, elm("p", [record.vehicle, record.service].filter(Boolean).join(" · "), "job-vehicle"));
+  if (record.preparation) hero.append(elm("p", record.preparation, "job-prep"));
+  const contact = elm("div", "", "job-contact");
+  const link = (label, href, external) => {
+    const anchor = elm("a", label, "job-contact__link");
+    anchor.href = href;
+    if (external) Object.assign(anchor, { target: "_blank", rel: "noopener noreferrer" });
+    contact.append(anchor);
+  };
+  if (record.address) link("Directions", "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(record.address), true);
+  if (record.phone) { link("Call", "tel:" + record.phone); link("Text", "sms:" + record.phone); }
+  if (contact.childElementCount) hero.append(contact);
+  screen.append(hero);
+
+  const message = elm("p", "", "job-status-line");
+  message.setAttribute("role", "status");
+  let busy = false;
+  const run = async (button, handler) => {
+    if (busy) return;
+    busy = button.disabled = true;
+    message.textContent = "Saving…";
+    try { await handler(); }
+    catch (error) { message.textContent = error.code ? report(error) : error.message; }
+    finally { busy = button.disabled = false; }
+  };
+
+  // Notes autosave while you type, and survive moving between views.
+  const pending = pendingNotes.get(record.id);
+  const notesCard = elm("section", "", "job-card");
+  notesCard.append(elm("h4", "Job notes"));
+  const saveState = elm("span", "Saved", "job-save-state");
+  notesCard.querySelector("h4").append(saveState);
+  const notes = Object.assign(document.createElement("textarea"), { rows: 4, maxLength: 5000, value: pending?.workNotes ?? record.workNotes ?? "", placeholder: "What you noticed, what you did, anything for next time." });
+  notes.setAttribute("aria-label", "Private job notes");
+  const chips = elm("div", "", "job-chips");
+  for (const label of noteChips) {
+    const chip = Object.assign(elm("button", "+ " + label, "job-chip"), { type: "button" });
+    chip.onclick = () => {
+      notes.value = (notes.value.trim() ? notes.value.trimEnd() + "\n" : "") + "• " + label;
+      notes.dispatchEvent(new Event("input"));
+    };
+    chips.append(chip);
+  }
+  const changes = Object.assign(document.createElement("textarea"), { rows: 2, maxLength: 1500, value: pending?.scopeChanges ?? record.scopeChanges ?? "", placeholder: "Anything added or changed with the customer's OK." });
+  changes.setAttribute("aria-label", "Agreed scope changes");
+  notesCard.append(notes, chips, elm("label", "Agreed scope changes", "job-label"), changes);
+  screen.append(notesCard);
+
+  const work = () => ({ id: record.id, workNotes: notes.value, scopeChanges: changes.value });
+  let autosave;
+  async function saveNotes(draft) {
+    const previous = noteSaves.get(record.id) ?? Promise.resolve();
+    const save = previous.catch(() => {}).then(async () => {
+      await request("save-job", draft);
+      if (pendingNotes.get(record.id) === draft) pendingNotes.delete(record.id);
+    });
+    noteSaves.set(record.id, save);
+    try { await save; }
+    finally { if (noteSaves.get(record.id) === save) noteSaves.delete(record.id); }
+  }
+  function queueSave() {
+    const draft = work();
+    pendingNotes.set(record.id, draft);
+    clearTimeout(autosave);
+    saveState.textContent = "Saving…";
+    saveState.dataset.state = "pending";
+    autosave = setTimeout(async () => {
+      if (!notes.isConnected || pendingNotes.get(record.id) !== draft) return;
+      try { await saveNotes(draft); saveState.textContent = "Saved"; delete saveState.dataset.state; }
+      catch { saveState.textContent = "Not saved, retrying"; saveState.dataset.state = "error"; setTimeout(queueSave, 5000); }
+    }, 900);
+  }
+  notes.oninput = changes.oninput = queueSave;
+  const flushNotes = async () => {
+    clearTimeout(autosave);
+    if (pendingNotes.has(record.id)) await saveNotes(pendingNotes.get(record.id));
+    await noteSaves.get(record.id)?.catch(() => {});
+  };
+
+  screen.append(jobPhotoBoard(record.id));
+
+  if (!started) {
+    const startButton = Object.assign(elm("button", "Start job", "btn primary job-start"), { type: "button" });
+    startButton.onclick = () => run(startButton, async () => {
+      await flushNotes();
+      await request("start-job", { id: record.id });
+      await refresh();
+    });
+    screen.prepend(startButton);
+    screen.append(message);
+    return screen;
+  }
+
+  // Closeout: line items with one-tap add-ons, running total, and the amount still due.
+  const closeout = elm("section", "", "job-card job-closeout");
+  closeout.append(elm("h4", "Finish and charge"));
+  const lines = elm("div", "", "job-lines");
+  const totalLine = elm("p", "", "job-total");
+  const dueLine = elm("p", "", "job-due");
+  const approval = elm("label", "", "appointment-checkbox job-approval");
+  const approved = Object.assign(document.createElement("input"), { type: "checkbox" });
+  approval.append(approved, elm("span", "Customer approved the higher total"));
+  const invite = record.email && /\b(full detail|the works)\b/i.test(record.service) ? elm("label", "", "appointment-checkbox") : null;
+  const inviteBox = Object.assign(document.createElement("input"), { type: "checkbox" });
+  if (invite) invite.append(inviteBox, elm("span", "Email a monthly maintenance invite after full payment (customer agreed)"));
+
+  function lineRow(description = "", dollars = "") {
+    const row = elm("div", "", "job-line");
+    const what = Object.assign(document.createElement("input"), { value: description, maxLength: 140, placeholder: "Description" });
+    what.setAttribute("aria-label", "Line description");
+    const amount = Object.assign(document.createElement("input"), { type: "number", step: "0.01", inputMode: "decimal", value: dollars, placeholder: "0.00" });
+    amount.setAttribute("aria-label", "Line amount in dollars");
+    const remove = Object.assign(elm("button", "×", "job-line__remove"), { type: "button" });
+    remove.setAttribute("aria-label", "Remove line");
+    remove.onclick = () => { row.remove(); update(); };
+    what.oninput = amount.oninput = update;
+    row.append(what, amount, remove);
+    lines.append(row);
+    return row;
+  }
+  const readLines = () => [...lines.children].map(row => {
+    const [what, amount] = row.querySelectorAll("input");
+    return { description: what.value.trim(), dollars: amount.value };
+  }).filter(line => line.description || line.dollars);
+  function update() {
+    const total = readLines().reduce((sum, line) => sum + cents(line.dollars || 0), 0);
+    totalLine.textContent = "Total " + appointmentMoney(total);
+    const due = total - (record.paidDeposit ?? 0);
+    dueLine.textContent = (record.paidDeposit ? `Deposit ${appointmentMoney(record.paidDeposit)} applied · ` : "") + "Due now " + appointmentMoney(Math.max(0, due));
+    approval.hidden = !(record.estimateCents != null && total > record.estimateCents);
+    finish.textContent = "Complete job · collect " + appointmentMoney(Math.max(0, due));
+    return total;
+  }
+
+  const saved = record.invoiceLines?.length ? record.invoiceLines : [{ description: record.service, cents: record.estimateCents ?? 0 }];
+  saved.forEach(line => lineRow(line.description, line.cents ? (line.cents / 100).toFixed(2) : ""));
+  const addOns = elm("div", "", "job-chips");
+  for (const [label, prices] of Object.entries(addOnPrices)) {
+    const chip = Object.assign(elm("button", `+ ${label} $${prices[size]}`, "job-chip job-chip--gold"), { type: "button" });
+    chip.onclick = () => { lineRow(label, prices[size].toFixed(2)); update(); };
+    addOns.append(chip);
+  }
+  const custom = Object.assign(elm("button", "+ Custom line", "job-chip"), { type: "button" });
+  custom.onclick = () => { lineRow().querySelector("input").focus(); };
+  addOns.append(custom);
+
+  const finish = Object.assign(elm("button", "", "btn job-finish"), { type: "button" });
+  finish.onclick = () => run(finish, async () => {
+    const items = readLines();
+    if (!items.length) throw new Error("Add at least one line.");
+    const invoiceLines = items.map(line => {
+      if (!line.description || line.dollars === "" || !Number.isFinite(Number(line.dollars))) throw new Error("Each line needs a description and an amount.");
+      return { description: line.description, cents: cents(line.dollars) };
+    });
+    const total = invoiceLines.reduce((sum, line) => sum + line.cents, 0);
+    if (total < (record.paidDeposit ?? 0)) throw new Error("The total can't be less than the deposit already paid.");
+    const raised = record.estimateCents != null && total > record.estimateCents;
+    if (raised && !approved.checked) { approval.querySelector("input").focus(); throw new Error("Confirm the customer approved the higher total."); }
+    if (raised && !changes.value.trim()) {
+      changes.value = "Added: " + invoiceLines.slice(1).map(line => `${line.description} ${appointmentMoney(line.cents)}`).join(", ");
+    }
+    if (!confirm(`Complete this job with a total of ${appointmentMoney(total)}?`)) { message.textContent = ""; return; }
+    await flushNotes();
+    await request("finish-job", {
+      ...work(), finalCents: total, scopeAccepted: approved.checked, invoiceLines,
+      maintenanceInviteAfterPayment: invite ? inviteBox.checked : false,
+    });
+    pendingNotes.delete(record.id);
+    await refresh();
+  });
+
+  closeout.append(lines, addOns, totalLine, dueLine, approval);
+  if (invite) closeout.append(invite);
+  screen.append(closeout);
+  const bar = elm("div", "", "job-finish-bar");
+  bar.append(message, finish);
+  screen.append(bar);
+  update();
+  return screen;
 }
 
 export function rescheduleWorkspace(record, request, refresh, report) {

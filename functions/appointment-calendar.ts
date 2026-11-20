@@ -5,7 +5,47 @@ type CalendarConfig = {
   detailingId: string; personalId: string; plutoId: string;
 };
 type CalendarEvent = { id: string; status?: string; transparency?: string };
-type AppointmentEvent = { start: number; end: number; service: string; status: string };
+type AppointmentEvent = {
+  start: number; end: number; service: string; status: string;
+  name?: string; phone?: string; email?: string; address?: string; vehicle?: string; preparation?: string;
+  estimateCents?: number | null; finalCents?: number; depositCents?: number; paidDeposit?: number;
+  workNotes?: string; scopeChanges?: string; preapproved?: boolean;
+};
+const statusNames: Record<string, string> = {
+  awaiting_deposit: "Awaiting deposit", pending_approval: "Pending approval", confirmed: "Confirmed",
+  in_progress: "In progress", completed: "Completed", no_show: "No-show",
+};
+const money = (cents: number) => "$" + (cents / 100).toFixed(2).replace(/\.00$/, "");
+
+// Everything Nieman needs on the road, readable in any calendar app.
+export function eventDetails(id: string, appointment: AppointmentEvent, origin = process.env.HOSTING_ORIGIN ?? "") {
+  const prefix = appointment.status === "awaiting_deposit" ? "Awaiting deposit: " : appointment.status === "pending_approval" ? "Pending approval: " : "";
+  const who = appointment.name?.trim();
+  const summary = `${prefix}${appointment.service}${who ? " · " + who : ""}`;
+  const address = appointment.address?.trim() ?? "";
+  const lines: string[] = [];
+  const add = (label: string, value: string | undefined | null) => { if (value && value.trim()) lines.push(`${label}: ${value.trim()}`); };
+  add("Status", statusNames[appointment.status] ?? appointment.status);
+  add("Customer", who);
+  add("Phone", appointment.phone);
+  add("Email", appointment.email);
+  add("Address", address);
+  if (address) lines.push("Directions: https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(address));
+  add("Vehicle", appointment.vehicle);
+  add("Service", appointment.service);
+  const total = appointment.finalCents ?? appointment.estimateCents;
+  if (typeof total === "number") add(appointment.finalCents !== undefined ? "Final total" : "Estimate", money(total));
+  if (appointment.paidDeposit) add("Deposit", money(appointment.paidDeposit) + " paid");
+  else if (appointment.depositCents) add("Deposit", money(appointment.depositCents) + " due");
+  else add("Deposit", "Waived");
+  if (typeof total === "number") add("Due at service", money(Math.max(0, total - (appointment.paidDeposit ?? 0))));
+  add("Customer prep", appointment.preparation);
+  add("Scope changes", appointment.scopeChanges);
+  add("Job notes", appointment.workNotes);
+  if (origin) lines.push("", "Open in admin: " + origin.replace(/\/$/, "") + "/admin/appointments?appointment=" + encodeURIComponent(id));
+  return { summary, location: address, description: lines.join("\n") };
+}
+
 let access: { token: string; until: number; refreshToken: string } | undefined;
 
 export async function calendarConfig() {
@@ -81,9 +121,9 @@ export async function mirrorAppointment(config: CalendarConfig, id: string, appo
     if (!removed.ok && ![404, 410].includes(removed.status)) throw new Error("calendar_delete_failed");
     return;
   }
-  const prefix = appointment.status === "awaiting_deposit" ? "Awaiting deposit: " : appointment.status === "pending_approval" ? "Pending approval: " : "";
+  const details = eventDetails(id, appointment);
   const data = {
-    id: mirrorId, summary: `${prefix}${appointment.service}`, visibility: "private",
+    id: mirrorId, ...details, visibility: "private",
     start: { dateTime: new Date(appointment.start).toISOString(), timeZone: "America/New_York" },
     end: { dateTime: new Date(appointment.end).toISOString(), timeZone: "America/New_York" },
     extendedProperties: { private: { detailingAppointmentId: id } },
