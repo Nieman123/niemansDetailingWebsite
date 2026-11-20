@@ -42,7 +42,7 @@ const siteCopy = {};
 const copySelectors = {
   'index.html': {
     headline: '.hero-copy h1', introduction: '.hero-copy .sub-title',
-    serviceAreas: '.srv-area-txt h3:first-of-type', contactNote: '.srv-area-txt h2',
+    serviceAreas: '.srv-area-txt h3:first-of-type', contactNote: '.srv-area-txt .area__note',
     testimonials: '.testimonial-list blockquote', serviceDescriptions: '.overview-service-copy',
   },
   'schedule.html': { bookingNotice: '.booking-intro' },
