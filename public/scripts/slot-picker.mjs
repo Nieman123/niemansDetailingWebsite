@@ -53,7 +53,8 @@ export function slotPicker(root, { getSlots, onSelect, onClear, status, retry, e
       times.append(button);
     }
   }
-  async function load(preferred = day) {
+  // keepStart: a previously chosen start time to restore if it is still open after reloading.
+  async function load(preferred = day, keepStart = null) {
     const version = ++revision;
     slots = new Map();
     day = selected = null;
@@ -74,10 +75,15 @@ export function slotPicker(root, { getSlots, onSelect, onClear, status, retry, e
         if (!slots.has(key)) slots.set(key, []);
         slots.get(key).push(value);
       }
-      day = slots.has(preferred) ? preferred : slots.keys().next().value;
+      const keptDay = keepStart ? easternDay.format(keepStart) : null;
+      const keep = keptDay && slots.get(keptDay)?.includes(keepStart);
+      day = keep ? keptDay : slots.has(preferred) ? preferred : slots.keys().next().value;
+      if (keep) selected = keepStart;
       drawDays();
       drawTimes();
       status.textContent = slots.size ? "" : empty;
+      if (keep) onSelect(keepStart);
+      else if (keepStart) status.textContent = "That time isn't open with these settings. Choose another time.";
     } catch (error) {
       if (version !== revision) return;
       status.textContent = unavailable(error);

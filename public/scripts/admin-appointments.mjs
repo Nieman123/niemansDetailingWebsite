@@ -95,7 +95,8 @@ const calendar = slotPicker(byId("owner-slot-calendar"), {
   },
 });
 function refreshCalendar() {
-  if (pickerReady) calendar.load();
+  // Keep the chosen time when the deposit, length, or service changes, as long as it's still open.
+  if (pickerReady) calendar.load(undefined, selectedSlot);
 }
 function syncEstimate() {
   const service = services.find(item => item.name === fields.service.value);
