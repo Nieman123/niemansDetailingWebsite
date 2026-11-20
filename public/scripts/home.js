@@ -46,7 +46,55 @@ const DARK_MAP_STYLES = [
   { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#171427' }] }
 ];
 
+// Recent-work gallery: slow crossfade, paused on hover, focus, or when off screen.
+function initFadeGallery() {
+  const gallery = document.querySelector('[data-fade-gallery]');
+  if (!gallery) return;
+  const slides = Array.from(gallery.querySelectorAll('.fade-gallery__slide'));
+  const dots = Array.from(gallery.querySelectorAll('.fade-gallery__dots button'));
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let index = 0;
+  let timer = null;
+  let visible = false;
+  let paused = false;
+
+  const show = (next) => {
+    index = (next + slides.length) % slides.length;
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('is-active', i === index);
+      slide.setAttribute('aria-hidden', String(i !== index));
+    });
+    dots.forEach((dot, i) => {
+      if (i === index) dot.setAttribute('aria-current', 'true');
+      else dot.removeAttribute('aria-current');
+    });
+    const upcoming = slides[(index + 1) % slides.length]?.querySelector('img');
+    if (upcoming) upcoming.loading = 'eager';
+  };
+  const stop = () => { clearInterval(timer); timer = null; };
+  const start = () => {
+    stop();
+    if (!reduceMotion && visible && !paused) timer = setInterval(() => show(index + 1), 5500);
+  };
+
+  dots.forEach((dot, i) => dot.addEventListener('click', () => { show(i); start(); }));
+  gallery.addEventListener('mouseenter', () => { paused = true; stop(); });
+  gallery.addEventListener('mouseleave', () => { paused = false; start(); });
+  gallery.addEventListener('focusin', () => { paused = true; stop(); });
+  gallery.addEventListener('focusout', () => { paused = false; start(); });
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver((entries) => {
+      visible = entries.some(entry => entry.isIntersecting);
+      if (visible) start(); else stop();
+    }, { threshold: 0.25 }).observe(gallery);
+  } else {
+    visible = true;
+    start();
+  }
+}
+
 document.addEventListener('DOMContentLoaded', function () {
+  initFadeGallery();
   const serviceSection = document.getElementById('service-area');
   if (!serviceSection || !('IntersectionObserver' in window)) return;
   const mapObserver = new IntersectionObserver((entries, observer) => {
