@@ -477,9 +477,9 @@ function renderDetail(record) {
         : "Generate a customer link? This replaces any earlier shared link for this appointment.";
       if (!window.confirm(warning)) return;
       const sendEmail = !!record.email && window.confirm("Email this link to the customer too? Cancel to create the link only.");
-      const { token } = await ownerRequest("issue-link", { id: record.id, sendEmail });
+      const { token, code } = await ownerRequest("issue-link", { id: record.id, sendEmail });
       if (session !== scope) return;
-      const issued = `${location.origin}/appointment#${record.id}.${token}`;
+      const issued = code ? `${location.origin}/a/${code}` : `${location.origin}/appointment#${record.id}.${token}`;
       links.set(record.id, issued);
       target.replaceChildren(shareActions(record, issued));
       if (record.status === "draft") await refreshList();

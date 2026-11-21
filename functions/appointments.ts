@@ -7,6 +7,7 @@ import type { Response } from "express";
 import { deliverAppointmentEmails, emailConfigured, queueAppointmentEmail } from "./appointment-email";
 import { describeOpsEvent, pruneOpsEvents, recordOpsEvent } from "./ops-health";
 import { telegramConfigured } from "./telegram";
+import { createShortLink, resolveShortLink, shortLinkPath } from "./appointment-short-links";
 import { liveMode } from "./appointment-secrets";
 import { emailSiteOrigin } from "./appointment-email-template";
 import { ContentError, manageSiteContent, publicSiteContent } from "./appointment-content";
@@ -63,6 +64,7 @@ type Appointment = {
   linkHash?: string | null;
   linkExpiresAt?: number;
   accountLinkHash?: string;
+  customerShortLinks?: number;
   accountLinkExpiresAt?: number;
   preapproved?: boolean;
   depositDeadline?: number;
@@ -283,7 +285,7 @@ function maintenanceDeadline(appointment: Appointment) {
 function prepareMaintenanceInvite(db: Firestore, tx: Transaction, id: string, appointment: Appointment, through: string, sendEmail: boolean) {
   const token = randomBytes(32).toString("hex");
   const hash = digest(token);
-  const url = `${checkoutOrigin()}/maintenance#${id}.${token}`;
+  const url = checkoutOrigin() + shortLinkPath("maintenance", createShortLink(db, tx, "maintenance", id, token));
   tx.update(db.collection("appointments").doc(id), { maintenanceInvite: { hash, through }, maintenanceInvitedAt: Date.now() });
   if (sendEmail) queueAppointmentEmail(db, tx, `maintenance-${id}-${hash.slice(0, 16)}`, appointment.email,
     "Your monthly maintenance invitation", {
@@ -591,15 +593,16 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
     }
     const token = randomBytes(32).toString("hex");
     tx.update(ref, { linkHash: digest(token), linkExpiresAt: appointment.end + 30 * DAY, linkUpdatedAt: now, linkUpdatedBy: uid });
+    const code = createShortLink(db, tx, "appointment", id, token);
     if (body.sendEmail === true) {
-      const url = `${checkoutOrigin()}/appointment#${id}.${token}`;
+      const url = checkoutOrigin() + shortLinkPath("appointment", code);
       queueAppointmentEmail(db, tx, `share-${id}-${now}`, appointment.email, "Your detailing appointment details", {
           eyebrow: "Your appointment", heading: "Here's your appointment",
           paragraphs: ["Open your appointment to see its status, add it to your calendar, pay a balance, or request a change."],
           details: emailFacts(appointment), action: { label: "Open my appointment", url },
         });
     }
-    return { token };
+    return { token, code };
   });
 }
 
@@ -694,6 +697,20 @@ function assertLink(id: string, token: unknown, appointment?: Appointment): asse
     timingSafeEqual(Buffer.from(stored, "hex"), hash))) {
     throw new AppointmentError(404, "link_unavailable");
   }
+}
+
+// Gives a customer who opened a long link a short one to copy. Capped so one link can't fill the table.
+async function customerShortLink(db: Firestore, id: string, token: unknown) {
+  const ref = db.collection("appointments").doc(id);
+  return db.runTransaction(async tx => {
+    const appointment = (await tx.get(ref)).data() as Appointment | undefined;
+    assertLink(id, token, appointment);
+    if (appointment.linkHash !== digest(token as string)) throw new AppointmentError(404, "link_unavailable");
+    const issued = appointment.customerShortLinks ?? 0;
+    if (issued >= 20) throw new AppointmentError(429, "short_link_limit");
+    tx.update(ref, { customerShortLinks: issued + 1 });
+    return { code: createShortLink(db, tx, "appointment", id, token as string) };
+  });
 }
 
 async function detailsFromLink(db: Firestore, id: string, token: unknown) {
@@ -957,12 +974,13 @@ async function publicBooking(db: Firestore, auth: Auth, req: Request, body: Reco
       ...(customer ? { customerUid: customer.uid } : {}),
     };
     tx.create(ref, { ...record, bookingChannel: "public", acceptedAt: now });
+    const link = checkoutOrigin() + shortLinkPath("appointment", createShortLink(db, tx, "appointment", id, token));
     if (waived) {
       queueAppointmentEmail(db, tx, `request-${id}`, email, "We got your booking request", {
         eyebrow: "Request received", heading: "No deposit needed this time",
         paragraphs: [`Thanks for coming back, ${record.name.split(" ")[0] || "there"}! As a returning customer you don't need a deposit. Nieman will review your request and text to confirm.`,
           "Keep this email. The button below is your link to check status, add the appointment to your calendar, or request a change."],
-        details: emailFacts(record), action: { label: "View appointment", url: `${checkoutOrigin()}/appointment#${id}.${token}` },
+        details: emailFacts(record), action: { label: "View appointment", url: link },
       });
       return { id, ...customerDetails(record) };
     }
@@ -971,7 +989,7 @@ async function publicBooking(db: Firestore, auth: Auth, req: Request, body: Reco
       eyebrow: "Almost booked", heading: "Lock in your time with the deposit",
       paragraphs: [`Thanks, ${record.name.split(" ")[0] || "there"}! Pay the ${emailMoney(record.depositCents)} deposit to hold your spot. It goes toward the cost of your detail.`,
         "Keep this email. The button below is your link to check status, add the appointment to your calendar, or request a change."],
-      details: emailFacts(record), action: { label: "Pay deposit and view appointment", url: `${checkoutOrigin()}/appointment#${id}.${token}` },
+      details: emailFacts(record), action: { label: "Pay deposit and view appointment", url: link },
     });
     return { id, ...customerDetails(record) };
   });
@@ -1497,6 +1515,11 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
     let result;
     if (action === "details") {
       result = await detailsFromLink(db, identifier(body.id)!, body.token);
+    } else if (action === "resolve-short-link") {
+      result = await resolveShortLink(db, body.code, body.kind === "maintenance" ? "maintenance" : "appointment");
+      if (!result) throw new AppointmentError(404, "link_unavailable");
+    } else if (action === "short-link") {
+      result = await customerShortLink(db, identifier(body.id)!, body.token);
     } else if (action === "quote-context") {
       const quote = await bookingQuote(db, body.quoteReceipt);
       result = quote ? {

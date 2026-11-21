@@ -10,6 +10,7 @@ const firebase_functions_1 = require("firebase-functions");
 const appointment_email_1 = require("./appointment-email");
 const ops_health_1 = require("./ops-health");
 const telegram_1 = require("./telegram");
+const appointment_short_links_1 = require("./appointment-short-links");
 const appointment_secrets_1 = require("./appointment-secrets");
 const appointment_email_template_1 = require("./appointment-email-template");
 const appointment_content_1 = require("./appointment-content");
@@ -194,7 +195,7 @@ function maintenanceDeadline(appointment) {
 function prepareMaintenanceInvite(db, tx, id, appointment, through, sendEmail) {
     const token = (0, node_crypto_1.randomBytes)(32).toString("hex");
     const hash = digest(token);
-    const url = `${checkoutOrigin()}/maintenance#${id}.${token}`;
+    const url = checkoutOrigin() + (0, appointment_short_links_1.shortLinkPath)("maintenance", (0, appointment_short_links_1.createShortLink)(db, tx, "maintenance", id, token));
     tx.update(db.collection("appointments").doc(id), { maintenanceInvite: { hash, through }, maintenanceInvitedAt: Date.now() });
     if (sendEmail)
         (0, appointment_email_1.queueAppointmentEmail)(db, tx, `maintenance-${id}-${hash.slice(0, 16)}`, appointment.email, "Your monthly maintenance invitation", {
@@ -533,15 +534,16 @@ async function changeAppointment(db, uid, id, action, body) {
         }
         const token = (0, node_crypto_1.randomBytes)(32).toString("hex");
         tx.update(ref, { linkHash: digest(token), linkExpiresAt: appointment.end + 30 * DAY, linkUpdatedAt: now, linkUpdatedBy: uid });
+        const code = (0, appointment_short_links_1.createShortLink)(db, tx, "appointment", id, token);
         if (body.sendEmail === true) {
-            const url = `${checkoutOrigin()}/appointment#${id}.${token}`;
+            const url = checkoutOrigin() + (0, appointment_short_links_1.shortLinkPath)("appointment", code);
             (0, appointment_email_1.queueAppointmentEmail)(db, tx, `share-${id}-${now}`, appointment.email, "Your detailing appointment details", {
                 eyebrow: "Your appointment", heading: "Here's your appointment",
                 paragraphs: ["Open your appointment to see its status, add it to your calendar, pay a balance, or request a change."],
                 details: emailFacts(appointment), action: { label: "Open my appointment", url },
             });
         }
-        return { token };
+        return { token, code };
     });
 }
 async function acceptAlternate(db, id, body) {
@@ -638,6 +640,21 @@ function assertLink(id, token, appointment) {
         (0, node_crypto_1.timingSafeEqual)(Buffer.from(stored, "hex"), hash))) {
         throw new AppointmentError(404, "link_unavailable");
     }
+}
+// Gives a customer who opened a long link a short one to copy. Capped so one link can't fill the table.
+async function customerShortLink(db, id, token) {
+    const ref = db.collection("appointments").doc(id);
+    return db.runTransaction(async (tx) => {
+        const appointment = (await tx.get(ref)).data();
+        assertLink(id, token, appointment);
+        if (appointment.linkHash !== digest(token))
+            throw new AppointmentError(404, "link_unavailable");
+        const issued = appointment.customerShortLinks ?? 0;
+        if (issued >= 20)
+            throw new AppointmentError(429, "short_link_limit");
+        tx.update(ref, { customerShortLinks: issued + 1 });
+        return { code: (0, appointment_short_links_1.createShortLink)(db, tx, "appointment", id, token) };
+    });
 }
 async function detailsFromLink(db, id, token) {
     const appointment = await readAppointment(db, id);
@@ -929,12 +946,13 @@ async function publicBooking(db, auth, req, body) {
             ...(customer ? { customerUid: customer.uid } : {}),
         };
         tx.create(ref, { ...record, bookingChannel: "public", acceptedAt: now });
+        const link = checkoutOrigin() + (0, appointment_short_links_1.shortLinkPath)("appointment", (0, appointment_short_links_1.createShortLink)(db, tx, "appointment", id, token));
         if (waived) {
             (0, appointment_email_1.queueAppointmentEmail)(db, tx, `request-${id}`, email, "We got your booking request", {
                 eyebrow: "Request received", heading: "No deposit needed this time",
                 paragraphs: [`Thanks for coming back, ${record.name.split(" ")[0] || "there"}! As a returning customer you don't need a deposit. Nieman will review your request and text to confirm.`,
                     "Keep this email. The button below is your link to check status, add the appointment to your calendar, or request a change."],
-                details: emailFacts(record), action: { label: "View appointment", url: `${checkoutOrigin()}/appointment#${id}.${token}` },
+                details: emailFacts(record), action: { label: "View appointment", url: link },
             });
             return { id, ...customerDetails(record) };
         }
@@ -944,7 +962,7 @@ async function publicBooking(db, auth, req, body) {
             eyebrow: "Almost booked", heading: "Lock in your time with the deposit",
             paragraphs: [`Thanks, ${record.name.split(" ")[0] || "there"}! Pay the ${emailMoney(record.depositCents)} deposit to hold your spot. It goes toward the cost of your detail.`,
                 "Keep this email. The button below is your link to check status, add the appointment to your calendar, or request a change."],
-            details: emailFacts(record), action: { label: "Pay deposit and view appointment", url: `${checkoutOrigin()}/appointment#${id}.${token}` },
+            details: emailFacts(record), action: { label: "Pay deposit and view appointment", url: link },
         });
         return { id, ...customerDetails(record) };
     });
@@ -1507,6 +1525,14 @@ async function handleAppointments(db, auth, req, res, action) {
         let result;
         if (action === "details") {
             result = await detailsFromLink(db, identifier(body.id), body.token);
+        }
+        else if (action === "resolve-short-link") {
+            result = await (0, appointment_short_links_1.resolveShortLink)(db, body.code, body.kind === "maintenance" ? "maintenance" : "appointment");
+            if (!result)
+                throw new AppointmentError(404, "link_unavailable");
+        }
+        else if (action === "short-link") {
+            result = await customerShortLink(db, identifier(body.id), body.token);
         }
         else if (action === "quote-context") {
             const quote = await bookingQuote(db, body.quoteReceipt);

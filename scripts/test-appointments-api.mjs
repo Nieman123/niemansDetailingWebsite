@@ -107,6 +107,28 @@ assert.equal((await fetch(storedUrl, { headers: { Authorization: `Bearer ${stran
 const replacement = await asOwner('issue-link', { id });
 assert.equal((await open(issue.result.token)).status, 404);
 assert.equal((await open(replacement.result.token)).status, 200);
+
+// Short links: /a/<code> resolves to the current long link, a replaced link's short code stops working,
+// and stored rows never hold the code or the token in the clear.
+const resolve = (code, kind = 'appointment') => post('resolve-short-link', { code, kind });
+assert.match(replacement.result.code, /^[A-Za-z0-9]{10}$/);
+assert.deepEqual((await resolve(replacement.result.code)).result, { id, token: replacement.result.token });
+assert.equal((await resolve(replacement.result.code, 'maintenance')).status, 404);
+assert.equal((await resolve('AAAAAAAAAA')).status, 404);
+assert.equal((await resolve('short')).status, 404);
+const oldShort = (await resolve(issue.result.code)).result;
+assert.equal((await open(oldShort.token)).status, 404, 'a replaced link keeps its short code dead');
+const shortRows = JSON.stringify((await db.collection('appointmentShortLinks').where('appointmentId', '==', id).get()).docs.map(row => row.data()));
+for (const secret of [issue.result.code, replacement.result.code, issue.result.token, replacement.result.token]) assert(!shortRows.includes(secret));
+const customerCode = (await post('short-link', { id, token: replacement.result.token })).result.code;
+assert.equal((await resolve(customerCode)).result.token, replacement.result.token);
+assert.equal((await post('short-link', { id, token: issue.result.token })).status, 404);
+const page = await fetch(`${origin}/a/${customerCode}`);
+assert.equal(page.status, 200);
+assert.match(await page.text(), /appointment-page\.mjs/);
+assert.match(page.headers.get('referrer-policy') ?? '', /no-referrer/);
+assert.match(page.headers.get('cache-control') ?? '', /no-store/);
+console.log('PASS: Short appointment links resolve, expire with their long link, and stay sealed at rest.');
 assert.equal((await asOwner('cancel', { id })).result.status, 'cancelled');
 assert.equal((await open(replacement.result.token)).result.status, 'cancelled');
 assert.equal((await asOwner('create', { ...appointment, requestId: randomUUID() })).result.status, 'confirmed');
@@ -166,6 +188,10 @@ const cleared = { id: job.id, paymentId: check.requestId, requestId: randomUUID(
 assert.equal((await asOwner('clear-check', cleared)).result.balanceCents, 0);
 assert.equal((await asOwner('clear-check', cleared)).result.balanceCents, 0);
 assert.equal((await invitations()).size, 1);
+const invitationText = (await invitations()).docs[0].get('text');
+const inviteCode = /\/m\/([A-Za-z0-9]{10})/.exec(invitationText)?.[1];
+assert(inviteCode, 'maintenance invitations use a short link');
+assert.equal((await post('maintenance-offer', (await post('resolve-short-link', { code: inviteCode, kind: 'maintenance' })).result)).status, 200);
 
 // Sales tax ships off. Once on, booking captures the rate for estimates, completion freezes the tax on the
 // subtotal, payments cover the service price before the tax, and the export reports the tax collected.
@@ -275,6 +301,10 @@ try {
   const stored = (await db.collection('appointments').doc(booked.result.id).get()).data();
   assert.deepEqual([stored.email,stored.address,stored.phone],['phone.customer@example.test','','+18285550199']);
   assert.equal(stored.customerNotes,'Gate code 1234. Park by the garage.');
+  const requestEmail = (await db.collection('appointmentEmails').doc(`request-${booked.result.id}`).get()).get('text');
+  const bookedCode = /\/a\/([A-Za-z0-9]{10})/.exec(requestEmail)?.[1];
+  assert(bookedCode && !requestEmail.includes(phoneBooking.token), 'booking emails carry the short link');
+  assert.equal((await post('resolve-short-link',{code:bookedCode})).result.id,booked.result.id);
   assert.equal((await callWithCalendar('book',phoneBooking)).result.id,booked.result.id);
   assert.equal((await callWithCalendar('book',{...phoneBooking,token:'c'.repeat(64)})).error,'existing_booking_hold');
   const expected = Object.fromEntries(['name','phone','email','vehicle','address'].map(key=>[key,stored[key]]));
