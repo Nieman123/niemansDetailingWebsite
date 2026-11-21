@@ -53,8 +53,17 @@
         <h3>Manage appointment</h3>
         <div id="alternate-offer" hidden><p id="alternate-time"></p><button class="btn primary" type="button" id="accept-alternate">Accept this time</button></div>
         <form id="request-move">
-          <label class="field"><span>Requested new time (Eastern)</span><input name="start" type="datetime-local" required></label>
-          <button class="btn secondary" type="submit">Request a different time</button>
+          <button class="btn secondary" id="open-move" type="button" aria-expanded="false" aria-controls="move-panel">Request a different time</button>
+          <div id="move-panel" hidden>
+            <p class="slot-note">Pick an open time. Your current time stays reserved until Nieman approves the change.</p>
+            <div id="move-calendar"></div>
+            <div id="move-choice" hidden>
+              <p><strong>New time:</strong> <span id="move-time"></span></p>
+              <p id="move-deposit" class="slot-note" hidden></p>
+              <button class="btn primary" id="send-move" type="submit">Send request</button>
+            </div>
+            <p><button class="quiet" id="close-move" type="button">Keep my current time</button></p>
+          </div>
         </form>
         <p><button class="btn secondary" id="cancel-appointment" type="button">Cancel appointment</button></p>
       </section>

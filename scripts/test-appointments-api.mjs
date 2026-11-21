@@ -107,6 +107,28 @@ assert.equal((await fetch(storedUrl, { headers: { Authorization: `Bearer ${stran
 const replacement = await asOwner('issue-link', { id });
 assert.equal((await open(issue.result.token)).status, 404);
 assert.equal((await open(replacement.result.token)).status, 200);
+
+// Short links: /a/<code> resolves to the current long link, a replaced link's short code stops working,
+// and stored rows never hold the code or the token in the clear.
+const resolve = (code, kind = 'appointment') => post('resolve-short-link', { code, kind });
+assert.match(replacement.result.code, /^[A-Za-z0-9]{10}$/);
+assert.deepEqual((await resolve(replacement.result.code)).result, { id, token: replacement.result.token });
+assert.equal((await resolve(replacement.result.code, 'maintenance')).status, 404);
+assert.equal((await resolve('AAAAAAAAAA')).status, 404);
+assert.equal((await resolve('short')).status, 404);
+const oldShort = (await resolve(issue.result.code)).result;
+assert.equal((await open(oldShort.token)).status, 404, 'a replaced link keeps its short code dead');
+const shortRows = JSON.stringify((await db.collection('appointmentShortLinks').where('appointmentId', '==', id).get()).docs.map(row => row.data()));
+for (const secret of [issue.result.code, replacement.result.code, issue.result.token, replacement.result.token]) assert(!shortRows.includes(secret));
+const customerCode = (await post('short-link', { id, token: replacement.result.token })).result.code;
+assert.equal((await resolve(customerCode)).result.token, replacement.result.token);
+assert.equal((await post('short-link', { id, token: issue.result.token })).status, 404);
+const page = await fetch(`${origin}/a/${customerCode}`);
+assert.equal(page.status, 200);
+assert.match(await page.text(), /appointment-page\.mjs/);
+assert.match(page.headers.get('referrer-policy') ?? '', /no-referrer/);
+assert.match(page.headers.get('cache-control') ?? '', /no-store/);
+console.log('PASS: Short appointment links resolve, expire with their long link, and stay sealed at rest.');
 assert.equal((await asOwner('cancel', { id })).result.status, 'cancelled');
 assert.equal((await open(replacement.result.token)).result.status, 'cancelled');
 assert.equal((await asOwner('create', { ...appointment, requestId: randomUUID() })).result.status, 'confirmed');
@@ -133,11 +155,25 @@ assert.equal((await pendingRef.collection('ledger').get()).size, 1);
 assert.equal((await asOwner('cancel', { id: pending.id })).result.refundState, 'queued');
 
 const job = (await asOwner('create', { ...appointment, requestId: randomUUID(), start: paidLater + 86_400_000 })).result;
+assert.equal((await post('save-notes', { id: job.id, workNotes: 'Sneaky' })).status, 401);
+assert.equal((await post('save-notes', { id: job.id, workNotes: 'Sneaky' }, stranger.idToken)).status, 403);
+const noted = await asOwner('save-notes', { id: job.id, workNotes: '  Owner-only note: side gate sticks.  ' });
+assert.equal(noted.result.workNotes, 'Owner-only note: side gate sticks.');
+assert.equal((await asOwner('owner-detail', { id: job.id })).result.workNotes, 'Owner-only note: side gate sticks.');
+assert((await asOwner('list', { search: 'side gate sticks' })).result.records.some(record => record.id === job.id));
+const jobLink = await asOwner('issue-link', { id: job.id });
+const customerView = await post('details', { id: job.id, token: jobLink.result.token });
+assert.equal(customerView.status, 200);
+assert(!('workNotes' in customerView.result));
+assert(!JSON.stringify(customerView).includes('side gate'), 'private notes must not reach the customer');
+assert.equal((await asOwner('save-notes', { id, workNotes: 'Cancelled, call back in spring.' })).result.workNotes, 'Cancelled, call back in spring.');
+console.log('PASS: Private owner notes save on any appointment and stay out of customer views.');
 assert.equal((await asOwner('finish-job', { id: job.id, finalCents: 31_000 })).error, 'scope_acceptance_required');
 const finished = await asOwner('finish-job', {
   id: job.id, finalCents: 31_000, scopeAccepted: true, scopeChanges: 'Approved extra work', maintenanceInviteAfterPayment: true,
 });
 assert.equal(finished.result.balanceCents, 31_000);
+assert.equal(finished.result.workNotes, 'Owner-only note: side gate sticks.');
 const invitations = () => db.collection('appointmentEmails').where('maintenance.appointmentId', '==', job.id).get();
 assert.equal((await invitations()).size, 0);
 const manual = { id: job.id, amountCents: 10_000, method: 'cash', requestId: randomUUID() };
@@ -152,6 +188,10 @@ const cleared = { id: job.id, paymentId: check.requestId, requestId: randomUUID(
 assert.equal((await asOwner('clear-check', cleared)).result.balanceCents, 0);
 assert.equal((await asOwner('clear-check', cleared)).result.balanceCents, 0);
 assert.equal((await invitations()).size, 1);
+const invitationText = (await invitations()).docs[0].get('text');
+const inviteCode = /\/m\/([A-Za-z0-9]{10})/.exec(invitationText)?.[1];
+assert(inviteCode, 'maintenance invitations use a short link');
+assert.equal((await post('maintenance-offer', (await post('resolve-short-link', { code: inviteCode, kind: 'maintenance' })).result)).status, 200);
 
 // Sales tax ships off. Once on, booking captures the rate for estimates, completion freezes the tax on the
 // subtotal, payments cover the service price before the tax, and the export reports the tax collected.
@@ -229,7 +269,9 @@ await db.collection('appointmentSettings').doc('booking').set(publicSettings);
 const originalFetch = globalThis.fetch;
 let calendarReads = 0;
 let personalBusy = [];
+let detailEvents = [];
 globalThis.fetch = (url, init) => {
+  if (String(url).includes('/calendars/detail/events?')) return Promise.resolve(Response.json({items:detailEvents}));
   if (String(url) === 'https://oauth2.googleapis.com/token') return Promise.resolve(Response.json({access_token:'demo',expires_in:3600}));
   if (String(url).endsWith('/freeBusy')) {
     calendarReads++;
@@ -259,6 +301,10 @@ try {
   const stored = (await db.collection('appointments').doc(booked.result.id).get()).data();
   assert.deepEqual([stored.email,stored.address,stored.phone],['phone.customer@example.test','','+18285550199']);
   assert.equal(stored.customerNotes,'Gate code 1234. Park by the garage.');
+  const requestEmail = (await db.collection('appointmentEmails').doc(`request-${booked.result.id}`).get()).get('text');
+  const bookedCode = /\/a\/([A-Za-z0-9]{10})/.exec(requestEmail)?.[1];
+  assert(bookedCode && !requestEmail.includes(phoneBooking.token), 'booking emails carry the short link');
+  assert.equal((await post('resolve-short-link',{code:bookedCode})).result.id,booked.result.id);
   assert.equal((await callWithCalendar('book',phoneBooking)).result.id,booked.result.id);
   assert.equal((await callWithCalendar('book',{...phoneBooking,token:'c'.repeat(64)})).error,'existing_booking_hold');
   const expected = Object.fromEntries(['name','phone','email','vehicle','address'].map(key=>[key,stored[key]]));
@@ -299,6 +345,37 @@ try {
   console.log('PASS: Owner time check explains conflicts, and the owner can book over one on purpose.');
   console.log('PASS: Owner-only appointment details and calendar with public booking paused.');
   await db.collection('appointmentSettings').doc('booking').update({ enabled: true });
+
+  // Rescheduling uses the booking calendar for the appointment's own length, without the appointment blocking itself.
+  const moveId = booked.result.id, moveToken = phoneBooking.token, iso = value => new Date(value).toISOString();
+  await db.collection('appointments').doc(moveId).update({ status: 'confirmed', paidDeposit: 5000 });
+  detailEvents = [{ id: 'a' + moveId, start: { dateTime: iso(phoneBooking.start) }, end: { dateTime: iso(phoneBooking.start + 60 * 60_000) } }];
+  const moveSlots = (await callWithCalendar('reschedule-availability', { id: moveId, token: moveToken, month })).result;
+  assert.equal(moveSlots.horizonDays, 45);
+  assert(!moveSlots.slots.includes(phoneBooking.start), 'the current time is not offered');
+  assert(moveSlots.slots.includes(phoneBooking.start + 30 * 60_000), 'the appointment and its calendar event do not block it');
+  const otherAt = moveSlots.slots.at(-2);
+  detailEvents.push({ id: 'aother', start: { dateTime: iso(otherAt) }, end: { dateTime: iso(otherAt + 30 * 60_000) } });
+  const withOther = (await callWithCalendar('reschedule-availability', { id: moveId, token: moveToken, month })).result.slots;
+  assert(!withOther.includes(otherAt), 'other detailing calendar events still block');
+  assert(withOther.includes(phoneBooking.start + 30 * 60_000));
+  detailEvents = [];
+  assert.equal((await callWithCalendar('reschedule-availability', { id: moveId, token: 'f'.repeat(64), month })).error, 'link_unavailable');
+  assert.equal((await callWithCalendar('request-reschedule', { id: moveId, token: moveToken, start: phoneBooking.start + 12 * 3_600_000 })).error, 'time_unavailable');
+  const wanted = moveSlots.slots.at(-1);
+  assert.equal((await callWithCalendar('request-reschedule', { id: moveId, token: moveToken, start: wanted })).result.hasRescheduleRequest, true);
+  const ownerMove = (await callWithCalendar('admin-availability', { month, durationMinutes: 60, except: moveId }, owner.idToken)).result.slots;
+  assert(ownerMove.includes(phoneBooking.start + 30 * 60_000), 'the owner calendar ignores the appointment being moved');
+  assert(!(await checkTime({ start: phoneBooking.start + 30 * 60_000, except: moveId })).result.issues.includes('overlap'));
+  personalBusy = [{ start: iso(wanted), end: iso(wanted + 60 * 60_000) }];
+  assert((await checkTime({ start: wanted, except: moveId })).result.issues.includes('overlap'));
+  assert.equal((await callWithCalendar('reschedule', { id: moveId, start: wanted }, owner.idToken)).error, 'time_unavailable');
+  const movedAnyway = await callWithCalendar('reschedule', { id: moveId, start: wanted, allowOverlap: true }, owner.idToken);
+  personalBusy = [];
+  assert.equal(movedAnyway.result.start, wanted, JSON.stringify(movedAnyway));
+  assert.equal(movedAnyway.result.rescheduleRequest, null);
+  assert.equal((await db.collection('appointments').doc(moveId).get()).get('overlapApproved'), true);
+  console.log('PASS: Customer and owner reschedule calendars, customer request rules, and moving over a conflict on purpose.');
   const quoteReceipt = { id:'a'.repeat(64),token:'d'.repeat(64) };
   const quoteRef = db.collection('leads').doc(quoteReceipt.id);
   await quoteRef.set({

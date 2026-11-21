@@ -109,9 +109,13 @@ async function busyWindows(config, start, end, except) {
             if (!result.ok)
                 throw new Error("calendar_availability_failed");
             const page = await result.json();
-            if (page.items?.some(evt => evt.id !== eventId(except) && evt.status !== "cancelled" && evt.transparency !== "transparent")) {
-                windows.push({ start, end });
-                break;
+            for (const evt of page.items ?? []) {
+                if (evt.id === eventId(except) || evt.status === "cancelled" || evt.transparency === "transparent")
+                    continue;
+                // Timed events block their own window; an all-day event blocks the whole range looked up.
+                const from = evt.start?.dateTime ? Date.parse(evt.start.dateTime) : start;
+                const to = evt.end?.dateTime ? Date.parse(evt.end.dateTime) : end;
+                windows.push({ start: from, end: to });
             }
             if (!page.nextPageToken)
                 break;

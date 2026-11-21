@@ -7,6 +7,7 @@ import type { Response } from "express";
 import { deliverAppointmentEmails, emailConfigured, queueAppointmentEmail } from "./appointment-email";
 import { describeOpsEvent, pruneOpsEvents, recordOpsEvent } from "./ops-health";
 import { telegramConfigured } from "./telegram";
+import { createShortLink, resolveShortLink, shortLinkPath } from "./appointment-short-links";
 import { liveMode } from "./appointment-secrets";
 import { emailSiteOrigin } from "./appointment-email-template";
 import { ContentError, manageSiteContent, publicSiteContent } from "./appointment-content";
@@ -63,6 +64,7 @@ type Appointment = {
   linkHash?: string | null;
   linkExpiresAt?: number;
   accountLinkHash?: string;
+  customerShortLinks?: number;
   accountLinkExpiresAt?: number;
   preapproved?: boolean;
   depositDeadline?: number;
@@ -87,7 +89,7 @@ type Appointment = {
   scopeChanges?: string;
   completedAt?: number;
   rescheduleRequest?: { start: number; requestedAt: number };
-  alternateOffer?: { start: number; offeredAt: number; expiresAt: number } | null;
+  alternateOffer?: { start: number; offeredAt: number; expiresAt: number; allowOverlap?: boolean } | null;
   calendarSequence?: number;
   startedAt?: number;
   calendarDueAt?: number | null;
@@ -218,7 +220,8 @@ function customerDetails(appointment: Appointment) {
     calendarSequence: appointment.calendarSequence ?? 0,
     hasRescheduleRequest: !!appointment.rescheduleRequest,
     paymentUnderReview: !!appointment.paymentReview,
-    alternateOffer: appointment.alternateOffer && appointment.alternateOffer.expiresAt > Date.now() ? appointment.alternateOffer : null,
+    alternateOffer: appointment.alternateOffer && appointment.alternateOffer.expiresAt > Date.now()
+      ? { start: appointment.alternateOffer.start, offeredAt: appointment.alternateOffer.offeredAt, expiresAt: appointment.alternateOffer.expiresAt } : null,
     depositRefundable: (appointment.paidDeposit ?? 0) > 0 && (appointment.status === "pending_approval" ||
       (appointment.status === "confirmed" && !depositLock(appointment, Date.now()))),
   };
@@ -282,7 +285,7 @@ function maintenanceDeadline(appointment: Appointment) {
 function prepareMaintenanceInvite(db: Firestore, tx: Transaction, id: string, appointment: Appointment, through: string, sendEmail: boolean) {
   const token = randomBytes(32).toString("hex");
   const hash = digest(token);
-  const url = `${checkoutOrigin()}/maintenance#${id}.${token}`;
+  const url = checkoutOrigin() + shortLinkPath("maintenance", createShortLink(db, tx, "maintenance", id, token));
   tx.update(db.collection("appointments").doc(id), { maintenanceInvite: { hash, through }, maintenanceInvitedAt: Date.now() });
   if (sendEmail) queueAppointmentEmail(db, tx, `maintenance-${id}-${hash.slice(0, 16)}`, appointment.email,
     "Your monthly maintenance invitation", {
@@ -385,9 +388,11 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
     }
   }
   let newStart: number | undefined;
+  // The owner can move a booking over a conflict on purpose ("Book it anyway"), as on New booking.
+  const allowOverlap = body.allowOverlap === true;
   if (action === "reschedule" || action === "offer-alternate") {
     newStart = validMoveStart(body.start ?? previous.rescheduleRequest?.start);
-    await assertCalendarOpen({ ...previous, start: newStart, end: newStart + previous.end - previous.start }, id);
+    if (!allowOverlap) await assertCalendarOpen({ ...previous, start: newStart, end: newStart + previous.end - previous.start }, id);
   } else if ((action === "approve" || (action === "issue-link" && previous.status === "draft" && stripe)) && !previous.overlapApproved) {
     await assertCalendarOpen(previous, id);
   }
@@ -408,7 +413,7 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
       if (!newStart || appointment.status !== "pending_approval" || appointment.start <= now || appointment.start !== previous.start) {
         throw new AppointmentError(409, "status_changed");
       }
-      const offer = { start: newStart, offeredAt: now, expiresAt: Math.min(appointment.start, newStart, now + DAY) };
+      const offer = { start: newStart, offeredAt: now, expiresAt: Math.min(appointment.start, newStart, now + DAY), ...(allowOverlap ? { allowOverlap: true } : {}) };
       tx.update(ref, { alternateOffer: offer, alternateOfferedBy: uid });
       queueAppointmentEmail(db, tx, `alternate-${id}-${now}`, appointment.email, "A different time for your detail", {
           eyebrow: "New time offered", heading: "Can we try a different time?",
@@ -423,14 +428,14 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
         (body.start == null && appointment.rescheduleRequest?.start !== newStart) ||
         (appointment.status === "pending_approval" && appointment.rescheduleRequest?.start !== newStart)) throw new AppointmentError(409, "status_changed");
       const moved = { ...appointment, start: newStart, end: newStart + appointment.end - appointment.start };
-      await updateReservation(db, tx, reservationFor(id, moved), false, now, reservationFor(id, appointment));
+      await updateReservation(db, tx, reservationFor(id, moved), false, now, reservationFor(id, appointment), allowOverlap);
       const locked = appointment.status === "confirmed" ? depositLock(appointment, now) || depositLock(moved, now) : null;
-      const update = { start: moved.start, end: moved.end, depositLockedAt: locked, rescheduleRequest: null, alternateOffer: null, overlapApproved: false,
+      const update = { start: moved.start, end: moved.end, depositLockedAt: locked, rescheduleRequest: null, alternateOffer: null, overlapApproved: allowOverlap,
         calendarSequence: (appointment.calendarSequence ?? 0) + 1, ...calendarUpdate(now),
         ...(appointment.status === "pending_approval" ? { reconcileAt: moved.start } : {}),
         ...(appointment.linkHash ? { linkExpiresAt: moved.end + 30 * DAY } : {}),
       };
-      tx.create(ref.collection("history").doc(), { kind: "reschedule", from: appointment.start, to: moved.start, at: now, by: uid });
+      tx.create(ref.collection("history").doc(), { kind: "reschedule", from: appointment.start, to: moved.start, at: now, by: uid, ...(allowOverlap ? { overlapApproved: true } : {}) });
       tx.update(ref, update);
       queueAppointmentEmail(db, tx, `moved-${id}-${update.calendarSequence}`, appointment.email, "Your detailing appointment time changed", {
           eyebrow: "Rescheduled", heading: "Your appointment has a new time",
@@ -470,9 +475,19 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
       tx.update(ref, { status: "no_show", noShowAt: now, noShowBy: uid, noShowReason: text(body.reason, 300), depositLockedAt: depositLock(appointment, now) });
       return adminDetails(id, { ...appointment, status: "no_show" });
     }
+    if (action === "save-notes") {
+      // The owner's private notes, editable on any appointment. Admin views and the owner's calendar only.
+      const workNotes = text(body.workNotes, 5000);
+      const shown = !["draft", "cancelled"].includes(appointment.status);
+      const update = { workNotes, workUpdatedAt: now, workUpdatedBy: uid,
+        ...(shown && workNotes !== (appointment.workNotes ?? "") ? calendarUpdate(now) : {}) };
+      tx.update(ref, update);
+      return adminDetails(id, { ...appointment, ...update });
+    }
     if (action === "start-job" || action === "save-job" || action === "finish-job") {
       if (!["confirmed", "in_progress"].includes(appointment.status)) throw new AppointmentError(409, "status_changed");
-      const work = { workNotes: text(body.workNotes, 5000), scopeChanges: text(body.scopeChanges, 1500), workUpdatedAt: now, workUpdatedBy: uid };
+      // A request without notes (an older screen, or a script) keeps the notes already saved.
+      const work = { workNotes: typeof body.workNotes === "string" ? text(body.workNotes, 5000) : appointment.workNotes ?? "", scopeChanges: text(body.scopeChanges, 1500), workUpdatedAt: now, workUpdatedBy: uid };
       if (action === "finish-job") {
         const final = body.finalCents;
         if (typeof final !== "number" || !Number.isSafeInteger(final) || final < (appointment.paidDeposit ?? 0) || final > 10_000_000) {
@@ -578,15 +593,16 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
     }
     const token = randomBytes(32).toString("hex");
     tx.update(ref, { linkHash: digest(token), linkExpiresAt: appointment.end + 30 * DAY, linkUpdatedAt: now, linkUpdatedBy: uid });
+    const code = createShortLink(db, tx, "appointment", id, token);
     if (body.sendEmail === true) {
-      const url = `${checkoutOrigin()}/appointment#${id}.${token}`;
+      const url = checkoutOrigin() + shortLinkPath("appointment", code);
       queueAppointmentEmail(db, tx, `share-${id}-${now}`, appointment.email, "Your detailing appointment details", {
           eyebrow: "Your appointment", heading: "Here's your appointment",
           paragraphs: ["Open your appointment to see its status, add it to your calendar, pay a balance, or request a change."],
           details: emailFacts(appointment), action: { label: "Open my appointment", url },
         });
     }
-    return { token };
+    return { token, code };
   });
 }
 
@@ -598,7 +614,7 @@ async function acceptAlternate(db: Firestore, id: string, body: Record<string, u
     throw new AppointmentError(409, "status_changed");
   }
   const moved = { ...previous, start: offer.start, end: offer.start + previous.end - previous.start };
-  await assertCalendarOpen(moved, id);
+  if (!offer.allowOverlap) await assertCalendarOpen(moved, id);
   const ref = db.collection("appointments").doc(id);
   return db.runTransaction(async tx => {
     const appointment = (await tx.get(ref)).data() as Appointment | undefined;
@@ -606,9 +622,9 @@ async function acceptAlternate(db: Firestore, id: string, body: Record<string, u
     const now = Date.now();
     if (appointment.status !== "pending_approval" || appointment.alternateOffer?.offeredAt !== offer.offeredAt ||
       appointment.start !== previous.start || offer.expiresAt <= now) throw new AppointmentError(409, "status_changed");
-    await updateReservation(db, tx, reservationFor(id, moved), false, now, reservationFor(id, appointment));
+    await updateReservation(db, tx, reservationFor(id, moved), false, now, reservationFor(id, appointment), !!offer.allowOverlap);
     const update = {
-      start: moved.start, end: moved.end, status: "confirmed" as const, depositLockedAt: depositLock(moved, now),
+      start: moved.start, end: moved.end, status: "confirmed" as const, depositLockedAt: depositLock(moved, now), overlapApproved: !!offer.allowOverlap,
       confirmedAt: now, confirmedBy: "accepted_owner_offer", reconcileAt: null,
       alternateOffer: null, rescheduleRequest: null, calendarSequence: (appointment.calendarSequence ?? 0) + 1,
       linkExpiresAt: moved.end + 30 * DAY, ...calendarUpdate(now),
@@ -647,6 +663,24 @@ async function maintenanceEnrollment(db: Firestore, body: Record<string, unknown
   });
 }
 
+async function movingAppointment(db: Firestore, value: unknown) {
+  const id = identifier(value, true);
+  if (!id) return undefined;
+  const appointment = await readAppointment(db, id);
+  if (!appointment) throw new AppointmentError(404, "record_not_found");
+  return { id, minutes: Math.round((appointment.end - appointment.start) / MINUTE) };
+}
+
+const movable = (appointment: Appointment) => appointment.start > Date.now() && ["confirmed", "pending_approval"].includes(appointment.status);
+
+// Open times a customer can ask to move to: the public booking rules (days, hours, notice, blocked dates,
+// horizon) and calendars, for the appointment's own length, not counting the appointment itself.
+async function customerMoveSlots(db: Firestore, id: string, appointment: Appointment, body: Record<string, unknown>) {
+  if (!movable(appointment)) throw new AppointmentError(409, "status_changed");
+  const { slots } = await getAvailability(db, body, false, { id, minutes: Math.round((appointment.end - appointment.start) / MINUTE) });
+  return slots.filter(start => start !== appointment.start);
+}
+
 function validMoveStart(value: unknown) {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value % MINUTE !== 0 || value <= Date.now() || value > Date.now() + 2 * 366 * DAY) {
     throw new AppointmentError(400, "invalid_time");
@@ -663,6 +697,20 @@ function assertLink(id: string, token: unknown, appointment?: Appointment): asse
     timingSafeEqual(Buffer.from(stored, "hex"), hash))) {
     throw new AppointmentError(404, "link_unavailable");
   }
+}
+
+// Gives a customer who opened a long link a short one to copy. Capped so one link can't fill the table.
+async function customerShortLink(db: Firestore, id: string, token: unknown) {
+  const ref = db.collection("appointments").doc(id);
+  return db.runTransaction(async tx => {
+    const appointment = (await tx.get(ref)).data() as Appointment | undefined;
+    assertLink(id, token, appointment);
+    if (appointment.linkHash !== digest(token as string)) throw new AppointmentError(404, "link_unavailable");
+    const issued = appointment.customerShortLinks ?? 0;
+    if (issued >= 20) throw new AppointmentError(429, "short_link_limit");
+    tx.update(ref, { customerShortLinks: issued + 1 });
+    return { code: createShortLink(db, tx, "appointment", id, token as string) };
+  });
 }
 
 async function detailsFromLink(db: Firestore, id: string, token: unknown) {
@@ -709,11 +757,14 @@ async function getSettings(db: Firestore) {
   return ((await settingsDoc(db).get()).data() as BookingSettings | undefined) ?? emptyBookingSettings;
 }
 
-async function getAvailability(db: Firestore, body: Record<string, unknown>, owner = false) {
+// moving: an appointment being rescheduled. Its own reservation and calendar event don't block it,
+// and its current length is used instead of a service's.
+async function getAvailability(db: Firestore, body: Record<string, unknown>, owner = false, moving?: { id: string; minutes: number }) {
   const configured = await getSettings(db);
   const settings = owner ? { ...configured, enabled: true, minimumHours: body.deposit === "required" ? 0.6 : 0 } : configured;
   let service = settings.services.find(item => item.id === body.serviceId);
-  if (owner) {
+  if (moving) service = { id: "", name: "", cents: 0, duration: moving.minutes };
+  else if (owner) {
     const duration = body.durationMinutes;
     if (typeof duration !== "number" || !Number.isInteger(duration) || duration < 15 || duration > 7 * 1440) {
       throw new AppointmentError(400, "invalid_time");
@@ -737,8 +788,8 @@ async function getAvailability(db: Firestore, body: Record<string, unknown>, own
   const upper = candidates[candidates.length - 1] + (settings.bufferMinutes + service.duration) * MINUTE;
   const [config, days] = await Promise.all([calendarConfig(), db.getAll(...reservationDays(db, { id: "", start: lower, end: upper }))]);
   if (!config) throw new AppointmentError(503, "calendar_unavailable");
-  const google = await busyWindows(config, lower, upper).catch(() => { throw new AppointmentError(503, "calendar_unavailable"); });
-  const all = [...google, ...days.flatMap(day => (day.get("slots") ?? []) as Reservation[])];
+  const google = await busyWindows(config, lower, upper, moving?.id).catch(() => { throw new AppointmentError(503, "calendar_unavailable"); });
+  const all = [...google, ...days.flatMap(day => ((day.get("slots") ?? []) as Reservation[]).filter(slot => slot.id !== moving?.id))];
   return {
     slots: candidates.filter(start => {
       const range = reservationFor("", { start, end: start + service.duration * MINUTE, bufferMinutes: settings.bufferMinutes });
@@ -751,6 +802,8 @@ async function getAvailability(db: Firestore, body: Record<string, unknown>, own
 // why it isn't open. Owners may still book over a conflict; this only powers the warning on the New booking form.
 async function checkOwnerTime(db: Firestore, body: Record<string, unknown>) {
   const start = body.start;
+  // On a reschedule, the appointment being moved doesn't count as a conflict.
+  const except = identifier(body.except, true) ?? undefined;
   const duration = body.durationMinutes;
   if (typeof start !== "number" || !Number.isSafeInteger(start) || typeof duration !== "number" || !Number.isInteger(duration) ||
       duration < 15 || duration > 7 * 1440) throw new AppointmentError(400, "invalid_time");
@@ -771,10 +824,10 @@ async function checkOwnerTime(db: Firestore, body: Record<string, unknown>) {
   const upper = end + buffer;
   const [config, days] = await Promise.all([calendarConfig(), db.getAll(...reservationDays(db, { id: "", start: lower, end: upper }))]);
   if (!config) throw new AppointmentError(503, "calendar_unavailable");
-  const google = await busyWindows(config, lower, upper).catch(() => { throw new AppointmentError(503, "calendar_unavailable"); });
+  const google = await busyWindows(config, lower, upper, except).catch(() => { throw new AppointmentError(503, "calendar_unavailable"); });
   const reservations = new Map<string, Reservation>();
   for (const slot of days.flatMap(day => (day.get("slots") ?? []) as Reservation[])) {
-    if (slot.end > now && slot.start < upper && slot.end > lower) reservations.set(slot.id, slot);
+    if (slot.id !== except && slot.end > now && slot.start < upper && slot.end > lower) reservations.set(slot.id, slot);
   }
   const records = reservations.size ? await db.getAll(...[...reservations.keys()].map(id => db.collection("appointments").doc(id))) : [];
   const conflicts = records.map(record => {
@@ -921,12 +974,13 @@ async function publicBooking(db: Firestore, auth: Auth, req: Request, body: Reco
       ...(customer ? { customerUid: customer.uid } : {}),
     };
     tx.create(ref, { ...record, bookingChannel: "public", acceptedAt: now });
+    const link = checkoutOrigin() + shortLinkPath("appointment", createShortLink(db, tx, "appointment", id, token));
     if (waived) {
       queueAppointmentEmail(db, tx, `request-${id}`, email, "We got your booking request", {
         eyebrow: "Request received", heading: "No deposit needed this time",
         paragraphs: [`Thanks for coming back, ${record.name.split(" ")[0] || "there"}! As a returning customer you don't need a deposit. Nieman will review your request and text to confirm.`,
           "Keep this email. The button below is your link to check status, add the appointment to your calendar, or request a change."],
-        details: emailFacts(record), action: { label: "View appointment", url: `${checkoutOrigin()}/appointment#${id}.${token}` },
+        details: emailFacts(record), action: { label: "View appointment", url: link },
       });
       return { id, ...customerDetails(record) };
     }
@@ -935,7 +989,7 @@ async function publicBooking(db: Firestore, auth: Auth, req: Request, body: Reco
       eyebrow: "Almost booked", heading: "Lock in your time with the deposit",
       paragraphs: [`Thanks, ${record.name.split(" ")[0] || "there"}! Pay the ${emailMoney(record.depositCents)} deposit to hold your spot. It goes toward the cost of your detail.`,
         "Keep this email. The button below is your link to check status, add the appointment to your calendar, or request a change."],
-      details: emailFacts(record), action: { label: "Pay deposit and view appointment", url: `${checkoutOrigin()}/appointment#${id}.${token}` },
+      details: emailFacts(record), action: { label: "Pay deposit and view appointment", url: link },
     });
     return { id, ...customerDetails(record) };
   });
@@ -1325,7 +1379,7 @@ const refundOpenState = (appointment: Appointment) => !!appointment.refund && ap
 const newestFirst = (a: { createdAt: number }, b: { createdAt: number }) => b.createdAt - a.createdAt;
 
 // The admin queue. Each filter runs its own query so older records stay reachable, and search scans
-// the most recent 1,000 bookings by name, phone, email, address or vehicle.
+// the most recent 1,000 bookings by name, phone, email, address, vehicle or notes.
 async function listAppointments(db: Firestore, body: Record<string, unknown>) {
   const collection = db.collection("appointments");
   const view = typeof body.view === "string" && LIST_VIEWS.has(body.view) ? body.view : "all";
@@ -1339,7 +1393,7 @@ async function listAppointments(db: Firestore, body: Record<string, unknown>) {
     const digits = search.replace(/\D/g, "");
     const recent = rows(await collection.orderBy("createdAt", "desc").limit(1000).get());
     records = recent.filter(({ appointment: a }) =>
-      [a.name, a.email, a.address, a.vehicle, a.service, a.customerNotes].some(value => (value ?? "").toLowerCase().includes(search)) ||
+      [a.name, a.email, a.address, a.vehicle, a.service, a.customerNotes, a.workNotes].some(value => (value ?? "").toLowerCase().includes(search)) ||
       (digits.length >= 4 && (a.phone ?? "").replace(/\D/g, "").includes(digits))).slice(0, 100);
   } else if (view === "all") {
     let query = collection.orderBy("createdAt", "desc");
@@ -1461,6 +1515,11 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
     let result;
     if (action === "details") {
       result = await detailsFromLink(db, identifier(body.id)!, body.token);
+    } else if (action === "resolve-short-link") {
+      result = await resolveShortLink(db, body.code, body.kind === "maintenance" ? "maintenance" : "appointment");
+      if (!result) throw new AppointmentError(404, "link_unavailable");
+    } else if (action === "short-link") {
+      result = await customerShortLink(db, identifier(body.id)!, body.token);
     } else if (action === "quote-context") {
       const quote = await bookingQuote(db, body.quoteReceipt);
       result = quote ? {
@@ -1517,14 +1576,24 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
       });
     } else if (action === "accept-alternate") {
       result = await acceptAlternate(db, identifier(body.id)!, body);
+    } else if (action === "reschedule-availability") {
+      const id = identifier(body.id)!;
+      const appointment = await readAppointment(db, id);
+      assertLink(id, body.token, appointment);
+      const settings = await getSettings(db);
+      result = { slots: await customerMoveSlots(db, id, appointment, { month: body.month }), horizonDays: settings.horizonDays };
     } else if (action === "request-reschedule") {
       const id = identifier(body.id)!;
       const start = validMoveStart(body.start);
       const ref = db.collection("appointments").doc(id);
+      // Only a time the booking calendar would offer: within hours and notice, not blocked, and free.
+      const current = await readAppointment(db, id);
+      assertLink(id, body.token, current);
+      if (!(await customerMoveSlots(db, id, current, { date: easternDate(start) })).includes(start)) throw new AppointmentError(409, "time_unavailable");
       result = await db.runTransaction(async tx => {
         const appointment = (await tx.get(ref)).data() as Appointment | undefined;
         assertLink(id, body.token, appointment);
-        if (appointment.start <= Date.now() || !["confirmed", "pending_approval"].includes(appointment.status)) {
+        if (!movable(appointment)) {
           throw new AppointmentError(409, "status_changed");
         }
         const rescheduleRequest = { start, requestedAt: Date.now() };
@@ -1535,7 +1604,7 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
       const uid = await adminUid(db, auth, req, action.startsWith("cms-"));
       if (action.startsWith("cms-")) result = await manageSiteContent(db, uid, action, body);
       else if (action === "context") result = await appointmentContext(db, body);
-      else if (action === "admin-availability") result = await getAvailability(db, body, true);
+      else if (action === "admin-availability") result = await getAvailability(db, body, true, await movingAppointment(db, body.except));
       else if (action === "admin-check-time") result = await checkOwnerTime(db, body);
       else if (action === "owner-detail") {
         const id = identifier(body.id)!;
@@ -1598,7 +1667,7 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
             by, reference].map(cell).join(",") + `,${Number.isSafeInteger(amount) ? amount : ""},${Number.isSafeInteger(taxCents) ? taxCents : 0}`;
         });
         result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents,tax_cents", ...rows].join("\r\n") };
-      } else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite"].includes(action)) {
+      } else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "save-notes", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite"].includes(action)) {
         result = await changeAppointment(db, uid, identifier(body.id)!, action, body);
       } else throw new AppointmentError(404, "not_found");
     }

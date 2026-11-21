@@ -1,17 +1,43 @@
-import { appointmentMoney, appointmentRequest, appointmentTime, calendarFile, easternStart, googleCalendarUrl, taxRateLabel } from "./appointment-utils.mjs";
+import { appointmentMoney, appointmentRequest, appointmentTime, calendarFile, googleCalendarUrl, taxRateLabel } from "./appointment-utils.mjs";
 import { reportBookingConversion } from "./booking-analytics.mjs";
+import { slotCalendar, slotPicker } from "./slot-picker.mjs";
 
 const byId = id => document.getElementById(id);
 const status = byId("appointment-status");
 const message = byId("appointment-message");
 const returned = new URLSearchParams(location.search).get("checkout");
+// Short links look like /a/Xk3p9QmT2w. The server swaps the code for the long link's id and token.
+const shortCode = /^\/a\/([A-Za-z0-9]{10})\/?$/.exec(location.pathname)?.[1];
+let shortLinkError;
 let fragment = location.hash;
-if (!fragment) {
+if (shortCode) {
+  try {
+    const { id, token } = await appointmentRequest("resolve-short-link", { code: shortCode, kind: "appointment" });
+    fragment = `#${id}.${token}`;
+  } catch (error) { shortLinkError = error; fragment = ""; }
+} else if (!fragment) {
   try { fragment = sessionStorage.getItem("appointmentCheckoutReturn") ?? ""; } catch {}
 }
 const link = /^#([a-f0-9]{64})\.([a-f0-9]{64})$/.exec(fragment);
 if (link) {
   try { sessionStorage.setItem("appointmentCheckoutReturn", fragment); history.replaceState(null, "", location.pathname); } catch {}
+}
+
+// The short link to copy: the one the customer opened, or a new one for a long link (cached per tab).
+async function shareUrl(id, token) {
+  if (shortCode) return `${location.origin}/a/${shortCode}`;
+  const key = "appointmentShortLink";
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(key) ?? "null");
+    if (cached?.fragment === fragment) return `${location.origin}/a/${cached.code}`;
+  } catch {}
+  try {
+    const { code } = await appointmentRequest("short-link", { id, token });
+    try { sessionStorage.setItem(key, JSON.stringify({ fragment, code })); } catch {}
+    return `${location.origin}/a/${code}`;
+  } catch {
+    return `${location.origin}/appointment${fragment}`;
+  }
 }
 
 const appointmentStatuses = {
@@ -103,6 +129,72 @@ function render() {
   if (offer) byId("alternate-time").textContent = `Nieman offered ${appointmentTime({ start: offer.start, end: offer.start + appointment.end - appointment.start })}.`;
 }
 
+// Deposit terms for a requested time, under the 96-hour policy. A move never restores a refund window that has passed.
+function moveDepositNote(start) {
+  if (!(appointment.paidDeposit > 0)) return "";
+  if (appointment.status === "confirmed" && !appointment.depositRefundable) {
+    return "Your deposit is already inside the 96-hour window, so it stays nonrefundable at the new time.";
+  }
+  if (start - Date.now() < 96 * 3_600_000) {
+    return "This time is less than 96 hours away. Once Nieman approves it, your deposit becomes nonrefundable.";
+  }
+  return "Your deposit carries over. Cancel at least 96 hours before the new time for a refund.";
+}
+
+// Request a new time from the same calendar as /schedule: only times open under the booking rules.
+function setupMove(command) {
+  const form = byId("request-move");
+  const panel = byId("move-panel");
+  const opener = byId("open-move");
+  const choice = byId("move-choice");
+  const send = byId("send-move");
+  const { root, status: calendarStatus, retry } = slotCalendar("move", "Open dates");
+  byId("move-calendar").append(root);
+  let picked = null;
+  let calendar;
+  const toggle = open => {
+    panel.hidden = !open;
+    opener.hidden = open;
+    opener.setAttribute("aria-expanded", String(open));
+  };
+  opener.onclick = () => {
+    toggle(true);
+    calendar ??= slotPicker(root, {
+      status: calendarStatus, retry,
+      getSlots: month => command("reschedule-availability", { month }),
+      empty: "No openings this month. Try another month, or text Nieman.",
+      unavailable: error => errors[error.code] || "The calendar couldn't load. Try again.",
+      onClear() { picked = null; choice.hidden = true; },
+      onSelect(value) {
+        picked = value;
+        byId("move-time").textContent = appointmentTime({ start: value, end: value + appointment.end - appointment.start });
+        const note = moveDepositNote(value);
+        byId("move-deposit").textContent = note;
+        byId("move-deposit").hidden = !note;
+        choice.hidden = false;
+        send.focus({ preventScroll: true });
+        send.scrollIntoView({ block: "nearest" });
+      },
+    });
+    calendar.load();
+  };
+  byId("close-move").onclick = () => { toggle(false); opener.focus(); };
+  form.onsubmit = run(async () => {
+    if (!picked) { message.textContent = "Choose a new time first."; return; }
+    try {
+      appointment = await command("request-reschedule", { start: picked });
+    } catch (error) {
+      if (error.code !== "time_unavailable") throw error;
+      await calendar.load();
+      message.textContent = "That time was just taken. Choose another opening.";
+      return;
+    }
+    render();
+    toggle(false);
+    message.textContent = "Request sent. Your current appointment time is still reserved.";
+  }, send);
+}
+
 function run(action, button) {
   return async event => {
     event.preventDefault();
@@ -118,6 +210,7 @@ function run(action, button) {
 
 async function openAppointment() {
   if (!link) {
+    if (shortLinkError) throw shortLinkError;
     status.textContent = "Open the appointment link Nieman sent you, or sign in to your account.";
     return;
   }
@@ -141,12 +234,7 @@ async function openAppointment() {
     const { url } = await command("checkout", { accepted: true });
     location.assign(url);
   }, pay);
-  const move = byId("request-move");
-  move.onsubmit = run(async () => {
-    appointment = await command("request-reschedule", { start: easternStart(move.elements.start.value) });
-    render();
-    message.textContent = "Request sent. Your current appointment time is still reserved.";
-  }, move.querySelector("button"));
+  setupMove(command);
   const cancel = byId("cancel-appointment");
   cancel.onclick = run(async () => {
     const consequence = appointment.paidDeposit ?
@@ -168,7 +256,13 @@ async function openAppointment() {
   }, account);
   const copy = byId("copy-appointment-link");
   copy.onclick = run(async () => {
-    await navigator.clipboard.writeText(`${location.origin}/appointment${fragment}`);
+    // Safari only allows a clipboard write right after the tap, so hand it the pending text when it can take one.
+    if (window.ClipboardItem && navigator.clipboard.write) {
+      const text = shareUrl(id, token).then(url => new Blob([url], { type: "text/plain" }));
+      await navigator.clipboard.write([new ClipboardItem({ "text/plain": text })]);
+    } else {
+      await navigator.clipboard.writeText(await shareUrl(id, token));
+    }
     message.textContent = "Appointment link copied.";
   }, copy);
 }

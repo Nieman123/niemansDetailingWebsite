@@ -1,9 +1,10 @@
 import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import { easternInput, slotPicker } from "./slot-picker.mjs";
+import { showTimeCheck } from "./owner-time-check.mjs";
 import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
 import { servicePicker } from "./service-picker.mjs";
-import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, rescheduleWorkspace, setupBookingSettings, setupFollowUpSettings, setupTaxSettings, statusLabels } from "./appointment-admin-tools.mjs";
+import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, privateNotesCard, rescheduleWorkspace, setupBookingSettings, setupFollowUpSettings, setupTaxSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);
 const form = byId("create-booking");
@@ -114,14 +115,6 @@ function refreshCalendar() {
 // tick "Book it anyway" to save over one.
 const startCheck = byId("start-check");
 const overlapOverride = byId("overlap-override");
-const rangeTime = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-const issueText = {
-  past: "That time has already passed.",
-  too_soon_for_deposit: "That’s too soon for a deposit link. Choose “No deposit required” or a time at least 36 minutes away.",
-  blocked_date: "That date is blocked off in Settings.",
-  closed_day: "You don’t normally take bookings that day.",
-  outside_hours: "It runs outside your business hours for that day.",
-};
 let checkTimer;
 let checkVersion = 0;
 let lastCheck = null;
@@ -134,28 +127,8 @@ function clearStartCheck() {
   overlapOverride.hidden = true;
   fields.allowOverlap.checked = false;
 }
-function conflictLine(item, bufferMinutes) {
-  const when = rangeTime.formatRange(item.start, item.end);
-  const who = item.kind === "appointment" ? [item.name, item.service].filter(Boolean).join(" · ") || "Another appointment" : "Busy on your calendar";
-  return item.overlaps ? `Overlaps ${who}, ${when}.` : `Inside your ${bufferMinutes}-minute travel buffer: ${who}, ${when}.`;
-}
 function showStartCheck(result) {
-  const conflict = result.issues.includes("overlap");
-  startCheck.dataset.state = result.open ? "open" : conflict ? "conflict" : "warn";
-  const lines = [
-    ...result.issues.filter(issue => issueText[issue]).map(issue => issueText[issue]),
-    ...result.conflicts.map(item => conflictLine(item, result.bufferMinutes)),
-  ];
-  const heading = document.createElement("p");
-  heading.textContent = result.open ? "Open. Nothing else is booked around this time."
-    : conflict ? "This time isn’t free." : "This time is free, but note:";
-  startCheck.replaceChildren(heading);
-  if (lines.length) {
-    const list = document.createElement("ul");
-    list.append(...lines.map(line => Object.assign(document.createElement("li"), { textContent: line })));
-    startCheck.append(list);
-  }
-  startCheck.hidden = false;
+  const conflict = showTimeCheck(startCheck, result);
   overlapOverride.hidden = !conflict;
   if (!conflict) fields.allowOverlap.checked = false;
 }
@@ -427,6 +400,7 @@ function renderDetail(record) {
     viewHost.hidden = true;
     viewHost.replaceChildren();
     hub.hidden = false;
+    notesCard.sync();
     byId("view-detail").scrollIntoView({ block: "start" });
   }
 
@@ -472,6 +446,8 @@ function renderDetail(record) {
   fact("Deposit", record.paidDeposit ? appointmentMoney(record.paidDeposit) + " received" : record.depositCents ? appointmentMoney(record.depositCents) + " due" : "Waived");
   if (record.balanceCents != null) fact("Balance", record.balanceCents ? appointmentMoney(record.balanceCents) : "Paid");
   hub.append(facts);
+  const notesCard = privateNotesCard(record, ownerRequest);
+  hub.append(notesCard);
 
   const alerts = [];
   if (record.rescheduleRequest) alerts.push("The customer asked for a different time. Open Reschedule to review it.");
@@ -501,9 +477,9 @@ function renderDetail(record) {
         : "Generate a customer link? This replaces any earlier shared link for this appointment.";
       if (!window.confirm(warning)) return;
       const sendEmail = !!record.email && window.confirm("Email this link to the customer too? Cancel to create the link only.");
-      const { token } = await ownerRequest("issue-link", { id: record.id, sendEmail });
+      const { token, code } = await ownerRequest("issue-link", { id: record.id, sendEmail });
       if (session !== scope) return;
-      const issued = `${location.origin}/appointment#${record.id}.${token}`;
+      const issued = code ? `${location.origin}/a/${code}` : `${location.origin}/appointment#${record.id}.${token}`;
       links.set(record.id, issued);
       target.replaceChildren(shareActions(record, issued));
       if (record.status === "draft") await refreshList();

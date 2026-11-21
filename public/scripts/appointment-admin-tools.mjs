@@ -1,6 +1,8 @@
 import { appointmentMoney, appointmentTime, easternStart, fillDurationSelect, taxOn, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
 import { jobPhotoBoard, jobPhotosSection } from "./appointment-photos.mjs";
 import { standardServices } from "./service-picker.mjs";
+import { easternInput, slotCalendar, slotPicker } from "./slot-picker.mjs";
+import { showTimeCheck, showTimeCheckMessage } from "./owner-time-check.mjs";
 
 export const statusLabels = {
   draft: "Draft / deposit required", awaiting_deposit: "Awaiting deposit", pending_approval: "Pending approval",
@@ -149,6 +151,7 @@ export function jobWorkspace(record, request, refresh, report) {
     function queueSave() {
       const draft = work();
       pendingNotes.set(record.id, draft);
+      record.workNotes = draft.workNotes;
       clearTimeout(autosave);
       message.textContent = "Changes pending.";
       autosave = setTimeout(async () => {
@@ -188,6 +191,56 @@ export function jobWorkspace(record, request, refresh, report) {
   }
   area.append(form, message, jobPhotosSection(record.id));
   return area;
+}
+
+// The owner's private notes on any appointment, at the top of the appointment detail. They are the same
+// notes as the job screen's, autosave as you type, and never reach the customer.
+export function privateNotesCard(record, request) {
+  const card = elm("section", "", "job-card private-notes");
+  const heading = elm("h4", "Private notes");
+  const saveState = elm("span", "Saved", "job-save-state");
+  heading.append(saveState);
+  const notes = Object.assign(document.createElement("textarea"), {
+    rows: 3, maxLength: 5000, placeholder: "Anything to remember about this appointment or customer.",
+  });
+  notes.setAttribute("aria-label", "Private notes");
+  const current = () => pendingNotes.get(record.id)?.workNotes ?? record.workNotes ?? "";
+  notes.value = current();
+  card.append(heading, notes, elm("p", "Only you see these. They never go to the customer.", "private-notes__hint"));
+
+  async function save(draft) {
+    // A job screen draft also carries scope changes; save those with it while the job is open.
+    const job = "scopeChanges" in draft && ["confirmed", "in_progress"].includes(record.status);
+    const previous = noteSaves.get(record.id) ?? Promise.resolve();
+    const run = previous.catch(() => {}).then(async () => {
+      await request(job ? "save-job" : "save-notes", job ? draft : { id: record.id, workNotes: draft.workNotes });
+      if (pendingNotes.get(record.id) === draft) pendingNotes.delete(record.id);
+    });
+    noteSaves.set(record.id, run);
+    try { await run; }
+    finally { if (noteSaves.get(record.id) === run) noteSaves.delete(record.id); }
+  }
+  let autosave;
+  function queueSave() {
+    const draft = { ...pendingNotes.get(record.id), id: record.id, workNotes: notes.value };
+    pendingNotes.set(record.id, draft);
+    record.workNotes = draft.workNotes;
+    clearTimeout(autosave);
+    saveState.textContent = "Saving…";
+    saveState.dataset.state = "pending";
+    autosave = setTimeout(async () => {
+      if (!notes.isConnected || pendingNotes.get(record.id) !== draft) return;
+      try { await save(draft); saveState.textContent = "Saved"; delete saveState.dataset.state; }
+      catch { saveState.textContent = "Not saved, retrying"; saveState.dataset.state = "error"; setTimeout(() => { if (notes.isConnected) queueSave(); }, 5000); }
+    }, 900);
+  }
+  notes.oninput = queueSave;
+  // Called when coming back from the job screen, where the same notes may have changed.
+  card.sync = () => {
+    notes.value = current();
+    if (!pendingNotes.has(record.id)) { clearTimeout(autosave); saveState.textContent = "Saved"; delete saveState.dataset.state; }
+  };
+  return card;
 }
 
 // Quote add-on prices by vehicle size, in dollars, matching the quote form.
@@ -251,7 +304,7 @@ export function jobScreen(record, request, refresh, report) {
   // Notes autosave while you type, and survive moving between views.
   const pending = pendingNotes.get(record.id);
   const notesCard = elm("section", "", "job-card");
-  notesCard.append(elm("h4", "Job notes"));
+  notesCard.append(elm("h4", "Private notes"));
   const saveState = elm("span", "Saved", "job-save-state");
   notesCard.querySelector("h4").append(saveState);
   const notes = Object.assign(document.createElement("textarea"), { rows: 4, maxLength: 5000, value: pending?.workNotes ?? record.workNotes ?? "", placeholder: "What you noticed, what you did, anything for next time." });
@@ -285,6 +338,7 @@ export function jobScreen(record, request, refresh, report) {
   function queueSave() {
     const draft = work();
     pendingNotes.set(record.id, draft);
+    record.workNotes = draft.workNotes;
     clearTimeout(autosave);
     saveState.textContent = "Saving…";
     saveState.dataset.state = "pending";
@@ -413,41 +467,131 @@ export function jobScreen(record, request, refresh, report) {
   return screen;
 }
 
+// Move an appointment with the same calendar as /schedule: open times for this appointment's length, live
+// conflict checks on any custom time, and "Book it anyway" to keep a time that overlaps something.
 export function rescheduleWorkspace(record, request, refresh, report) {
   const area = elm("details", "");
-  area.append(elm("summary", record.rescheduleRequest ? "Review customer’s request" : record.status === "pending_approval" ? "Offer a different time" : "Reschedule appointment"));
-  const form = elm("form", "");
-  const start = inputField(form, "start", "New time (Eastern)", { type: "datetime-local" });
-  if (record.rescheduleRequest) {
-    const requested = record.rescheduleRequest.start;
-    form.prepend(elm("p", `Customer asked for ${appointmentTime({ start: requested, end: requested + record.end - record.start })}.`));
-  }
+  const pending = record.status === "pending_approval";
+  const asked = record.rescheduleRequest?.start ?? null;
+  area.append(elm("summary", asked ? "Review customer’s request" : pending ? "Offer a different time" : "Reschedule appointment"));
+  const form = elm("form", "", "reschedule-form");
+  const minutes = Math.round((record.end - record.start) / 60000);
+  const span = start => appointmentTime({ start, end: start + record.end - record.start });
   const message = elm("p", "");
   message.setAttribute("role", "status");
-  const move = Object.assign(elm("button", record.status === "pending_approval" ? "Send or approve proposed time" : "Save appointment move", "btn secondary"), { type: "submit" });
-  form.append(move, message);
-  form.onsubmit = async event => {
-    event.preventDefault();
-    move.disabled = true;
+  let busy = false;
+  const save = async (body, button) => {
+    if (busy) return;
+    busy = button.disabled = true;
+    message.textContent = "";
     try {
-      const proposed = start.value ? easternStart(start.value) : record.rescheduleRequest?.start;
-      if (!proposed) { message.textContent = "Choose a proposed time."; return; }
-      const action = record.status === "pending_approval" && record.rescheduleRequest?.start !== proposed ? "offer-alternate" : "reschedule";
-      await request(action, { id: record.id, start: proposed });
+      const action = pending && asked !== body.start ? "offer-alternate" : "reschedule";
+      await request(action, { id: record.id, ...body });
       await refresh();
-    } catch (error) { message.textContent = error.code ? report(error) : error.message; }
-    finally { move.disabled = false; }
+    } catch (error) {
+      message.textContent = error.code ? report(error) : error.message;
+      if (error.code === "time_unavailable") { checked = null; runCheck(); calendar.load(undefined, picked); }
+    } finally { busy = button.disabled = false; }
   };
-  if (record.rescheduleRequest) {
+
+  if (asked) {
+    form.append(elm("p", `Customer asked for ${span(asked)}.`));
+    const actions = elm("div", "", "appointment-actions");
+    const approve = Object.assign(elm("button", "Approve requested time", "btn primary"), { type: "button" });
+    approve.onclick = () => save({ start: asked }, approve);
     const reject = Object.assign(elm("button", "Decline requested move", "btn secondary"), { type: "button" });
     reject.onclick = async () => {
-      reject.disabled = true;
+      if (busy) return;
+      busy = reject.disabled = true;
       try { await request("reject-reschedule", { id: record.id }); await refresh(); }
       catch (error) { message.textContent = report(error); }
-      finally { reject.disabled = false; }
+      finally { busy = reject.disabled = false; }
     };
-    form.append(reject);
+    actions.append(approve, reject);
+    form.append(actions, elm("p", pending ? "Or offer a different time:" : "Or choose a different time:", "reschedule-or"));
   }
+  form.append(elm("p", `Now ${span(record.start)}. Open times below fit its ${minutes}-minute length.`, "slot-note"));
+
+  const { root, status, retry } = slotCalendar("move-" + record.id.slice(0, 8), "Open dates");
+  const custom = inputField(form, "start", "Or enter a custom time (Eastern)", { type: "datetime-local" });
+  const customField = custom.closest("label");
+  const check = elm("div", "", "time-check");
+  check.setAttribute("role", "status");
+  check.setAttribute("aria-live", "polite");
+  check.hidden = true;
+  const override = elm("label", "", "appointment-checkbox");
+  const allowOverlap = Object.assign(document.createElement("input"), { type: "checkbox", name: "allowOverlap" });
+  override.append(allowOverlap, " Book it anyway, even though it overlaps");
+  override.hidden = true;
+  const submit = Object.assign(elm("button", pending ? "Offer this time to the customer" : "Move appointment to this time", "btn secondary"), { type: "submit" });
+  form.insertBefore(root, customField);
+  form.append(check, override, submit, message);
+
+  let picked = null;
+  let checked = null;
+  let checkVersion = 0;
+  let timer;
+  function runCheck() {
+    let start;
+    try { start = easternStart(custom.value); } catch { checked = null; check.hidden = override.hidden = true; return; }
+    if (checked?.start === start) return;
+    const version = ++checkVersion;
+    allowOverlap.checked = false;
+    override.hidden = true;
+    checked = { start, conflict: null };
+    showTimeCheckMessage(check, "checking", "Checking your calendar…");
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      try {
+        const result = await request("admin-check-time", { start, durationMinutes: minutes, except: record.id });
+        if (version !== checkVersion) return;
+        checked.conflict = showTimeCheck(check, result);
+        override.hidden = !checked.conflict;
+      } catch (error) {
+        if (version !== checkVersion) return;
+        checked = null;
+        showTimeCheckMessage(check, "warn", "Couldn’t check this time: " + report(error));
+      }
+    }, 350);
+  }
+  custom.oninput = () => {
+    if (picked && custom.value !== easternInput(picked)) { picked = null; calendar.clearSelection(); }
+    runCheck();
+  };
+  const calendar = slotPicker(root, {
+    status, retry,
+    getSlots: async month => {
+      const result = await request("admin-availability", { month, durationMinutes: minutes, except: record.id });
+      return { ...result, slots: result.slots.filter(start => start !== record.start) };
+    },
+    empty: "No openings this month for this length. Try another month or enter a custom time.",
+    unavailable: report,
+    onClear() {
+      if (picked && custom.value === easternInput(picked)) { custom.value = ""; runCheck(); }
+      picked = null;
+    },
+    onSelect(value) {
+      picked = value;
+      custom.value = easternInput(value);
+      runCheck();
+    },
+  });
+  if (asked) calendar.show(asked); else calendar.load();
+
+  form.onsubmit = event => {
+    event.preventDefault();
+    let start;
+    try { start = easternStart(custom.value); }
+    catch { message.textContent = "Choose an open time or enter a custom one."; return; }
+    if (start === record.start) { message.textContent = "That’s the current time. Choose a different one."; return; }
+    if (checked?.start === start && checked.conflict === null) { message.textContent = "Still checking that time. Try again in a moment."; return; }
+    if (checked?.conflict && !allowOverlap.checked) {
+      message.textContent = "This time overlaps another booking. Tick “Book it anyway” to keep it, or choose another time.";
+      allowOverlap.focus();
+      return;
+    }
+    save({ start, allowOverlap: !!checked?.conflict && allowOverlap.checked }, submit);
+  };
   area.append(form);
   return area;
 }
