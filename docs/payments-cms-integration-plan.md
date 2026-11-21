@@ -54,7 +54,7 @@ This is a repository inspection, not an audit of deployed Firebase data, Google 
 | Security rules | Public lead access denied; allowlisted admins can directly modify clients/leads. | Protect payment and appointment invariants with server-only mutations and field-level restrictions on legacy writes. |
 | Deployment | GitHub deploys Hosting, rules/indexes, and explicitly `functions:api`. | Add every new webhook/worker/trigger to deployment. Existing `notifyLeadAddonUpdate` is also omitted from this workflow's function list. |
 | PWA | `public/manifest.json` already declares standalone display and home start URL, with icons through 192px; the current service worker clears caches and unregisters itself. | Add a dedicated admin launch experience, complete icon/manifest assets, and replace the retirement worker deliberately. Keep financial operations online and private responses uncached. |
-| Maintenance service | `public/services/monthly-mini.html` describes Monthly Mini; displayed typical pricing is $85 sedan / $100 SUV and 60–75 minutes. | Reuse the service page as the enrollment destination, but confirm catalog pricing/duration and eligibility before enabling paid maintenance bookings. |
+| Maintenance service | `public/services/monthly-mini.html` describes Monthly Mini; displayed pricing is $100 sedan / $140 SUV, truck, or van, limited to vehicles with a full detail in the last 60 days and 60–75 minutes. | Reuse the service page as the enrollment destination, but confirm catalog pricing/duration and eligibility before enabling paid maintenance bookings. |
 
 Observed current server prices, to migrate without silently changing them:
 

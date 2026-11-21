@@ -91,5 +91,5 @@ export const standardServices = [
   { id: "trim", name: "Trim Restoration", duration: 120, vehiclePrices: { sedan: 12000, suv_truck: 12000, van_3row: 12000 } },
   { id: "new_car", name: "New Car Decontamination", duration: 180, vehiclePrices: { sedan: 12500, suv_truck: 12500, van_3row: 12500 } },
   { id: "hard_water", name: "Hard Water Spot Removal", duration: 90, vehiclePrices: { sedan: 8000, suv_truck: 8000, van_3row: 8000 } },
-  { id: "monthly_mini", name: "Monthly Mini", description: "Maintenance visit for existing clients.", duration: 75, vehiclePrices: { sedan: 8500, suv_truck: 10000, van_3row: 10000 } },
+  { id: "monthly_mini", name: "Monthly Mini", description: "Maintenance visit within 60 days of a full detail.", duration: 75, vehiclePrices: { sedan: 10000, suv_truck: 14000, van_3row: 14000 } },
 ];
