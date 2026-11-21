@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.queueAppointmentEmail = queueAppointmentEmail;
 exports.emailConfigured = emailConfigured;
 exports.deliverAppointmentEmails = deliverAppointmentEmails;
+exports.sendEmailNow = sendEmailNow;
 const firestore_1 = require("firebase-admin/firestore");
 const appointment_secrets_1 = require("./appointment-secrets");
 const appointment_email_template_1 = require("./appointment-email-template");
@@ -64,5 +65,36 @@ async function deliverAppointmentEmails(db, now, maintenanceEligible) {
             await row.ref.update({ nextAt: now + 15 * 60000, state: "retry", lastError: reason.slice(0, 300), attempts: firestore_1.FieldValue.increment(1) });
             await (0, ops_health_1.recordOpsEvent)(db, { source: "email", code: "email_retry", level: "warning", ref: row.id, detail: reason });
         }
+    }
+}
+// Sends one email right away, with an optional PDF attachment, for owner actions like emailing an invoice.
+// Follows the same rule as queued mail: outside production only allow-listed test inboxes receive it.
+async function sendEmailNow(input) {
+    const config = await (0, appointment_secrets_1.integrationConfig)("APPOINTMENT_EMAIL_CONFIG").catch(() => null);
+    const live = (0, appointment_secrets_1.liveMode)();
+    if (!config?.apiKey?.startsWith("re_") || !config.from || (!live && !Array.isArray(config.testRecipients))) {
+        return { ok: false, error: "email_not_configured" };
+    }
+    if (!live && !(config.testRecipients ?? []).map(value => value.toLowerCase()).includes(input.to.toLowerCase())) {
+        return { ok: false, error: "test_recipient_only" };
+    }
+    try {
+        const response = await fetch("https://api.resend.com/emails", {
+            method: "POST", signal: AbortSignal.timeout(15000),
+            headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json", "Idempotency-Key": `detailing/${input.idempotencyKey}` },
+            body: JSON.stringify({
+                from: config.from, to: [input.to], subject: input.subject,
+                text: (0, appointment_email_template_1.emailText)(input.content), html: (0, appointment_email_template_1.emailHtml)(input.content, input.subject),
+                ...(input.attachment ? { attachments: [{ filename: input.attachment.filename, content: input.attachment.content.toString("base64") }] } : {}),
+            }),
+        });
+        if (!response.ok) {
+            const reason = await response.json().then((body) => `${body.name ?? ""} ${body.message ?? ""}`.trim(), () => "");
+            return { ok: false, error: `email_delivery_failed:${response.status}${reason ? ` ${reason.slice(0, 200)}` : ""}` };
+        }
+        return { ok: true };
+    }
+    catch (error) {
+        return { ok: false, error: `email_delivery_failed:${error instanceof Error ? error.message : String(error)}` };
     }
 }

@@ -69,3 +69,37 @@ export async function deliverAppointmentEmails(db: Firestore, now: number,
     }
   }
 }
+
+// Sends one email right away, with an optional PDF attachment, for owner actions like emailing an invoice.
+// Follows the same rule as queued mail: outside production only allow-listed test inboxes receive it.
+export async function sendEmailNow(input: {
+  to: string; subject: string; content: EmailContent; idempotencyKey: string;
+  attachment?: { filename: string; content: Buffer };
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const config = await integrationConfig<EmailConfig>("APPOINTMENT_EMAIL_CONFIG").catch(() => null);
+  const live = liveMode();
+  if (!config?.apiKey?.startsWith("re_") || !config.from || (!live && !Array.isArray(config.testRecipients))) {
+    return { ok: false, error: "email_not_configured" };
+  }
+  if (!live && !(config.testRecipients ?? []).map(value => value.toLowerCase()).includes(input.to.toLowerCase())) {
+    return { ok: false, error: "test_recipient_only" };
+  }
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST", signal: AbortSignal.timeout(15_000),
+      headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json", "Idempotency-Key": `detailing/${input.idempotencyKey}` },
+      body: JSON.stringify({
+        from: config.from, to: [input.to], subject: input.subject,
+        text: emailText(input.content), html: emailHtml(input.content, input.subject),
+        ...(input.attachment ? { attachments: [{ filename: input.attachment.filename, content: input.attachment.content.toString("base64") }] } : {}),
+      }),
+    });
+    if (!response.ok) {
+      const reason = await response.json().then((body: { name?: string; message?: string }) => `${body.name ?? ""} ${body.message ?? ""}`.trim(), () => "");
+      return { ok: false, error: `email_delivery_failed:${response.status}${reason ? ` ${reason.slice(0, 200)}` : ""}` };
+    }
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: `email_delivery_failed:${error instanceof Error ? error.message : String(error)}` };
+  }
+}

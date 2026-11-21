@@ -1,0 +1,86 @@
+/* Invoices workspace. Builds on appointments.css and workspace.css. */
+.invoices-app .panel { margin-top: 16px; }
+.invoices-app .link-button { background: none; border: 0; padding: 0; color: var(--nd-gold); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; }
+.invoices-app .back-action { display: inline-flex; align-items: center; min-height: 48px; margin-bottom: 6px; text-decoration: none; }
+.invoices-app .back-action::before { content: "\2190\00a0"; }
+.invoices-app fieldset { margin: 0 0 22px; padding: 0; border: 0; }
+.invoices-app legend { margin-bottom: 10px; font: 700 1.05rem/1.3 var(--nd-font-display); color: var(--nd-text); }
+.invoices-app textarea { width: 100%; }
+#edit-source { margin: 0 0 18px; }
+#edit-source:empty { display: none; }
+
+.invoice-tools { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr); gap: 12px; }
+.invoice-summary { margin: 4px 0 6px; color: var(--nd-text-2); }
+.invoice-empty { margin-top: 12px; padding: 22px; border: 1px dashed var(--nd-line-strong); border-radius: 14px; text-align: center; }
+.invoice-empty p { margin: 0 0 4px; }
+
+.invoice-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; margin-top: 10px; padding: 14px 16px; border: 1px solid var(--nd-line); border-radius: 14px; background: var(--nd-bg); color: var(--nd-text); text-decoration: none; }
+.invoice-row:is(:hover, :focus-visible) { background: var(--nd-surface-2); border-color: var(--nd-gold-line); }
+.invoice-row__main { display: grid; gap: 3px; min-width: 0; }
+.invoice-row__main strong { overflow-wrap: anywhere; }
+.invoice-row__main span { color: var(--nd-text-2); font-size: .92rem; }
+.invoice-row__amount { display: grid; justify-items: end; gap: 6px; }
+.invoice-row__amount strong { font-variant-numeric: tabular-nums; font-size: 1.05rem; }
+
+.invoice-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; background: var(--nd-purple-tint); color: var(--nd-purple-text); }
+.invoice-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.invoice-pill[data-state=paid] { background: var(--nd-success-tint); color: var(--nd-success); }
+.invoice-pill[data-state=overdue] { background: var(--nd-danger-tint); color: var(--nd-danger); }
+.invoice-pill[data-state=open] { background: var(--nd-warning-tint); color: var(--nd-warning); }
+.invoice-pill[data-state=void] { background: var(--nd-surface-2); color: var(--nd-text-2); }
+
+.invoice-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 4px 0 8px; }
+.invoice-head__due { font: 800 1.8rem/1.1 var(--nd-font-display); font-variant-numeric: tabular-nums; }
+#invoice-detail .record-facts dd { white-space: pre-line; }
+#invoice-detail .appointment-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 18px; }
+
+.invoice-table { width: 100%; border-collapse: collapse; margin: 0 0 12px; }
+.invoice-table th { padding: 10px 12px; text-align: left; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #fff; background: var(--nd-purple); }
+.invoice-table th:first-child { border-radius: 10px 0 0 10px; }
+.invoice-table th:last-child { border-radius: 0 10px 10px 0; }
+.invoice-table th:not(:first-child), .invoice-table td:not(:first-child) { text-align: right; white-space: nowrap; }
+.invoice-table td { padding: 10px 12px; border-bottom: 1px solid var(--nd-line); font-variant-numeric: tabular-nums; }
+
+.invoice-totals { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 18px; max-width: 420px; margin: 0 0 18px auto; }
+.invoice-totals dt, .invoice-totals dd { margin: 0; padding: 6px 0; color: var(--nd-text-2); }
+.invoice-totals dd { text-align: right; font-variant-numeric: tabular-nums; }
+.invoice-totals .strong { color: var(--nd-text); font-weight: 700; border-top: 1px solid var(--nd-line); padding-top: 10px; }
+#edit-totals { padding: 12px 16px; border: 1px solid var(--nd-gold-line); border-radius: 14px; background: var(--nd-bg); }
+
+.invoice-section { margin-top: 14px; padding: 4px 16px 10px; border: 1px solid var(--nd-line); border-radius: 14px; background: var(--nd-bg); }
+.invoice-section > summary { min-height: 48px; display: flex; align-items: center; font-weight: 650; cursor: pointer; }
+.invoice-section .btn { margin-top: 6px; }
+.invoice-payments { list-style: none; margin: 0; padding: 0; }
+.invoice-payments li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--nd-line); }
+.invoice-payments li:last-child { border-bottom: 0; }
+
+.invoice-line, .invoice-credit { display: grid; grid-template-columns: minmax(0, 1fr) 80px 120px 100px 44px; gap: 8px; align-items: center; margin-bottom: 8px; }
+.invoice-credit { grid-template-columns: minmax(0, 1fr) 140px 44px; }
+.invoice-line .field, .invoice-credit .field { margin: 0; }
+.invoice-line--head { margin-bottom: 4px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--nd-text-2); }
+.invoice-line--head span:nth-child(n+2):nth-child(-n+4) { text-align: right; }
+.invoice-line__amount { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.invoice-line__remove { width: 44px; height: 44px; border: 1px solid var(--nd-line); border-radius: 10px; background: none; color: var(--nd-text-2); font-size: 22px; line-height: 1; cursor: pointer; }
+.invoice-line__remove:hover { color: var(--nd-danger); border-color: var(--nd-danger); }
+.invoice-tax { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; }
+.invoice-tax .field { max-width: 140px; margin: 0; }
+.invoice-tax .appointment-checkbox { min-height: 48px; }
+.btn.small { min-height: 40px; padding: 6px 12px; font-size: .9rem; }
+
+@media (max-width: 640px) {
+  .invoice-tools { grid-template-columns: 1fr; gap: 0; }
+  .invoice-line--head { display: none; }
+  .invoice-line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; grid-template-areas: "desc desc remove" "qty unit unit" "amount amount amount"; padding: 10px; border: 1px solid var(--nd-line); border-radius: 12px; }
+  .invoice-line > :nth-child(1) { grid-area: desc; }
+  .invoice-line > :nth-child(2) { grid-area: qty; }
+  .invoice-line > :nth-child(3) { grid-area: unit; }
+  .invoice-line > :nth-child(4) { grid-area: amount; }
+  .invoice-line > :nth-child(5) { grid-area: remove; }
+  .invoice-line > :nth-child(n+2):nth-child(-n+3) .sr-only { position: static !important; display: block; width: auto; height: auto; margin: 0 0 4px; clip: auto; overflow: visible; white-space: normal; font-size: .85rem; color: var(--nd-text-2); }
+  .invoice-credit { grid-template-columns: minmax(0, 1fr) 110px 44px; }
+  .invoice-head__due { font-size: 1.5rem; }
+  .invoice-table th, .invoice-table td { padding: 8px 6px; }
+}
+@media (max-width: 420px) {
+  .owner-app .work-nav a { font-size: .72rem; }
+}

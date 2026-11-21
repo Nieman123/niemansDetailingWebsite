@@ -338,6 +338,13 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
     await handleAppointments(db, admin.auth(), req, res, path.slice("/api/appointments/".length));
     return;
   }
+  // Owner-only invoices and receipts. Not tied to online booking, so they work before appointments launch.
+  if (path.startsWith("/api/invoices/")) {
+    if (origin && !allowOrigin) { res.status(403).json({ ok: false, error: "access_denied" }); return; }
+    const { handleInvoices } = await import("./invoices");
+    await handleInvoices(db, admin.auth(), req, res, path.slice("/api/invoices/".length));
+    return;
+  }
   // Anonymous JavaScript error reports from the site's own pages, for the admin Health page.
   if (path.endsWith("/clientError")) {
     if (req.method !== "POST" || !allowOrigin || (req.rawBody?.length ?? 0) > 4096) { res.status(204).send(""); return; }

@@ -51,6 +51,7 @@ jobs:
           node scripts/test-appointment-calendar.mjs
           node scripts/test-appointment-integrations.mjs
           node scripts/test-deposit-waiver.mjs
+          node scripts/test-invoices.mjs
 
       - name: Install Firebase CLI
         run: npm install --global "firebase-tools@$FIREBASE_CLI_VERSION"
@@ -66,7 +67,7 @@ jobs:
           trap 'rm -f "$emulator_env"' EXIT
           printf '%s\n' 'APPOINTMENT_INTEGRATIONS_PROJECT=demo-detailing-staging' 'HOSTING_ORIGIN=https://demo-detailing-staging.web.app' > "$emulator_env"
           firebase emulators:exec --non-interactive --project demo-detailing-staging \
-            --only auth,firestore,functions,hosting 'node scripts/test-appointments-api.mjs'
+            --only auth,firestore,functions,hosting 'node scripts/test-appointments-api.mjs && node scripts/test-invoices-api.mjs'
 
       # tools/build-images.mjs reuses a variant when its source bytes and settings are unchanged,
       # so restoring an older cache only rebuilds the images that changed since then.
@@ -159,7 +160,7 @@ jobs:
             ['/scripts/slot-picker.mjs', 'export function slotPicker'],
             ['/scripts/appointment-utils.mjs', 'export const vehicleLabels'],
             ['/scripts/admin-vacation.mjs', 'export async function loadVacation'],
-            ['/scripts/admin-clients.js?v=20261119', 'async function handleAuth'],
+            ['/scripts/admin-clients.js?v=20261121', 'async function handleAuth'],
           ]) {
             const asset = await request(path);
             assert.equal(asset.status, 200, path);
