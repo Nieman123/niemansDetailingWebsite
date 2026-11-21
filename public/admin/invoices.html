@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Invoices | Nieman's Detailing</title>
+  <meta name="theme-color" content="#0a0912">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/brand.css?v=20261120">
+  <link rel="stylesheet" href="/quote.css">
+  <link rel="stylesheet" href="/styles/appointments.css">
+<link rel="stylesheet" href="/styles/workspace.css">
+<link rel="stylesheet" href="/styles/admin-invoices.css?v=20261121">
+</head>
+<body class="quote-page appointment-app owner-app invoices-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="invoices"></nav></header>
+  <main class="wrap">
+    <div class="work-title"><h1>Invoices</h1><nav class="appointment-actions" aria-label="Workspace account">
+      <button type="button" class="quiet" id="sign-out" hidden>Sign out</button>
+    </nav></div>
+    <p id="auth-status" role="status">Checking admin access…</p>
+    <button class="btn primary" type="button" id="sign-in" hidden>Sign in with Google</button>
+
+    <div id="workspace" hidden>
+      <nav class="work-switch" aria-label="Invoice tools"><button type="button" data-view="list" aria-pressed="true">Invoices</button><button type="button" data-view="edit" aria-pressed="false">New invoice</button><button type="button" data-view="settings" aria-pressed="false">Settings</button></nav>
+      <p id="setup-notice" class="appointment-notice" hidden>Add your mailing address in <button type="button" class="link-button" data-view="settings">Settings</button> so invoices say where to mail checks.</p>
+
+      <section id="view-list" class="panel" aria-labelledby="list-heading">
+        <h2 id="list-heading">All invoices</h2>
+        <div class="invoice-tools">
+          <label class="field"><span>Show</span><select id="invoice-filter">
+            <option value="unpaid">Unpaid</option><option value="overdue">Overdue</option><option value="paid">Paid</option><option value="void">Void</option><option value="all">All</option>
+          </select></label>
+          <label class="field"><span>Search</span><input id="invoice-search" type="search" maxlength="80" autocomplete="off" placeholder="Business, number or PO"></label>
+        </div>
+        <p id="invoice-summary" class="invoice-summary" role="status"></p>
+        <div id="invoice-list"></div>
+      </section>
+
+      <section id="view-detail" class="panel" aria-labelledby="detail-heading" hidden>
+        <button type="button" class="back-action link-button" id="back-to-list">Back to invoices</button>
+        <h2 id="detail-heading" tabindex="-1">Invoice</h2>
+        <p id="detail-status" role="status"></p>
+        <div id="invoice-detail"></div>
+      </section>
+
+      <section id="view-edit" class="panel" aria-labelledby="edit-heading" hidden>
+        <h2 id="edit-heading">New invoice</h2>
+        <p id="edit-source" class="sub"></p>
+        <form id="invoice-form" novalidate>
+          <fieldset>
+            <legend>Bill to</legend>
+            <label class="field"><span>Business or customer name</span><input name="billName" required maxlength="120" autocomplete="off"></label>
+            <label class="field"><span>Attention <small>Optional, like Accounts Payable or a person</small></span><input name="billAttention" maxlength="120" autocomplete="off"></label>
+            <label class="field"><span>Billing address</span><textarea name="billAddress" rows="3" maxlength="300" placeholder="Street&#10;City, State ZIP"></textarea></label>
+            <div class="appointment-fields">
+              <label class="field"><span>Email <small>For sending the PDF</small></span><input name="billEmail" type="email" maxlength="200" autocomplete="off"></label>
+              <label class="field"><span>Phone <small>Optional</small></span><input name="billPhone" type="tel" maxlength="40" autocomplete="off"></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Dates and terms</legend>
+            <div class="appointment-fields">
+              <label class="field"><span>PO or reference number <small>Optional</small></span><input name="reference" maxlength="80" autocomplete="off"></label>
+              <label class="field"><span>Invoice date</span><input name="issueDate" type="date" required></label>
+            </div>
+            <div class="appointment-fields">
+              <label class="field"><span>Payment terms</span><select name="terms">
+                <option value="due_on_receipt">Due on receipt</option><option value="net_15">Net 15</option><option value="net_30">Net 30</option>
+                <option value="net_45">Net 45</option><option value="net_60">Net 60</option><option value="custom">Pick a due date</option>
+              </select></label>
+              <label class="field"><span>Due date</span><input name="dueDate" type="date"></label>
+            </div>
+            <div class="appointment-fields">
+              <label class="field"><span>Service date <small>Optional</small></span><input name="serviceDate" type="date"></label>
+              <label class="field"><span>Job details <small>Optional, like vehicles or location</small></span><textarea name="serviceDetail" rows="2" maxlength="300"></textarea></label>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Line items</legend>
+            <div class="invoice-line invoice-line--head" aria-hidden="true"><span>Description</span><span>Qty</span><span>Unit price</span><span>Amount</span><span></span></div>
+            <div id="line-items"></div>
+            <button class="btn secondary" type="button" id="add-line">Add line</button>
+          </fieldset>
+          <fieldset>
+            <legend>Tax and credits</legend>
+            <div class="invoice-tax">
+              <label class="appointment-checkbox"><input name="taxOn" type="checkbox"> Add sales tax</label>
+              <label class="field"><span>Rate (%)</span><input name="taxRate" type="number" min="0.01" max="20" step="0.01" inputmode="decimal"></label>
+            </div>
+            <p class="sub" id="tax-help"></p>
+            <p class="sub">Credits come off the total, like a deposit or an earlier payment.</p>
+            <div id="credit-items"></div>
+            <button class="btn secondary" type="button" id="add-credit">Add credit</button>
+          </fieldset>
+          <fieldset>
+            <legend>Notes</legend>
+            <label class="field"><span>Note on the invoice <small>Optional. Leave blank to use your default.</small></span><textarea name="notes" rows="2" maxlength="1200"></textarea></label>
+          </fieldset>
+          <dl class="invoice-totals" id="edit-totals" aria-live="polite"></dl>
+          <div class="appointment-actions">
+            <button class="btn primary" type="submit">Save invoice</button>
+            <button class="btn secondary" type="button" id="cancel-edit">Cancel</button>
+          </div>
+          <p id="edit-status" role="status"></p>
+        </form>
+      </section>
+
+      <section id="view-settings" class="panel" aria-labelledby="settings-heading" hidden>
+        <h2 id="settings-heading">Invoice settings</h2>
+        <p class="sub">These show on every invoice and receipt.</p>
+        <form id="invoice-settings">
+          <div class="appointment-fields">
+            <label class="field"><span>Business name</span><input name="businessName" required maxlength="80"></label>
+            <label class="field"><span>Make checks payable to</span><input name="payableTo" maxlength="80"></label>
+          </div>
+          <label class="field"><span>Mailing address for checks</span><textarea name="mailingAddress" rows="3" maxlength="300" placeholder="PO Box or street&#10;City, State ZIP"></textarea></label>
+          <div class="appointment-fields">
+            <label class="field"><span>Phone</span><input name="phone" maxlength="40"></label>
+            <label class="field"><span>Email</span><input name="email" type="email" maxlength="200"></label>
+          </div>
+          <div class="appointment-fields">
+            <label class="field"><span>Website</span><input name="website" maxlength="100"></label>
+            <label class="field"><span>NC sales tax account number <small>Optional</small></span><input name="taxId" maxlength="40"></label>
+          </div>
+          <label class="field"><span>Default payment terms</span><select name="defaultTerms">
+            <option value="due_on_receipt">Due on receipt</option><option value="net_15">Net 15</option><option value="net_30">Net 30</option>
+            <option value="net_45">Net 45</option><option value="net_60">Net 60</option>
+          </select></label>
+          <label class="field"><span>Default note on invoices <small>Optional</small></span><textarea name="invoiceNote" rows="2" maxlength="1200" placeholder="Questions about this invoice? Call or text (828) 273-3894."></textarea></label>
+          <label class="field"><span>Default note on receipts <small>Optional</small></span><textarea name="receiptNote" rows="2" maxlength="600"></textarea></label>
+          <p class="sub" id="settings-tax"></p>
+          <button class="btn primary" type="submit">Save settings</button>
+          <p role="status" id="settings-status"></p>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="/scripts/admin-invoices.mjs?v=20261121"></script>
+<script type="module" src="/scripts/workspace.mjs"></script>
+</body>
+</html>

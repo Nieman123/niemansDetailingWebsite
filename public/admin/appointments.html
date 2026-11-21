@@ -36,9 +36,11 @@
             <option value="awaiting_deposit">Awaiting deposit</option><option value="confirmed">Confirmed</option>
             <option value="in_progress">In progress</option><option value="due">Balance due</option><option value="refunds">Refunds</option><option value="cancelled">Canceled</option>
           </select></label>
+          <label class="field"><span>Search</span><input id="search-appointments" type="search" maxlength="80" autocomplete="off" placeholder="Name, phone, email, address or vehicle"></label>
           <button class="btn secondary" id="export-payments" type="button">Export payment ledger</button>
           <p id="list-status" role="status"></p>
           <div id="appointments-list"></div>
+          <button class="btn secondary" id="load-older" type="button" hidden>Show older appointments</button>
         </section>
         <section id="view-detail" class="panel" aria-labelledby="owner-detail-heading" hidden>
           <a class="back-action" id="back-to-queue" href="/admin/appointments">Back to queue</a>
@@ -84,6 +86,8 @@
               </section>
             </div>
             <label class="field"><span>Start time (Eastern)</span><input name="start" type="datetime-local" required><small>Choose a slot above or enter a custom time.</small></label>
+            <div id="start-check" class="time-check" role="status" aria-live="polite" hidden></div>
+            <label id="overlap-override" class="appointment-checkbox" hidden><input name="allowOverlap" type="checkbox"> Book it anyway, even though it overlaps</label>
             <label class="field"><span>Estimated total ($)</span><input name="estimate" type="number" min="0" max="100000" step="0.01" inputmode="decimal" placeholder="Optional"></label>
             <label class="field"><span>Preparation instructions for the customer</span><textarea name="preparation" rows="2" maxlength="1500"></textarea></label>
             <label class="field"><span>Deposit</span>
@@ -125,6 +129,15 @@
             <label class="field"><span>NC sales tax account number (optional, shown on receipts)</span><input name="taxId" maxlength="40" pattern="[A-Za-z0-9][A-Za-z0-9 .\-]*" autocomplete="off"></label>
           </div>
           <button class="btn primary" type="submit" disabled>Save sales tax</button>
+          <p role="status"></p>
+        </form>
+        <h2 id="follow-up-heading" style="margin-top:2.5rem">Customer follow-up emails</h2>
+        <form id="follow-up-settings" aria-labelledby="follow-up-heading">
+          <label class="appointment-checkbox"><input name="reminders" type="checkbox"> Send a reminder email the day before each confirmed appointment</label>
+          <label class="appointment-checkbox"><input name="reviewRequests" type="checkbox"> Ask for a Google review 2 hours after a job is finished and paid</label>
+          <label class="field"><span>Google review link</span><input name="reviewUrl" type="url" maxlength="500" placeholder="https://g.page/r/…/review" autocomplete="off"></label>
+          <p class="sub">Find it in your Google Business Profile: Ask for reviews, then Copy link. Each customer is asked once, even if they book again.</p>
+          <button class="btn primary" type="submit" disabled>Save follow-up emails</button>
           <p role="status"></p>
         </form>
       </section>

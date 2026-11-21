@@ -1,0 +1,42 @@
+{
+  "entries": [
+    {
+      "identifier": "urn:air:niemansdetailing.com:docs:llms-txt",
+      "displayName": "Nieman's Detailing site guide for AI agents",
+      "description": "Markdown overview of Nieman's Detailing, a mobile car detailing business in Asheville, NC: services, prices, service area, hours, contact details, and links to booking and quote pages.",
+      "type": "text/markdown",
+      "url": "https://niemansdetailing.com/llms.txt",
+      "tags": ["car detailing", "mobile detailing", "ceramic coating", "paint correction", "Asheville"],
+      "representativeQueries": [
+        "mobile car detailing near Asheville NC",
+        "how much does ceramic coating cost in Asheville",
+        "book a car detail in Hendersonville or Weaverville",
+        "what services does Nieman's Detailing offer"
+      ]
+    },
+    {
+      "identifier": "urn:air:niemansdetailing.com:booking:schedule",
+      "displayName": "Book a mobile detailing appointment",
+      "description": "Online scheduler where a customer picks a detailing service and an open appointment time.",
+      "type": "text/html",
+      "url": "https://niemansdetailing.com/schedule",
+      "tags": ["booking", "appointments"],
+      "representativeQueries": [
+        "schedule a car detailing appointment in Asheville",
+        "find an open time for a mobile detail this week"
+      ]
+    },
+    {
+      "identifier": "urn:air:niemansdetailing.com:booking:quote",
+      "displayName": "Instant detailing quote",
+      "description": "Quote form that returns a detailing price estimate for a vehicle.",
+      "type": "text/html",
+      "url": "https://niemansdetailing.com/quote",
+      "tags": ["pricing", "quote"],
+      "representativeQueries": [
+        "get a quote for a full car detail",
+        "how much is a car detail for an SUV in Asheville"
+      ]
+    }
+  ]
+}

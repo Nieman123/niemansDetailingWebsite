@@ -3,7 +3,7 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from
 import { easternInput, slotPicker } from "./slot-picker.mjs";
 import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
 import { servicePicker } from "./service-picker.mjs";
-import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, rescheduleWorkspace, setupBookingSettings, setupTaxSettings, statusLabels } from "./appointment-admin-tools.mjs";
+import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, rescheduleWorkspace, setupBookingSettings, setupFollowUpSettings, setupTaxSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);
 const form = byId("create-booking");
@@ -17,6 +17,9 @@ const signIn = byId("sign-in");
 const signOutButton = byId("sign-out");
 const links = new Map();
 const filter = byId("filter-appointments");
+const search = byId("search-appointments");
+const loadOlder = byId("load-older");
+let olderCursor = null;
 const detail = byId("owner-detail");
 const detailStatus = byId("detail-status");
 const params = new URLSearchParams(location.search);
@@ -36,7 +39,8 @@ const refundBanner = Object.assign(document.createElement("p"), { className: "ap
 listStatus.before(refundBanner);
 // Keep the queue current when you come back to the app or leave it open.
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !recordId && !byId("workspace").hidden) refreshList(); });
-setInterval(() => { if (document.visibilityState === "visible" && !recordId && !byId("workspace").hidden && !byId("view-queue").hidden) refreshList(); }, 60000);
+// Skip the auto-refresh after "Show older" so the extra rows don't vanish while you read them.
+setInterval(() => { if (document.visibilityState === "visible" && !recordId && !byId("workspace").hidden && !byId("view-queue").hidden && list.childElementCount <= 50) refreshList(); }, 60000);
 const messages = {
   access_denied: "This account isn’t on the admin list for this site.",
   sign_in_required: "Sign in to manage appointments.",
@@ -45,7 +49,7 @@ const messages = {
   invalid_details: "Enter a name and either a valid US phone number or email address.",
   invalid_time: "Choose a future appointment with a duration from 15 minutes to seven days.",
   invalid_price: "Enter a valid estimated total.",
-  time_unavailable: "This overlaps a confirmed appointment. Choose another time.",
+  time_unavailable: "This time overlaps another booking or calendar event. Choose another time, or tick “Book it anyway” to keep it.",
   link_unavailable: "Share links are available for active, confirmed appointments.",
   calendar_unavailable: "The configured calendars couldn't be checked.",
   stripe_unavailable: "Configure Stripe test credentials before creating deposit links.",
@@ -57,6 +61,7 @@ const messages = {
   status_changed: "This appointment changed. Refresh the list and try again.",
   scope_acceptance_required: "Record the agreed scope changes and confirm customer approval for the price increase.",
   invalid_payment: "Enter a payment amount within the remaining balance and select its method.",
+  invalid_follow_up_settings: "Add an https Google review link to turn on review requests.",
   invalid_line_items: "Check the invoice lines. Their amounts must add up to the final total.",
   check_pending: "Clear or return the pending check before recording another payment.",
   payment_review_required: "Reconcile the Stripe refund or dispute before recording another payment.",
@@ -90,15 +95,97 @@ const calendar = slotPicker(byId("owner-slot-calendar"), {
   onClear() {
     if (selectedSlot && fields.start.value === easternInput(selectedSlot)) fields.start.value = "";
     selectedSlot = null;
+    checkStart();
   },
   onSelect(value) {
     selectedSlot = value;
     fields.start.value = easternInput(value);
+    checkStart();
   },
 });
 function refreshCalendar() {
   // Keep the chosen time when the deposit, length, or service changes, as long as it's still open.
   if (pickerReady) calendar.load(undefined, selectedSlot);
+  checkStart();
+}
+
+// Live check of whatever start time is in the form, picked from the calendar or typed, using the same
+// hours, notice and calendars as the booking calendar. Conflicts warn instead of blocking: the owner can
+// tick "Book it anyway" to save over one.
+const startCheck = byId("start-check");
+const overlapOverride = byId("overlap-override");
+const rangeTime = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const issueText = {
+  past: "That time has already passed.",
+  too_soon_for_deposit: "That’s too soon for a deposit link. Choose “No deposit required” or a time at least 36 minutes away.",
+  blocked_date: "That date is blocked off in Settings.",
+  closed_day: "You don’t normally take bookings that day.",
+  outside_hours: "It runs outside your business hours for that day.",
+};
+let checkTimer;
+let checkVersion = 0;
+let lastCheck = null;
+function clearStartCheck() {
+  checkVersion++;
+  clearTimeout(checkTimer);
+  lastCheck = null;
+  startCheck.hidden = true;
+  startCheck.replaceChildren();
+  overlapOverride.hidden = true;
+  fields.allowOverlap.checked = false;
+}
+function conflictLine(item, bufferMinutes) {
+  const when = rangeTime.formatRange(item.start, item.end);
+  const who = item.kind === "appointment" ? [item.name, item.service].filter(Boolean).join(" · ") || "Another appointment" : "Busy on your calendar";
+  return item.overlaps ? `Overlaps ${who}, ${when}.` : `Inside your ${bufferMinutes}-minute travel buffer: ${who}, ${when}.`;
+}
+function showStartCheck(result) {
+  const conflict = result.issues.includes("overlap");
+  startCheck.dataset.state = result.open ? "open" : conflict ? "conflict" : "warn";
+  const lines = [
+    ...result.issues.filter(issue => issueText[issue]).map(issue => issueText[issue]),
+    ...result.conflicts.map(item => conflictLine(item, result.bufferMinutes)),
+  ];
+  const heading = document.createElement("p");
+  heading.textContent = result.open ? "Open. Nothing else is booked around this time."
+    : conflict ? "This time isn’t free." : "This time is free, but note:";
+  startCheck.replaceChildren(heading);
+  if (lines.length) {
+    const list = document.createElement("ul");
+    list.append(...lines.map(line => Object.assign(document.createElement("li"), { textContent: line })));
+    startCheck.append(list);
+  }
+  startCheck.hidden = false;
+  overlapOverride.hidden = !conflict;
+  if (!conflict) fields.allowOverlap.checked = false;
+}
+function checkStart() {
+  let start;
+  try { start = easternStart(fields.start.value); } catch { clearStartCheck(); return; }
+  const durationMinutes = Number(fields.durationMinutes.value);
+  if (!fields.durationMinutes.validity.valid || !durationMinutes) { clearStartCheck(); return; }
+  const key = [start, durationMinutes, fields.deposit.value].join();
+  if (lastCheck?.key === key) return;
+  const version = ++checkVersion;
+  clearTimeout(checkTimer);
+  if (lastCheck?.start !== start) fields.allowOverlap.checked = false;
+  lastCheck = { key, start, result: null };
+  startCheck.dataset.state = "checking";
+  startCheck.replaceChildren(Object.assign(document.createElement("p"), { textContent: "Checking your calendar…" }));
+  startCheck.hidden = false;
+  checkTimer = setTimeout(async () => {
+    try {
+      const result = await ownerRequest("admin-check-time", { start, durationMinutes, deposit: fields.deposit.value });
+      if (version !== checkVersion) return;
+      lastCheck.result = result;
+      showStartCheck(result);
+    } catch (error) {
+      if (version !== checkVersion) return;
+      lastCheck = null;
+      startCheck.dataset.state = "warn";
+      startCheck.replaceChildren(Object.assign(document.createElement("p"), { textContent: "Couldn’t check this time: " + explain(error) }));
+    }
+  }, 350);
 }
 function syncEstimate() {
   const service = services.find(item => item.name === fields.service.value);
@@ -120,6 +207,7 @@ fields.durationMinutes.addEventListener("change", refreshCalendar);
 fields.start.addEventListener("input", () => {
   selectedSlot = null;
   calendar.clearSelection();
+  checkStart();
 });
 
 function syncDeposit() {
@@ -145,6 +233,7 @@ function fillForm(prefill) {
   fields.deposit.value = prefill.deposit || "required";
   byId("client-default").hidden = !prefill.clientId;
   syncDeposit();
+  clearStartCheck();
 }
 
 function actionButton(label, handler) {
@@ -277,6 +366,7 @@ const icons = {
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
   dots: '<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+  invoice: '<path d="M6 2h9l5 5v15H6z"/><path d="M14 2v6h6M9 13h8M9 17h5"/>',
   cash: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
 };
 const icon = name => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
@@ -353,6 +443,7 @@ function renderDetail(record) {
   }
   if (record.phone) quick.append(quickLink("Call", "tel:" + record.phone, "phone"), quickLink("Text", "sms:" + record.phone, "chat"));
   if (record.email) quick.append(quickLink("Email", "mailto:" + record.email, "mail"));
+  if (record.status !== "cancelled") quick.append(quickLink("Invoice", "/admin/invoices?appointment=" + encodeURIComponent(record.id), "invoice"));
   if (quick.childElementCount) hub.append(quick);
 
   // Facts
@@ -368,6 +459,7 @@ function renderDetail(record) {
     }));
     facts.append(Object.assign(document.createElement("dt"), { textContent: "Address" }), dd);
   }
+  fact("Customer notes", record.customerNotes);
   fact("Vehicle", record.vehicle);
   fact("Phone", record.phone);
   fact("Email", record.email);
@@ -517,27 +609,21 @@ async function refreshList() {
       return;
     }
 
-    const records = await ownerRequest("list");
-    if (session !== scope || recordId) return;
     const view = filter.value;
-    const east = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", dateStyle: "short" });
-    const refunds = records.filter(refundOpen);
-    const failed = refunds.filter(record => record.refundState === "failed").length;
-    refundBanner.hidden = !refunds.length;
-    refundBanner.textContent = refunds.length
-      ? `${refunds.length} deposit refund${refunds.length === 1 ? "" : "s"} in progress${failed ? `, ${failed} failed and need${failed === 1 ? "s" : ""} attention in Stripe` : ""}. Choose "Refunds" in the filter to see them.`
+    const query = search.value.trim();
+    const { records, next, refunds } = await ownerRequest("list", { view, search: query });
+    if (session !== scope || recordId) return;
+    refundBanner.hidden = !refunds.open;
+    refundBanner.textContent = refunds.open
+      ? `${refunds.open} deposit refund${refunds.open === 1 ? "" : "s"} in progress${refunds.failed ? `, ${refunds.failed} failed and need${refunds.failed === 1 ? "s" : ""} attention in Stripe` : ""}. Choose "Refunds" in the filter to see them.`
       : "";
-    const visible = records.filter(record => {
-      if (view === "refunds") return refundOpen(record);
-      if (view === "cancelled") return record.status === "cancelled";
-      if (record.status === "cancelled") return false;
-      if (view === "today") return east.format(record.start) === east.format(Date.now());
-      if (view === "due") return record.balanceCents > 0;
-      return view === "all" || record.status === view;
-    });
-    if (view === "today") visible.sort((a, b) => a.start - b.start);
+    // "Recent" hides cancellations; every other filter is already exact on the server.
+    const visible = view === "all" && !query ? records.filter(record => record.status !== "cancelled") : records;
     list.replaceChildren(...visible.map(renderRow));
-    status.textContent = visible.length ? "" : records.length ? "No appointments match this filter." : "Your first appointment will appear here.";
+    olderCursor = next;
+    loadOlder.hidden = !next;
+    status.textContent = visible.length ? (query && records.length === 100 ? "Showing the first 100 matches. Add more of the name or number to narrow it." : "")
+      : query ? "No appointments match that search." : records.length ? "No appointments match this filter." : view === "all" ? "Your first appointment will appear here." : "No appointments match this filter.";
   } catch (error) {
     if (session === scope && recordId === id) {
       status.textContent = id && error.code === "record_not_found" ? "This appointment could not be found." : explain(error);
@@ -557,8 +643,15 @@ form.addEventListener("submit", async event => {
     let start;
     try { start = easternStart(payload.start); }
     catch (error) { formStatus.textContent = error.message; return; }
+    const overlapping = !overlapOverride.hidden && lastCheck?.start === start;
+    if (overlapping && !fields.allowOverlap.checked) {
+      formStatus.textContent = "This time overlaps another booking. Tick “Book it anyway” to keep it, or choose another time.";
+      fields.allowOverlap.focus();
+      return;
+    }
     const record = await ownerRequest("create", {
       ...payload, vehicle: payload.vehicle || vehicleLabels[payload.vehicleType] || "", start, useCalendarSlot: selectedSlot === start, durationMinutes: Number(payload.durationMinutes),
+      allowOverlap: overlapping && fields.allowOverlap.checked,
       estimateCents: payload.estimate ? Math.round(Number(payload.estimate) * 100) : null,
       saveClientDefault: !!context.clientId && fields.saveClientDefault.checked,
       clientId: context.clientId, leadId: context.leadId, requestId,
@@ -566,7 +659,10 @@ form.addEventListener("submit", async event => {
     if (session !== scope) return;
     location.assign(appointmentUrl(record.id));
   } catch (error) {
-    if (session === scope) formStatus.textContent = explain(error);
+    if (session !== scope) return;
+    formStatus.textContent = explain(error);
+    // Something was booked since the last check: re-check so the conflict and the override show.
+    if (error.code === "time_unavailable") { lastCheck = null; checkStart(); }
   } finally {
     saving = button.disabled = false;
   }
@@ -643,6 +739,7 @@ if (!appointmentsEnabled) {
     }, { signal: authScope.signal });
     setupBookingSettings(byId("booking-settings"), ownerRequest, explain);
     setupTaxSettings(byId("tax-settings"), ownerRequest, explain);
+    setupFollowUpSettings(byId("follow-up-settings"), ownerRequest, explain);
     await refreshList();
   });
 }
@@ -650,6 +747,23 @@ if (!appointmentsEnabled) {
 filter.addEventListener("change", () => {
   history.replaceState(null, "", appointmentUrl());
   refreshList();
+});
+let searchTimer;
+search.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(refreshList, 350);
+});
+// "Recent" pages back through older bookings 50 at a time.
+loadOlder.addEventListener("click", async () => {
+  if (!olderCursor) return;
+  loadOlder.disabled = true;
+  try {
+    const { records, next } = await ownerRequest("list", { view: "all", before: olderCursor });
+    list.append(...records.filter(record => record.status !== "cancelled").map(renderRow));
+    olderCursor = next;
+    loadOlder.hidden = !next;
+  } catch (error) { listStatus.textContent = explain(error); }
+  finally { loadOlder.disabled = false; }
 });
 byId("export-payments").addEventListener("click", async event => {
   const button = event.currentTarget;

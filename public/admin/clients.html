@@ -791,6 +791,7 @@
               <button id="client-action-copy-link" class="btn btn-ghost" type="button">Copy link</button>
               <a id="client-action-open-lead" class="btn" href="/admin/index" hidden>Open Lead</a>
               <a id="client-action-appointment" class="btn" href="/admin/appointments" hidden>Create appointment</a>
+              <a id="client-action-invoice" class="btn" href="/admin/invoices" hidden>Create invoice</a>
             </div>
           </header>
 
@@ -949,7 +950,7 @@
   </div>
 
   <script type="module">
-    import("/scripts/admin-clients.js?v=20261119").catch(error => {
+    import("/scripts/admin-clients.js?v=20261121").catch(error => {
       console.error("Client manager initialization failed", error);
       const status = document.getElementById("admin-status");
       status.textContent = "Could not load the Client Manager. Reload to try again.";

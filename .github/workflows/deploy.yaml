@@ -75,6 +75,7 @@ jobs:
           node scripts/test-appointment-calendar.mjs
           node scripts/test-appointment-integrations.mjs
           node scripts/test-deposit-waiver.mjs
+          node scripts/test-invoices.mjs
 
       - name: Install Firebase CLI
         run: npm install --global "firebase-tools@$FIREBASE_CLI_VERSION"
@@ -90,7 +91,7 @@ jobs:
           trap 'rm -f "$emulator_env"' EXIT
           printf '%s\n' 'APPOINTMENT_INTEGRATIONS_PROJECT=demo-detailing-prod' 'HOSTING_ORIGIN=https://demo-detailing-prod.web.app' > "$emulator_env"
           firebase emulators:exec --non-interactive --project demo-detailing-prod \
-            --only auth,firestore,functions,hosting 'node scripts/test-appointments-api.mjs'
+            --only auth,firestore,functions,hosting 'node scripts/test-appointments-api.mjs && node scripts/test-invoices-api.mjs'
 
       # tools/build-images.mjs reuses a variant when its source bytes and settings are unchanged,
       # so restoring an older cache only rebuilds the images that changed since then.

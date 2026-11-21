@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Site health | Nieman's Detailing</title>
+  <meta name="theme-color" content="#0a0912">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/brand.css?v=20261120">
+  <link rel="stylesheet" href="/quote.css">
+  <link rel="stylesheet" href="/styles/appointments.css">
+<link rel="stylesheet" href="/styles/workspace.css">
+<link rel="stylesheet" href="/styles/admin-health.css">
+</head>
+<body class="quote-page appointment-app owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="health"></nav></header>
+  <main class="wrap health">
+    <div class="work-title"><h1>Site health</h1><nav class="appointment-actions" aria-label="Health tools">
+      <button type="button" class="quiet" id="refresh-health" hidden>Refresh</button>
+      <button type="button" class="quiet" id="sign-out" hidden>Sign out</button>
+    </nav></div>
+    <p id="auth-status" role="status">Checking admin access…</p>
+    <button class="btn primary" type="button" id="sign-in" hidden>Sign in with Google</button>
+
+    <div id="health" hidden>
+      <section class="health-banner" id="health-banner" aria-live="polite"><strong id="banner-title"></strong><span id="banner-detail"></span></section>
+
+      <section class="health-tiles" aria-label="Last 24 hours">
+        <div class="health-tile" id="tile-errors"><span>Errors, 24 h</span><strong></strong></div>
+        <div class="health-tile" id="tile-warnings"><span>Warnings, 24 h</span><strong></strong></div>
+        <div class="health-tile" id="tile-attention"><span>Bookings needing you</span><strong></strong></div>
+        <div class="health-tile" id="tile-emails"><span>Emails sent, 7 days</span><strong></strong></div>
+      </section>
+
+      <section class="panel" aria-labelledby="attention-heading" id="attention-panel">
+        <h2 id="attention-heading">Bookings that need you</h2>
+        <ul class="health-list" id="attention-list"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="systems-heading">
+        <h2 id="systems-heading">Systems</h2>
+        <ul class="health-checks" id="checks"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="emails-heading">
+        <h2 id="emails-heading">Customer emails, last 7 days</h2>
+        <p id="email-summary" class="sub"></p>
+        <ul class="health-list" id="email-problems"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="events-heading">
+        <h2 id="events-heading">Problems log, last 7 days</h2>
+        <label class="field"><span>Show</span><select id="event-filter">
+          <option value="all">Errors and warnings</option><option value="error">Errors only</option><option value="browser">Browser errors</option>
+        </select></label>
+        <ul class="health-list" id="events"></ul>
+        <p class="sub">The same problem within an hour is grouped with a count. Errors also send a Telegram alert, at most once every 6 hours for each kind. Entries clear after 30 days.</p>
+      </section>
+      <p class="sub" id="generated"></p>
+    </div>
+  </main>
+  <script type="module" src="/scripts/admin-health.mjs"></script>
+<script type="module" src="/scripts/workspace.mjs"></script>
+</body>
+</html>

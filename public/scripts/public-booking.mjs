@@ -2,6 +2,7 @@ import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { slotPicker } from "./slot-picker.mjs";
 import { servicePicker } from "./service-picker.mjs";
 import { appointmentRequest, appointmentMoney, appointmentTime, durationLabel, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
+import { rememberBooking } from "./booking-analytics.mjs";
 
 const el = id => document.getElementById(id);
 const form = el("public-booking");
@@ -18,7 +19,8 @@ let token = makeToken();
 const errors = {
   outside_service_area: "That ZIP is outside the online booking area. Text Nieman to check travel options.",
   existing_booking_hold: "You already have a time on hold. Use your appointment link or text Nieman for help.",
-  invalid_details: "Enter your name and a 10-digit US phone number. Check your email if you included one.",
+  invalid_details: "Enter your name, a 10-digit US phone number and a valid email address.",
+  email_required: "Enter your email so we can send your confirmation and appointment link.",
   verified_email_required: "Please verify your account email or book while signed out.",
   calendar_unavailable: "We couldn’t check the calendars. Try again or text Nieman.",
   vehicle_required: "Select your vehicle size to see your estimate and book.",
@@ -80,8 +82,25 @@ vehicleChoices.forEach(input => input.addEventListener("change", () => {
   fields.vehicleType.value = input.value;
   fields.vehicleType.dispatchEvent(new Event("change"));
 }));
+const vehicleStep = el("booking-vehicle");
+const vehicleHint = el("vehicle-selection-hint");
+const calmMotion = matchMedia("(prefers-reduced-motion: reduce)");
+vehicleChoices.forEach(input => input.setAttribute("aria-describedby", vehicleHint.id));
+
+// A required step the customer skipped: bring it on screen, outline it, say what to do, and focus it.
+// Programmatic focus after a tap shows no focus ring, so the outline comes from .is-missing instead.
+function flagMissingStep(step, hint, message, focusTarget) {
+  hint.textContent = message;
+  step.classList.remove("is-missing");
+  void step.offsetWidth; // restart the nudge if the customer taps a time again
+  step.classList.add("is-missing");
+  step.scrollIntoView({ block: "center", behavior: calmMotion.matches ? "auto" : "smooth" });
+  focusTarget?.focus({ preventScroll: true });
+}
+
 fields.vehicleType.onchange = () => {
-  el("vehicle-selection-hint").textContent = "";
+  vehicleHint.textContent = "";
+  vehicleStep.classList.remove("is-missing");
   syncVehicle();
   picker?.refreshPrices();
   if (service) showSummary();
@@ -170,8 +189,7 @@ async function begin() {
       onSelect(value) {
         if (fields.vehicleType.required && !fields.vehicleType.value) {
           calendar.clearSelection();
-          el("vehicle-selection-hint").textContent = errors.vehicle_required;
-          vehicleChoices[0]?.focus();
+          flagMissingStep(vehicleStep, vehicleHint, "Pick your vehicle type first, then choose your time.", vehicleChoices[0]);
           return;
         }
         start = value;
@@ -188,6 +206,8 @@ async function begin() {
   } catch {state.textContent = "Booking couldn’t load. Try again or text Nieman."; retry.hidden = false;}
 }
 fields.phone.oninput = () => fields.phone.setCustomValidity("");
+// The browser can't focus an invalid field inside a closed <details> (the optional ZIP code), so open it first.
+form.addEventListener("invalid", event => { const details = event.target.closest("details"); if (details) details.open = true; }, true);
 form.onsubmit = async event => {
   event.preventDefault();
   if (!start || saving) return;
@@ -205,6 +225,7 @@ form.onsubmit = async event => {
       ...payload, start, accepted: fields.accepted.checked, token, quoteReceipt, reuseQuoteContact,
     }, bearer);
     const fragment = "#" + result.id + "." + token;
+    rememberBooking(result.id, result.estimateCents, result.service);
     if (!result.depositCents) {
       el("reserve-state").textContent = "Request sent.";
       location.assign("/appointment" + fragment);
@@ -224,7 +245,7 @@ form.onsubmit = async event => {
       token = makeToken(); el("reserve-state").textContent = "";
       await loadMonth();
       state.textContent = "That time was just taken. Choose another opening.";
-      fields.serviceId.focus();
+      state.focus();
     } else {
       if (error.code === "quote_contact_expired") { quote = null; quoteReceipt = null; setQuoteContact(false); showSummary(); fields.name.focus(); }
       el("reserve-state").textContent = errors[error.code] || "We couldn’t reserve this time. Your details are here so you can try again.";

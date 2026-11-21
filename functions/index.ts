@@ -14,8 +14,17 @@ export const appointmentMaintenance = onSchedule({
   schedule: "every 5 minutes", region: "us-east1", timeoutSeconds: 300, maxInstances: 1, concurrency: 1,
 }, async () => {
   if (process.env.ENABLE_APPOINTMENTS !== "true") return;
-  const { reconcileAppointments } = await import("./appointments");
-  await reconcileAppointments(db);
+  const startedAt = Date.now();
+  try {
+    const { reconcileAppointments } = await import("./appointments");
+    await reconcileAppointments(db);
+  } catch (error) {
+    const { recordSchedulerRun } = await import("./ops-health");
+    await recordSchedulerRun(db, startedAt, error);
+    throw error;
+  }
+  const { recordSchedulerRun } = await import("./ops-health");
+  await recordSchedulerRun(db, startedAt);
 });
 
 type Vehicle = "sedan" | "suv_truck" | "van_3row";
@@ -197,6 +206,16 @@ async function sendTelegramMessage(text: string): Promise<void> {
   if (!result.ok) throw new Error("Telegram did not accept the message");
 }
 
+// Health logging loads on demand, like the appointment modules, and never breaks the caller.
+async function reportProblem(input: { source: string; code: string; level?: "error" | "warning"; ref?: string; detail?: string }) {
+  try {
+    const { recordOpsEvent } = await import("./ops-health");
+    await recordOpsEvent(db, input);
+  } catch {
+    logger.error("Health event not recorded", { source: input.source, code: input.code });
+  }
+}
+
 // Deliver from the committed Firestore update, independently of the customer's tab.
 // Failed sends throw so Firebase retries the event. Successful event IDs are recorded.
 // A customer's booking lands on the calendar once their deposit is paid (it then waits for approval
@@ -228,7 +247,13 @@ export const notifyAppointmentBooked = onDocumentWritten({
       ` to ${when(after.end, { hour: "numeric", minute: "2-digit" })} ET`,
     details.description,
   ].join("\n");
-  await sendTelegramMessage(text);
+  try { await sendTelegramMessage(text); }
+  catch (error) {
+    // Firebase retries this event; the Health page shows the failure in the meantime.
+    await reportProblem({ source: "booking", code: "telegram_failed", ref: event.params.appointmentId,
+      detail: error instanceof Error ? error.message : String(error) });
+    throw error;
+  }
   await receipt.set({ event_id: event.id, sent_at: FieldValue.serverTimestamp() });
 });
 
@@ -311,6 +336,29 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
       return;
     }
     await handleAppointments(db, admin.auth(), req, res, path.slice("/api/appointments/".length));
+    return;
+  }
+  // Owner-only invoices and receipts. Not tied to online booking, so they work before appointments launch.
+  if (path.startsWith("/api/invoices/")) {
+    if (origin && !allowOrigin) { res.status(403).json({ ok: false, error: "access_denied" }); return; }
+    const { handleInvoices } = await import("./invoices");
+    await handleInvoices(db, admin.auth(), req, res, path.slice("/api/invoices/".length));
+    return;
+  }
+  // Anonymous JavaScript error reports from the site's own pages, for the admin Health page.
+  if (path.endsWith("/clientError")) {
+    if (req.method !== "POST" || !allowOrigin || (req.rawBody?.length ?? 0) > 4096) { res.status(204).send(""); return; }
+    let report: unknown = req.body;
+    if (typeof report === "string" || Buffer.isBuffer(report)) {
+      try { report = JSON.parse(report.toString()); } catch { report = null; }
+    }
+    try {
+      const { recordBrowserError } = await import("./ops-health");
+      await recordBrowserError(db, report);
+    } catch {
+      // Error reporting is best effort.
+    }
+    res.status(204).send("");
     return;
   }
   if (!isCreateLeadRoute && !isQuoteProgressRoute && !isLeadOptionsRoute) { res.status(404).json({ ok: false, error: "not_found" }); return; }
@@ -531,11 +579,14 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
       }
     } catch (e) {
       logger.error("Telegram error", e as any);
+      // The lead is saved, but the owner wasn't pinged about it. Surface it on the Health page.
+      await reportProblem({ source: "leads", code: "telegram_failed", ref: ref.id, detail: e instanceof Error ? e.message : String(e) });
     }
 
     res.status(200).json({ ok: true, id: ref.id, update_token: updateToken });
   } catch (e) {
     logger.error("createLead error", e as any);
+    await reportProblem({ source: "leads", code: "create_failed", detail: e instanceof Error ? e.message : String(e) });
     res.status(500).json({ ok: false, error: "internal" });
   }
 });

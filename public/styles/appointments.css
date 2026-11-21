@@ -37,3 +37,13 @@
 #appointment-preparation { white-space: pre-wrap; overflow-wrap: anywhere; }
 @media (min-width: 560px) { .appointment-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 920px) { .appointment-layout { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); } }
+
+/* Live check under the New booking start time. */
+.time-check { margin: -4px 0 12px; padding: 10px 14px; border-radius: 8px; background: var(--surface-raised); border-inline-start: 4px solid var(--brand); }
+.time-check p { margin: 0; }
+.time-check ul { margin: 6px 0 0; padding-inline-start: 18px; }
+.time-check li + li { margin-top: 2px; }
+.time-check[data-state="open"] { border-inline-start-color: #3fb67a; }
+.time-check[data-state="warn"] { border-inline-start-color: #e0a526; }
+.time-check[data-state="conflict"] { border-inline-start-color: #e0565b; }
+.time-check[data-state="checking"] { opacity: .75; }

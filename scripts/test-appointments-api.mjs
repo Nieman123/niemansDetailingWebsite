@@ -72,7 +72,22 @@ assert.equal(rejected.error, 'time_unavailable');
 assert.equal(details.status, 'confirmed');
 assert.equal(details.depositCents, 0);
 assert.equal((await asOwner('context', { clientId: client.id })).result.deposit, 'waived');
-assert.equal((await asOwner('list')).result.length, 2);
+assert.equal((await asOwner('list')).result.records.length, 2);
+assert.equal((await asOwner('list', { search: 'test customer' })).result.records.length, 2);
+assert.equal((await asOwner('list', { search: '555-0123' })).result.records.length, 2);
+assert.equal((await asOwner('list', { search: 'nobody-matches-this' })).result.records.length, 0);
+assert.deepEqual((await asOwner('list', { view: 'confirmed' })).result.records.map(record => record.status), ['confirmed']);
+assert.equal((await post('health', {}, stranger.idToken)).status, 403);
+const health = (await asOwner('health')).result;
+assert(Array.isArray(health.checks) && health.checks.some(item => item.id === 'stripe'));
+assert.equal(typeof health.summary.errors24h, 'number');
+assert(health.events.some(event => event.code === 'stripe_unavailable'), 'a 503 is logged on the health page');
+assert.equal((await asOwner('save-follow-up-settings', { reminders: true, reviewRequests: true, reviewUrl: '' })).error, 'invalid_follow_up_settings');
+assert.equal((await asOwner('save-follow-up-settings', { reminders: true, reviewRequests: true, reviewUrl: 'http://g.page/r/x' })).error, 'invalid_follow_up_settings');
+const followUps = (await asOwner('save-follow-up-settings', { reminders: true, reviewRequests: true, reviewUrl: 'https://g.page/r/example/review', revision: '' })).result;
+assert.equal(followUps.reviewUrl, 'https://g.page/r/example/review');
+assert.equal((await asOwner('follow-up-settings')).result.revision, followUps.revision);
+console.log('PASS: Queue search and filters, health report, and follow-up email settings.');
 assert.equal((await asOwner('create', a.ok ? appointment : competing)).result.id, details.id);
 
 const id = details.id;
@@ -168,6 +183,27 @@ assert.match(taxExport, /venmo.*,2100,2100/);
 const taxOff = await asOwner('save-tax-settings', { enabled: false, rateBasisPoints: 700, taxId: '600-1234567', revision: taxSaved.revision });
 assert.equal(taxOff.result.enabled, false);
 
+// Follow-up emails from the maintenance job: one day-before reminder, one review request per customer.
+const reminderStart = Math.ceil((Date.now() + 20 * 3_600_000) / 60_000) * 60_000 + 17 * 60_000;
+const upcoming = (await asOwner('create', { ...appointment, requestId: randomUUID(), start: reminderStart, saveClientDefault: false })).result;
+assert.equal(upcoming.status, 'confirmed');
+await db.collection('appointments').doc(upcoming.id).update({ createdAt: Date.now() - 3 * 86_400_000 });
+await db.collection('appointments').doc(taxPaid.id).update({ completedAt: Date.now() - 3 * 3_600_000 });
+const followUpsNow = (await asOwner('follow-up-settings')).result;
+await asOwner('save-follow-up-settings', { ...followUpsNow, reviewRequests: true, reviewUrl: 'https://g.page/r/example/review' });
+await paymentLifecycle.reconcileAppointments(db);
+const reminder = await db.collection('appointmentEmails').doc(`reminder-${upcoming.id}-${reminderStart}`).get();
+assert(reminder.exists, 'a confirmed job about 20 hours out gets a reminder');
+assert.match(reminder.get('subject'), /^Reminder: your detail is (today|tomorrow) at /);
+assert.equal(reminder.get('to'), 'client@example.test');
+const review = await db.collection('appointmentEmails').doc(`review-${taxPaid.id}`).get();
+assert(review.exists, 'a finished, paid job gets a review request');
+assert.match(review.get('html'), /g\.page\/r\/example\/review/);
+await db.collection('appointmentEmails').doc(`reminder-${upcoming.id}-${reminderStart}`).delete();
+await paymentLifecycle.reconcileAppointments(db);
+assert(!(await db.collection('appointmentEmails').doc(`reminder-${upcoming.id}-${reminderStart}`).get()).exists, 'reminders go out once');
+console.log('PASS: Day-before reminders and review requests go out once.');
+
 await db.collection('adminUsers').doc(stranger.localId).set({ role: 'editor' });
 assert.equal((await post('list', {}, stranger.idToken)).status, 403);
 assert.equal((await post('cms-read', {}, stranger.idToken)).status, 200);
@@ -192,11 +228,12 @@ const publicSettings = {enabled:true,services:[{id:'full',name:'Full Detail',dur
 await db.collection('appointmentSettings').doc('booking').set(publicSettings);
 const originalFetch = globalThis.fetch;
 let calendarReads = 0;
+let personalBusy = [];
 globalThis.fetch = (url, init) => {
   if (String(url) === 'https://oauth2.googleapis.com/token') return Promise.resolve(Response.json({access_token:'demo',expires_in:3600}));
   if (String(url).endsWith('/freeBusy')) {
     calendarReads++;
-    return Promise.resolve(Response.json({calendars:{detail:{busy:[]},personal:{busy:[]},pluto:{busy:[]}}}));
+    return Promise.resolve(Response.json({calendars:{detail:{busy:[]},personal:{busy:personalBusy},pluto:{busy:[]}}}));
   }
   return originalFetch(url,init);
 };
@@ -211,15 +248,17 @@ try {
   const available = await callWithCalendar('availability',{serviceId:'full',month});
   assert(available.result.slots.length);
   assert.equal(calendarReads,1);
-  const phoneBooking = {name:'Phone customer',phone:'828-555-0199',start:available.result.slots[0],serviceId:'full',vehicleType:'suv_truck',accepted:true,token:'b'.repeat(64)};
+  const phoneBooking = {name:'Phone customer',phone:'828-555-0199',email:'phone.customer@example.test',customerNotes:' Gate code 1234. Park by the garage. ',start:available.result.slots[0],serviceId:'full',vehicleType:'suv_truck',accepted:true,token:'b'.repeat(64)};
   assert.equal((await callWithCalendar('book',{...phoneBooking,vehicleType:''})).error,'vehicle_required');
   assert.equal((await callWithCalendar('book',{...phoneBooking,phone:''})).error,'invalid_details');
+  assert.equal((await callWithCalendar('book',{...phoneBooking,email:''})).error,'email_required');
   assert.equal((await callWithCalendar('book',{...phoneBooking,postalCode:'99999'})).error,'outside_service_area');
   const booked = await callWithCalendar('book',phoneBooking);
   assert.equal(booked.result.status,'awaiting_deposit');
   assert.equal(booked.result.estimateCents,35000);
   const stored = (await db.collection('appointments').doc(booked.result.id).get()).data();
-  assert.deepEqual([stored.email,stored.address,stored.phone],['','','+18285550199']);
+  assert.deepEqual([stored.email,stored.address,stored.phone],['phone.customer@example.test','','+18285550199']);
+  assert.equal(stored.customerNotes,'Gate code 1234. Park by the garage.');
   assert.equal((await callWithCalendar('book',phoneBooking)).result.id,booked.result.id);
   assert.equal((await callWithCalendar('book',{...phoneBooking,token:'c'.repeat(64)})).error,'existing_booking_hold');
   const expected = Object.fromEntries(['name','phone','email','vehicle','address'].map(key=>[key,stored[key]]));
@@ -228,12 +267,36 @@ try {
   assert.equal((await asOwner('update-contact',patch)).error,'status_changed');
   const detail = await asOwner('owner-detail', { id: booked.result.id });
   assert.equal(detail.result.address, patch.address);
+  assert.equal(detail.result.customerNotes, 'Gate code 1234. Park by the garage.');
   assert.equal((await post('owner-detail', { id: booked.result.id }, stranger.idToken)).status, 403);
   await db.collection('appointmentSettings').doc('booking').update({ enabled: false });
   assert.deepEqual((await callWithCalendar('availability',{serviceId:'full',month})).result.slots, []);
   const ownerTimes = await callWithCalendar('admin-availability', { month, durationMinutes: 90, deposit: 'waived' }, owner.idToken);
   assert(ownerTimes.result.slots.length);
   assert(!ownerTimes.result.slots.includes(phoneBooking.start));
+  const checkTime = data => callWithCalendar('admin-check-time', { durationMinutes: 60, deposit: 'waived', ...data }, owner.idToken);
+  const clash = (await checkTime({ start: phoneBooking.start })).result;
+  assert.equal(clash.open, false);
+  assert(clash.issues.includes('overlap'));
+  assert.deepEqual([clash.conflicts[0].name, clash.conflicts[0].kind, clash.conflicts[0].start], ['Phone customer', 'appointment', phoneBooking.start]);
+  const free = (await checkTime({ start: ownerTimes.result.slots.at(-1), durationMinutes: 90 })).result;
+  assert.deepEqual([free.open, free.issues, free.conflicts], [true, [], []]);
+  const near = (await checkTime({ start: phoneBooking.start + 90 * 60_000 })).result;
+  assert.deepEqual(near.issues, ['buffer'], JSON.stringify(near));
+  const late = new Date(ownerTimes.result.slots.at(-1)); late.setUTCHours(late.getUTCHours() + 6);
+  assert((await checkTime({ start: late.getTime() })).result.issues.includes('outside_hours'));
+  const lastSlot = ownerTimes.result.slots.at(-1);
+  personalBusy = [{ start: new Date(lastSlot).toISOString(), end: new Date(lastSlot + 30 * 60_000).toISOString() }];
+  const personal = (await checkTime({ start: lastSlot })).result;
+  personalBusy = [];
+  assert.deepEqual([personal.issues, personal.conflicts[0].kind], [['overlap'], 'calendar']);
+  const overlapping = { name: 'Squeezed in', phone: '828-555-0177', start: phoneBooking.start, durationMinutes: 60, deposit: 'waived' };
+  assert.equal((await callWithCalendar('create', { ...overlapping, requestId: randomUUID() }, owner.idToken)).error, 'time_unavailable');
+  const forced = await callWithCalendar('create', { ...overlapping, allowOverlap: true, requestId: randomUUID() }, owner.idToken);
+  assert.equal(forced.result.status, 'confirmed');
+  assert.equal((await db.collection('appointments').doc(forced.result.id).get()).get('overlapApproved'), true);
+  assert.equal((await asOwner('cancel', { id: forced.result.id })).result.status, 'cancelled');
+  console.log('PASS: Owner time check explains conflicts, and the owner can book over one on purpose.');
   console.log('PASS: Owner-only appointment details and calendar with public booking paused.');
   await db.collection('appointmentSettings').doc('booking').update({ enabled: true });
   const quoteReceipt = { id:'a'.repeat(64),token:'d'.repeat(64) };
@@ -245,7 +308,7 @@ try {
   });
   const preview = await callWithCalendar('quote-context',{quoteReceipt});
   assert.deepEqual(preview.result,{service:'full',vehicle:'van_3row',estimateCents:47500,phoneEnding:'0221'});
-  const quoteDraft = { ...phoneBooking, name:'',phone:'',token:'f'.repeat(64),reuseQuoteContact:true,quoteReceipt,vehicleType:'van_3row' };
+  const quoteDraft = { ...phoneBooking, name:'',phone:'',email:'quote.customer@example.test',token:'f'.repeat(64),reuseQuoteContact:true,quoteReceipt,vehicleType:'van_3row' };
   const fresh = await callWithCalendar('availability',{serviceId:'full',month});
   quoteDraft.start = fresh.result.slots[0];
   const fromQuote = await callWithCalendar('book',quoteDraft);
@@ -259,6 +322,6 @@ try {
   assert.equal((await asOwner('create',{...appointment, requestId:randomUUID(), deposit:'required', service:'', saveClientDefault:false})).result.service,
     'Detailing appointment');
   console.log('PASS: Vehicle pricing, masked quote preview, contact reuse, expired receipt fallback and optional admin service.');
-  console.log('PASS: Month availability, phone-only booking, retry, hold protection and owner contact updates.');
+  console.log('PASS: Month availability, email-required booking with notes, retry, hold protection and owner contact updates.');
 } finally { globalThis.fetch = originalFetch; }
 await admin.app().delete();

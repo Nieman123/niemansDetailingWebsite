@@ -860,6 +860,11 @@ function setClientActionLinks(client) {
     booking.hidden = !appointmentsEnabled || !client.id;
     if (client.id) booking.href = `/admin/appointments?client=${encodeURIComponent(client.id)}`;
   }
+  const invoice = document.getElementById("client-action-invoice");
+  if (invoice) {
+    invoice.hidden = !client.id;
+    if (client.id) invoice.href = `/admin/invoices?client=${encodeURIComponent(client.id)}`;
+  }
   if (els.actionSms) {
     const href = smsHref(client);
     els.actionSms.href = href;

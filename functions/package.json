@@ -2,7 +2,9 @@
   "name": "functions",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": "22" },
+  "engines": {
+    "node": "22"
+  },
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -p .",
@@ -10,8 +12,10 @@
     "prepare": "npm run build"
   },
   "dependencies": {
+    "@types/pdfkit": "^0.17.7",
     "firebase-admin": "^12.5.0",
     "firebase-functions": "^5.0.1",
+    "pdfkit": "^0.17.2",
     "typescript": "^5.5.4"
   },
   "devDependencies": {

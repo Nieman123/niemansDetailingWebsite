@@ -8,6 +8,8 @@ exports.handleStripeWebhook = handleStripeWebhook;
 const node_crypto_1 = require("node:crypto");
 const firebase_functions_1 = require("firebase-functions");
 const appointment_email_1 = require("./appointment-email");
+const ops_health_1 = require("./ops-health");
+const telegram_1 = require("./telegram");
 const appointment_secrets_1 = require("./appointment-secrets");
 const appointment_email_template_1 = require("./appointment-email-template");
 const appointment_content_1 = require("./appointment-content");
@@ -88,7 +90,7 @@ function reservationDays(db, { start, end }) {
     }
     return refs;
 }
-async function updateReservation(db, tx, reservation, remove, now, before) {
+async function updateReservation(db, tx, reservation, remove, now, before, allowOverlap = false) {
     // Read fixed UTC-day documents, including missing ones, so concurrent bookings serialize.
     const next = reservationDays(db, reservation);
     const newPaths = new Set(next.map(ref => ref.path));
@@ -96,7 +98,7 @@ async function updateReservation(db, tx, reservation, remove, now, before) {
     const days = await tx.getAll(...next, ...oldOnly);
     const activeByDay = days.map(day => (day.get("slots") ?? [])
         .filter(slot => slot.end > now && slot.id !== reservation.id));
-    if (!remove && activeByDay.some(slots => slots.some(slot => slot.start < reservation.end && slot.end > reservation.start))) {
+    if (!remove && !allowOverlap && activeByDay.some(slots => slots.some(slot => slot.start < reservation.end && slot.end > reservation.start))) {
         throw new AppointmentError(409, "time_unavailable");
     }
     days.forEach((day, index) => tx.set(day.ref, { slots: remove || !newPaths.has(day.ref.path) ? activeByDay[index] : [...activeByDay[index], reservation] }));
@@ -150,6 +152,7 @@ function adminDetails(id, appointment) {
         maintenanceInviteQueued: !!appointment.maintenanceInviteAfterPayment && !!appointment.maintenanceInvite,
         paymentReview: appointment.paymentReview ?? null,
         startedAt: appointment.startedAt ?? null, invoiceLines: appointment.invoiceLines ?? [],
+        customerNotes: appointment.customerNotes ?? "",
     };
 }
 // Money already counted toward the invoice: the deposit plus payments that have not bounced and are not still clearing.
@@ -251,9 +254,10 @@ async function createAppointment(db, uid, body) {
     const bufferMinutes = body.useCalendarSlot === true ? (await getSettings(db)).bufferMinutes : undefined;
     const salesTax = await getTaxSettings(db);
     const requested = buildAppointment(body, uid, Date.now());
+    const allowOverlap = body.allowOverlap === true;
     if (bufferMinutes !== undefined)
         requested.bufferMinutes = bufferMinutes;
-    if (requested.status === "confirmed")
+    if (requested.status === "confirmed" && !allowOverlap)
         await assertCalendarOpen(requested);
     return db.runTransaction(async (tx) => {
         const existing = (await tx.get(ref)).data();
@@ -263,6 +267,8 @@ async function createAppointment(db, uid, body) {
         const appointment = buildAppointment(body, uid, now);
         if (bufferMinutes !== undefined)
             appointment.bufferMinutes = bufferMinutes;
+        if (allowOverlap)
+            appointment.overlapApproved = true;
         if (salesTax.enabled)
             appointment.taxRateBasisPoints = salesTax.rateBasisPoints;
         const client = appointment.clientId ? db.collection("clients").doc(appointment.clientId) : null;
@@ -273,7 +279,7 @@ async function createAppointment(db, uid, body) {
         if (body.saveClientDefault === true && !client)
             throw new AppointmentError(400, "client_required");
         if (appointment.status === "confirmed")
-            await updateReservation(db, tx, reservationFor(id, appointment), false, now);
+            await updateReservation(db, tx, reservationFor(id, appointment), false, now, undefined, allowOverlap);
         tx.create(ref, { ...appointment, ...(appointment.status === "confirmed" ? { confirmedAt: now, confirmedBy: uid, ...calendarUpdate(now) } : {}) });
         if (body.saveClientDefault === true && client) {
             tx.update(client, { appointment_deposit_default: body.deposit, appointment_deposit_updated_at: now, appointment_deposit_updated_by: uid });
@@ -304,7 +310,7 @@ async function changeAppointment(db, uid, id, action, body) {
         newStart = validMoveStart(body.start ?? previous.rescheduleRequest?.start);
         await assertCalendarOpen({ ...previous, start: newStart, end: newStart + previous.end - previous.start }, id);
     }
-    else if (action === "approve" || (action === "issue-link" && previous.status === "draft" && stripe)) {
+    else if ((action === "approve" || (action === "issue-link" && previous.status === "draft" && stripe)) && !previous.overlapApproved) {
         await assertCalendarOpen(previous, id);
     }
     return db.runTransaction(async (tx) => {
@@ -343,7 +349,7 @@ async function changeAppointment(db, uid, id, action, body) {
             const moved = { ...appointment, start: newStart, end: newStart + appointment.end - appointment.start };
             await updateReservation(db, tx, reservationFor(id, moved), false, now, reservationFor(id, appointment));
             const locked = appointment.status === "confirmed" ? depositLock(appointment, now) || depositLock(moved, now) : null;
-            const update = { start: moved.start, end: moved.end, depositLockedAt: locked, rescheduleRequest: null, alternateOffer: null,
+            const update = { start: moved.start, end: moved.end, depositLockedAt: locked, rescheduleRequest: null, alternateOffer: null, overlapApproved: false,
                 calendarSequence: (appointment.calendarSequence ?? 0) + 1, ...calendarUpdate(now),
                 ...(appointment.status === "pending_approval" ? { reconcileAt: moved.start } : {}),
                 ...(appointment.linkHash ? { linkExpiresAt: moved.end + 30 * DAY } : {}),
@@ -504,7 +510,7 @@ async function changeAppointment(db, uid, id, action, body) {
                 throw new AppointmentError(503, "stripe_unavailable");
             if (appointment.start < now + 36 * MINUTE)
                 throw new AppointmentError(409, "checkout_too_close");
-            await updateReservation(db, tx, reservationFor(id, appointment), false, now);
+            await updateReservation(db, tx, reservationFor(id, appointment), false, now, undefined, !!appointment.overlapApproved);
             const deadline = Math.min(appointment.start, now + DAY);
             tx.update(ref, { status: "awaiting_deposit", preapproved: true, depositDeadline: deadline, reconcileAt: deadline, ...calendarUpdate(now) });
         }
@@ -610,6 +616,31 @@ async function readAppointment(db, id) {
 }
 const settingsDoc = (db) => db.collection("appointmentSettings").doc("booking");
 const taxDoc = (db) => db.collection("appointmentSettings").doc("salesTax");
+const followUpDoc = (db) => db.collection("appointmentSettings").doc("followUps");
+const defaultFollowUps = { reminders: true, reviewRequests: false, reviewUrl: "", revision: "" };
+async function getFollowUpSettings(db) {
+    return { ...defaultFollowUps, ...(await followUpDoc(db).get()).data() };
+}
+function parseFollowUpSettings(body) {
+    const { reminders, reviewRequests } = body;
+    const reviewUrl = typeof body.reviewUrl === "string" ? body.reviewUrl.trim() : "";
+    if (typeof reminders !== "boolean" || typeof reviewRequests !== "boolean" || reviewUrl.length > 500)
+        return null;
+    if (reviewUrl) {
+        let url;
+        try {
+            url = new URL(reviewUrl);
+        }
+        catch {
+            return null;
+        }
+        if (url.protocol !== "https:")
+            return null;
+    }
+    if (reviewRequests && !reviewUrl)
+        return null;
+    return { reminders, reviewRequests, reviewUrl };
+}
 async function getTaxSettings(db) {
     return { ...appointment_tax_1.defaultTaxSettings, ...(await taxDoc(db).get()).data() };
 }
@@ -655,6 +686,73 @@ async function getAvailability(db, body, owner = false) {
             const range = reservationFor("", { start, end: start + service.duration * MINUTE, bufferMinutes: settings.bufferMinutes });
             return !all.some(block => block.start < range.end && block.end > range.start);
         }),
+    };
+}
+// Checks one owner-chosen start time against the same rules and calendars the booking calendar uses, and says
+// why it isn't open. Owners may still book over a conflict; this only powers the warning on the New booking form.
+async function checkOwnerTime(db, body) {
+    const start = body.start;
+    const duration = body.durationMinutes;
+    if (typeof start !== "number" || !Number.isSafeInteger(start) || typeof duration !== "number" || !Number.isInteger(duration) ||
+        duration < 15 || duration > 7 * 1440)
+        throw new AppointmentError(400, "invalid_time");
+    const now = Date.now();
+    const end = start + duration * MINUTE;
+    const settings = await getSettings(db);
+    const deposit = body.deposit === "required";
+    const issues = [];
+    const date = (0, appointment_booking_1.easternDate)(start);
+    const hours = (0, appointment_booking_1.businessHours)(settings, date);
+    if (start <= now)
+        issues.push("past");
+    else if (deposit && start < now + 36 * MINUTE)
+        issues.push("too_soon_for_deposit");
+    if (settings.blockedDates.includes(date))
+        issues.push("blocked_date");
+    else if (!hours)
+        issues.push("closed_day");
+    else if (start < hours.start || end > hours.end)
+        issues.push("outside_hours");
+    const buffer = settings.bufferMinutes * MINUTE;
+    const lower = start - buffer;
+    const upper = end + buffer;
+    const [config, days] = await Promise.all([(0, appointment_calendar_1.calendarConfig)(), db.getAll(...reservationDays(db, { id: "", start: lower, end: upper }))]);
+    if (!config)
+        throw new AppointmentError(503, "calendar_unavailable");
+    const google = await (0, appointment_calendar_1.busyWindows)(config, lower, upper).catch(() => { throw new AppointmentError(503, "calendar_unavailable"); });
+    const reservations = new Map();
+    for (const slot of days.flatMap(day => (day.get("slots") ?? []))) {
+        if (slot.end > now && slot.start < upper && slot.end > lower)
+            reservations.set(slot.id, slot);
+    }
+    const records = reservations.size ? await db.getAll(...[...reservations.keys()].map(id => db.collection("appointments").doc(id))) : [];
+    const conflicts = records.map(record => {
+        const slot = reservations.get(record.id);
+        const appointment = record.data();
+        return {
+            kind: "appointment", name: appointment?.name ?? "", service: appointment?.service ?? "",
+            start: appointment?.start ?? slot.start, end: appointment?.end ?? slot.end,
+            // Overlapping the reservation itself (it already includes that booking's travel buffer) blocks a save.
+            overlaps: slot.start < end && slot.end > start, reserved: slot,
+        };
+    });
+    // Booked appointments are mirrored to the detailing calendar, so skip busy time they already explain.
+    for (const busy of google) {
+        if (busy.start >= upper || busy.end <= lower)
+            continue;
+        if (conflicts.some(item => item.reserved.start <= busy.start && item.reserved.end >= busy.end))
+            continue;
+        conflicts.push({ kind: "calendar", name: "", service: "", start: busy.start, end: busy.end,
+            overlaps: busy.start < end && busy.end > start, reserved: busy });
+    }
+    conflicts.sort((a, b) => a.start - b.start);
+    if (conflicts.some(item => item.overlaps))
+        issues.push("overlap");
+    else if (conflicts.length)
+        issues.push("buffer");
+    return {
+        open: !issues.length, issues, bufferMinutes: settings.bufferMinutes,
+        conflicts: conflicts.map(({ reserved: _reserved, ...item }) => item),
     };
 }
 async function authenticatedCustomer(auth, req) {
@@ -726,6 +824,9 @@ async function publicBooking(db, auth, req, body) {
     }
     const customer = await authenticatedCustomer(auth, req);
     const email = customer?.email ?? text(body.email, 250);
+    // Email carries the confirmation, the appointment link and the day-before reminder, so online booking needs it.
+    if (!email)
+        throw new AppointmentError(400, "email_required");
     const quote = await bookingQuote(db, body.quoteReceipt);
     if (body.reuseQuoteContact === true && !quote?.phoneEnding)
         throw new AppointmentError(409, "quote_contact_expired");
@@ -746,6 +847,9 @@ async function publicBooking(db, auth, req, body) {
         throw new AppointmentError(409, "time_unavailable");
     }
     appointment.bufferMinutes = settings.bufferMinutes;
+    const customerNotes = text(body.customerNotes, 500);
+    if (customerNotes)
+        appointment.customerNotes = customerNotes;
     const salesTax = await getTaxSettings(db);
     if (salesTax.enabled)
         appointment.taxRateBasisPoints = salesTax.rateBasisPoints;
@@ -907,7 +1011,7 @@ async function openCheckout(db, id, body) {
         if (session.status === "complete")
             throw new AppointmentError(409, "checkout_finished");
     }
-    if (current.status === "awaiting_deposit")
+    if (current.status === "awaiting_deposit" && !current.overlapApproved)
         await assertCalendarOpen(current, id);
     const reservation = await db.runTransaction(async (tx) => {
         const appointment = (await tx.get(ref)).data();
@@ -1020,6 +1124,79 @@ async function applyStripeSession(db, session) {
         }
     });
 }
+const HOUR = 60 * MINUTE;
+const relativeDay = (start, now) => {
+    const day = (0, appointment_booking_1.easternDate)(start);
+    if (day === (0, appointment_booking_1.easternDate)(now))
+        return "today";
+    if (day === (0, appointment_booking_1.easternDate)(now + DAY))
+        return "tomorrow";
+    return null;
+};
+const emailTimeFormat = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+const emailDayFormat = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "long" });
+// Day-before reminders for confirmed jobs, and one review request after a job is paid in full.
+// Both run from the 5-minute scheduler and mark the appointment in the same transaction as the email,
+// so each goes out at most once.
+async function sendFollowUps(db, now) {
+    const settings = await getFollowUpSettings(db);
+    const collection = db.collection("appointments");
+    if (settings.reminders) {
+        // Anything starting 2 to 26 hours from now.
+        const upcoming = await collection.where("start", ">", now + 2 * HOUR).where("start", "<=", now + 26 * HOUR).orderBy("start").limit(40).get();
+        for (const doc of upcoming.docs) {
+            const appointment = doc.data();
+            if (appointment.status !== "confirmed" || !appointment.email || appointment.reminderSentFor === appointment.start)
+                continue;
+            await db.runTransaction(async (tx) => {
+                const latest = (await tx.get(doc.ref)).data();
+                if (!latest || latest.status !== "confirmed" || !latest.email || latest.reminderSentFor === latest.start)
+                    return;
+                // An online booking confirmed in the last 6 hours just got its "You're booked" email, so skip the reminder.
+                if (latest.bookingChannel === "public" && Math.max(latest.confirmedAt ?? 0, latest.createdAt) > now - 6 * HOUR) {
+                    tx.update(doc.ref, { reminderSentFor: latest.start });
+                    return;
+                }
+                const day = relativeDay(latest.start, now) ?? emailDayFormat.format(latest.start);
+                const time = emailTimeFormat.format(latest.start);
+                tx.update(doc.ref, { reminderSentFor: latest.start, reminderSentAt: now });
+                (0, appointment_email_1.queueAppointmentEmail)(db, tx, `reminder-${doc.id}-${latest.start}`, latest.email, `Reminder: your detail is ${day} at ${time}`, {
+                    eyebrow: "Appointment reminder", heading: `See you ${day} at ${time}`,
+                    paragraphs: [`Hi ${latest.name.split(" ")[0] || "there"}, this is a reminder that I'll be detailing your ${latest.vehicle || "vehicle"} ${day} at ${time}.`,
+                        "If anything has changed, like the address, how to get in, or the time, text or call me before then.", LINK_HINT],
+                    details: emailFacts(latest), ...preparationNote(latest),
+                });
+            });
+        }
+    }
+    if (settings.reviewRequests && settings.reviewUrl) {
+        // Ask two hours after the job is finished and paid, and only once per customer.
+        const finished = await collection.where("completedAt", ">=", now - 7 * DAY).where("completedAt", "<=", now - 2 * HOUR).orderBy("completedAt").limit(40).get();
+        for (const doc of finished.docs) {
+            const appointment = doc.data();
+            if (appointment.status !== "completed" || !appointment.email || appointment.reviewRequestedAt || appointment.paymentReview ||
+                hasPendingCheck(appointment) || remainingBalance(appointment) !== 0)
+                continue;
+            const earlier = await collection.where("email", "==", appointment.email).limit(50).get();
+            const askedBefore = earlier.docs.some(row => row.id !== doc.id && row.get("reviewRequestedAt"));
+            await db.runTransaction(async (tx) => {
+                const latest = (await tx.get(doc.ref)).data();
+                if (!latest || latest.reviewRequestedAt || latest.status !== "completed" || remainingBalance(latest) !== 0)
+                    return;
+                tx.update(doc.ref, { reviewRequestedAt: now, ...(askedBefore ? { reviewRequestSkipped: "asked_before" } : {}) });
+                if (askedBefore)
+                    return;
+                (0, appointment_email_1.queueAppointmentEmail)(db, tx, `review-${doc.id}`, latest.email, "How did your detail turn out?", {
+                    eyebrow: "Thank you", heading: "How does it look?",
+                    paragraphs: [`Thanks again for trusting me with your ${latest.vehicle || "vehicle"}, ${latest.name.split(" ")[0] || "there"}.`,
+                        "I'm a one-person local business, and reviews are how most people find me. If you were happy with the work, a quick Google review would mean a lot. It takes about a minute.",
+                        "If anything wasn't right, call or text me and I'll make it right."],
+                    action: { label: "Leave a Google review", url: settings.reviewUrl },
+                });
+            });
+        }
+    }
+}
 async function reconcileAppointments(db) {
     const config = await (0, appointment_stripe_1.stripeConfig)();
     const now = Date.now();
@@ -1028,8 +1205,11 @@ async function reconcileAppointments(db) {
         const appointment = await readAppointment(db, appointmentId);
         return !!appointment && appointment.maintenanceInvite?.hash === inviteHash &&
             !appointment.maintenanceEnrolledAt && !!maintenanceDeadline(appointment);
-    }).catch(() => firebase_functions_1.logger.error("Appointment email delivery needs review"));
-    const calendar = await (0, appointment_calendar_1.calendarConfig)().catch(() => null);
+    }).catch(error => (0, ops_health_1.recordOpsEvent)(db, { source: "email", code: "delivery_crashed", detail: error instanceof Error ? error.message : String(error) }));
+    const calendar = await (0, appointment_calendar_1.calendarConfig)().catch(async (error) => {
+        await (0, ops_health_1.recordOpsEvent)(db, { source: "calendar", code: "calendar_unavailable", detail: error instanceof Error ? error.message : String(error) });
+        return null;
+    });
     if (calendar) {
         const pending = await collection.where("calendarDueAt", "<=", now).where("calendarDueAt", ">", 0).orderBy("calendarDueAt").limit(5).get();
         for (const doc of pending.docs) {
@@ -1038,8 +1218,10 @@ async function reconcileAppointments(db) {
             try {
                 await (0, appointment_calendar_1.mirrorAppointment)(calendar, doc.id, appointment);
             }
-            catch {
+            catch (error) {
                 failure = true;
+                await (0, ops_health_1.recordOpsEvent)(db, { source: "calendar", code: "sync_failed", level: appointment.calendarFailure ? "error" : "warning", ref: doc.id,
+                    detail: error instanceof Error ? error.message : String(error) });
             }
             await db.runTransaction(async (tx) => {
                 const latest = (await tx.get(doc.ref)).data();
@@ -1094,6 +1276,7 @@ async function reconcileAppointments(db) {
         }
         catch (error) {
             firebase_functions_1.logger.error("Appointment payment needs reconciliation", { appointmentId: doc.id, reason: error instanceof Error ? error.message : String(error) });
+            await (0, ops_health_1.recordOpsEvent)(db, { source: "payments", code: "reconcile_failed", ref: doc.id, detail: error instanceof Error ? error.message : String(error) });
             await db.runTransaction(async (tx) => {
                 const latest = (await tx.get(doc.ref)).data();
                 if (latest?.checkout && (latest.reconcileAt ?? Infinity) <= now)
@@ -1101,6 +1284,8 @@ async function reconcileAppointments(db) {
             });
         }
     }
+    await sendFollowUps(db, now).catch(error => (0, ops_health_1.recordOpsEvent)(db, { source: "email", code: "follow_ups_failed", detail: error instanceof Error ? error.message : String(error) }));
+    await (0, ops_health_1.pruneOpsEvents)(db, now).catch(() => undefined);
     if (!config)
         return;
     const refunds = await collection.where("refundAt", "<=", now).where("refundAt", ">", 0).orderBy("refundAt").limit(5).get();
@@ -1115,6 +1300,7 @@ async function reconcileAppointments(db) {
         try {
             if (!appointment.refund.id && now - appointment.refund.requestedAt > 23 * 60 * MINUTE) {
                 await doc.ref.update({ refund: { ...appointment.refund, state: "failed" }, refundAt: null });
+                await (0, ops_health_1.recordOpsEvent)(db, { source: "payments", code: "refund_failed", ref: doc.id, detail: "Stripe never accepted the refund request." });
                 continue;
             }
             const refund = await (0, appointment_stripe_1.stripeRefund)(config, { id: doc.id, intent: appointment.depositIntent, cents: appointment.paidDeposit, refundId: appointment.refund.id });
@@ -1129,8 +1315,144 @@ async function reconcileAppointments(db) {
         }
         catch (error) {
             firebase_functions_1.logger.error("Appointment refund needs reconciliation", { appointmentId: doc.id, reason: error instanceof Error ? error.message : String(error) });
+            await (0, ops_health_1.recordOpsEvent)(db, { source: "payments", code: "refund_retry", level: "warning", ref: doc.id, detail: error instanceof Error ? error.message : String(error) });
         }
     }
+}
+const LIST_PAGE = 50;
+const LIST_VIEWS = new Set(["all", "today", "pending_approval", "awaiting_deposit", "confirmed", "in_progress", "due", "refunds", "cancelled"]);
+const refundOpenState = (appointment) => !!appointment.refund && appointment.refund.state !== "succeeded";
+const newestFirst = (a, b) => b.createdAt - a.createdAt;
+// The admin queue. Each filter runs its own query so older records stay reachable, and search scans
+// the most recent 1,000 bookings by name, phone, email, address or vehicle.
+async function listAppointments(db, body) {
+    const collection = db.collection("appointments");
+    const view = typeof body.view === "string" && LIST_VIEWS.has(body.view) ? body.view : "all";
+    const search = text(body.search, 80).toLowerCase();
+    const before = typeof body.before === "number" && Number.isSafeInteger(body.before) ? body.before : null;
+    const now = Date.now();
+    const rows = (snapshot) => snapshot.docs.map(doc => ({ id: doc.id, appointment: doc.data() }));
+    let records;
+    let next = null;
+    if (search) {
+        const digits = search.replace(/\D/g, "");
+        const recent = rows(await collection.orderBy("createdAt", "desc").limit(1000).get());
+        records = recent.filter(({ appointment: a }) => [a.name, a.email, a.address, a.vehicle, a.service, a.customerNotes].some(value => (value ?? "").toLowerCase().includes(search)) ||
+            (digits.length >= 4 && (a.phone ?? "").replace(/\D/g, "").includes(digits))).slice(0, 100);
+    }
+    else if (view === "all") {
+        let query = collection.orderBy("createdAt", "desc");
+        if (before !== null)
+            query = query.startAfter(before);
+        records = rows(await query.limit(LIST_PAGE).get());
+        if (records.length === LIST_PAGE)
+            next = records[records.length - 1].appointment.createdAt;
+    }
+    else if (view === "today") {
+        const today = (0, appointment_booking_1.easternDate)(now);
+        const from = now - 36 * HOUR;
+        records = rows(await collection.where("start", ">=", from).where("start", "<=", now + 36 * HOUR).limit(200).get())
+            .filter(({ appointment }) => (0, appointment_booking_1.easternDate)(appointment.start) === today);
+    }
+    else if (view === "due") {
+        records = rows(await collection.where("status", "==", "completed").limit(500).get())
+            .filter(({ appointment }) => (remainingBalance(appointment) ?? 0) > 0);
+    }
+    else if (view === "refunds") {
+        records = rows(await collection.where("refund.state", "in", ["queued", "pending", "failed"]).limit(100).get());
+    }
+    else {
+        records = rows(await collection.where("status", "==", view).limit(300).get());
+    }
+    const details = records.map(({ id, appointment }) => adminDetails(id, appointment));
+    if (view === "today")
+        details.sort((a, b) => a.start - b.start);
+    else
+        details.sort(newestFirst);
+    const refunds = rows(await collection.where("refund.state", "in", ["queued", "pending", "failed"]).limit(100).get())
+        .filter(({ appointment }) => refundOpenState(appointment));
+    return {
+        records: details, next,
+        refunds: { open: refunds.length, failed: refunds.filter(({ appointment }) => appointment.refund?.state === "failed").length },
+    };
+}
+async function check(id, label, test, failure) {
+    try {
+        const outcome = await test();
+        return { id, label, ok: outcome === true, detail: outcome === true ? "OK" : typeof outcome === "string" ? outcome : failure };
+    }
+    catch (error) {
+        return { id, label, ok: false, detail: `${failure} (${error instanceof Error ? error.message : String(error)})`.slice(0, 300) };
+    }
+}
+// Everything the admin Health page shows, gathered in one request.
+async function healthReport(db) {
+    const now = Date.now();
+    const week = now - 7 * DAY;
+    const collection = db.collection("appointments");
+    const [settings, followUps, scheduler, events, emails, webhooks, calendarFailures, disputes, refundRows, pendingApproval] = await Promise.all([
+        getSettings(db), getFollowUpSettings(db),
+        db.collection("opsStatus").doc("scheduler").get(),
+        db.collection("opsEvents").where("lastAt", ">=", week).orderBy("lastAt", "desc").limit(150).get(),
+        db.collection("appointmentEmails").where("createdAt", ">=", week).orderBy("createdAt", "desc").limit(500).get(),
+        db.collection("appointmentStripeEvents").where("receivedAt", ">=", week).limit(500).get(),
+        collection.where("calendarFailure", "==", true).limit(50).get(),
+        collection.where("paymentReview.kind", "in", ["refund", "dispute"]).limit(50).get(),
+        collection.where("refund.state", "==", "failed").limit(50).get(),
+        collection.where("status", "==", "pending_approval").limit(100).get(),
+    ]);
+    const checks = await Promise.all([
+        check("stripe", "Stripe payments", async () => !!await (0, appointment_stripe_1.stripeConfig)() || "APPOINTMENT_STRIPE_CONFIG is missing or doesn't match this mode.", "Stripe configuration could not be loaded"),
+        check("calendar", "Google Calendar", async () => !!await (0, appointment_calendar_1.calendarConfig)() || "APPOINTMENT_GOOGLE_CONFIG is missing.", "Google Calendar sign-in failed. The refresh token may have expired"),
+        check("email", "Customer email (Resend)", async () => await (0, appointment_email_1.emailConfigured)() || "APPOINTMENT_EMAIL_CONFIG is missing or invalid.", "Email configuration could not be loaded"),
+        check("telegram", "Telegram alerts", async () => (0, telegram_1.telegramConfigured)() || ((0, appointment_secrets_1.liveMode)() ? "Telegram isn't configured, so you won't get alerts." : "Off on staging."), "Telegram check failed"),
+        check("booking", "Online booking", async () => settings.enabled || "Public booking is turned off in Settings.", "Booking settings could not be read"),
+        check("reviews", "Review requests", async () => followUps.reviewRequests && !!followUps.reviewUrl || "Off. Add your Google review link in Settings to turn them on.", "Review settings could not be read"),
+    ]);
+    const schedulerData = scheduler.data() ?? {};
+    const lastRunAt = typeof schedulerData.lastRunAt === "number" ? schedulerData.lastRunAt : null;
+    const schedulerHealthy = lastRunAt !== null && now - lastRunAt < 15 * MINUTE &&
+        !(typeof schedulerData.lastErrorAt === "number" && schedulerData.lastErrorAt > (schedulerData.lastOkAt ?? 0));
+    const emailRows = emails.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const emailCount = (state) => emailRows.filter(row => row.state === state).length;
+    const stuck = emailRows.filter(row => !row.sentAt && typeof row.nextAt === "number" && row.nextAt > 0 && row.nextAt < now - 30 * MINUTE);
+    const problemEmails = emailRows.filter(row => ["failed", "retry"].includes(String(row.state)) || stuck.includes(row)).slice(0, 25).map(row => ({
+        id: row.id, to: String(row.to ?? ""), subject: String(row.subject ?? ""),
+        state: stuck.includes(row) && row.state !== "retry" ? "stuck" : String(row.state), createdAt: row.createdAt, lastError: String(row.lastError ?? ""),
+    }));
+    const webhookRows = webhooks.docs.map(doc => doc.data());
+    const unfinished = webhookRows.filter(row => !row.completedAt && typeof row.receivedAt === "number" && row.receivedAt < now - 10 * MINUTE);
+    const attention = [];
+    const add = (docs, issue) => {
+        for (const doc of docs) {
+            const appointment = doc.data();
+            const message = issue(appointment);
+            if (message && !attention.some(item => item.id === doc.id && item.issue === message))
+                attention.push({ id: doc.id, name: appointment.name, start: appointment.start, issue: message });
+        }
+    };
+    add(calendarFailures.docs, () => "Not on Google Calendar yet (sync keeps failing)");
+    add(disputes.docs, appointment => appointment.paymentReview?.kind === "dispute" ? "Payment disputed in Stripe" : "Refund made in Stripe needs review");
+    add(refundRows.docs, () => "Deposit refund failed. Refund it in Stripe");
+    add(pendingApproval.docs, appointment => appointment.start - now < DAY ? "Waiting for your approval and starts within a day" : null);
+    const eventRows = events.docs.map(doc => {
+        const row = doc.data();
+        return { id: doc.id, source: row.source, code: row.code, level: row.level, ref: row.ref ?? "", detail: row.detail ?? "",
+            count: row.count ?? 1, firstAt: row.firstAt, lastAt: row.lastAt, title: (0, ops_health_1.describeOpsEvent)(String(row.source), String(row.code)) };
+    });
+    const errors24h = eventRows.filter(row => row.level === "error" && row.lastAt >= now - DAY).reduce((total, row) => total + row.count, 0);
+    const warnings24h = eventRows.filter(row => row.level !== "error" && row.lastAt >= now - DAY).reduce((total, row) => total + row.count, 0);
+    return {
+        generatedAt: now, mode: (0, appointment_secrets_1.liveMode)() ? "live" : "test",
+        scheduler: { healthy: schedulerHealthy, lastRunAt, lastOkAt: schedulerData.lastOkAt ?? null, lastDurationMs: schedulerData.lastDurationMs ?? null,
+            lastError: schedulerData.lastErrorAt > (schedulerData.lastOkAt ?? 0) ? schedulerData.lastError ?? "" : "" },
+        checks,
+        summary: { errors24h, warnings24h, attention: attention.length },
+        emails: { sent: emailCount("sent"), failed: emailCount("failed"), retrying: emailCount("retry"), stuck: stuck.length, total: emailRows.length, problems: problemEmails },
+        webhooks: { received: webhookRows.length, unfinished: unfinished.length },
+        attention: attention.sort((a, b) => a.start - b.start),
+        events: eventRows,
+    };
 }
 async function handleAppointments(db, auth, req, res, action) {
     if (req.method !== "POST") {
@@ -1243,6 +1565,8 @@ async function handleAppointments(db, auth, req, res, action) {
                 result = await appointmentContext(db, body);
             else if (action === "admin-availability")
                 result = await getAvailability(db, body, true);
+            else if (action === "admin-check-time")
+                result = await checkOwnerTime(db, body);
             else if (action === "owner-detail") {
                 const id = identifier(body.id);
                 const appointment = await readAppointment(db, id);
@@ -1290,9 +1614,23 @@ async function handleAppointments(db, auth, req, res, action) {
                     tx.create(taxDoc(db).collection("versions").doc(), { ...result, updatedBy: uid, updatedAt: Date.now() });
                 });
             }
-            else if (action === "list") {
-                const recent = await db.collection("appointments").orderBy("createdAt", "desc").limit(50).get();
-                result = recent.docs.map(doc => adminDetails(doc.id, doc.data()));
+            else if (action === "list")
+                result = await listAppointments(db, body);
+            else if (action === "health")
+                result = await healthReport(db);
+            else if (action === "follow-up-settings")
+                result = await getFollowUpSettings(db);
+            else if (action === "save-follow-up-settings") {
+                const followUps = parseFollowUpSettings(body);
+                if (!followUps)
+                    throw new AppointmentError(400, "invalid_follow_up_settings");
+                await db.runTransaction(async (tx) => {
+                    const previous = await tx.get(followUpDoc(db));
+                    if ((previous.get("revision") ?? "") !== (body.revision ?? ""))
+                        throw new AppointmentError(409, "settings_updated");
+                    result = { ...followUps, revision: (0, node_crypto_1.randomBytes)(16).toString("hex") };
+                    tx.set(followUpDoc(db), { ...result, updatedBy: uid, updatedAt: Date.now() });
+                });
             }
             else if (action === "payment-export") {
                 const from = typeof body.from === "number" && Number.isSafeInteger(body.from) ? body.from : Date.now() - 365 * DAY;
@@ -1318,10 +1656,17 @@ async function handleAppointments(db, auth, req, res, action) {
     }
     catch (error) {
         if (error instanceof AppointmentError || error instanceof appointment_content_1.ContentError) {
+            // 503s mean an integration (Stripe, Google Calendar, Secret Manager) let a customer or the owner down.
+            if (error.status >= 500) {
+                const source = error.code.startsWith("calendar") ? "calendar" : "api";
+                await (0, ops_health_1.recordOpsEvent)(db, { source, code: error.code, detail: `During "${action}".` });
+            }
             res.status(error.status).json({ ok: false, error: error.code });
         }
         else {
             firebase_functions_1.logger.error("Appointment operation failed", { action, code: error?.code });
+            await (0, ops_health_1.recordOpsEvent)(db, { source: "api", code: "operation_failed", ref: action,
+                detail: `${action}: ${error instanceof Error ? error.message : String(error)}` });
             res.status(500).json({ ok: false, error: "appointment_operation_failed" });
         }
     }
@@ -1334,11 +1679,14 @@ async function handleStripeWebhook(db, req, res) {
     try {
         const config = await (0, appointment_stripe_1.stripeConfig)();
         if (!config) {
+            await (0, ops_health_1.recordOpsEvent)(db, { source: "stripe", code: "webhook_config_missing" });
             res.sendStatus(503);
             return;
         }
         const event = (0, appointment_stripe_1.verifyStripeEvent)(req.rawBody, req.get("Stripe-Signature") ?? "", config.webhookSecret);
         if (!event) {
+            // Usually noise from the internet, but a run of these after rotating the webhook secret means a stale secret.
+            await (0, ops_health_1.recordOpsEvent)(db, { source: "stripe", code: "webhook_signature", level: "warning" });
             res.sendStatus(400);
             return;
         }
@@ -1390,8 +1738,10 @@ async function handleStripeWebhook(db, req, res) {
         await receipt.set({ completedAt: Date.now() }, { merge: true });
         res.sendStatus(204);
     }
-    catch {
+    catch (error) {
         firebase_functions_1.logger.error("Stripe webhook processing failed");
+        // Stripe retries for up to three days, so this is recoverable once the cause is fixed.
+        await (0, ops_health_1.recordOpsEvent)(db, { source: "stripe", code: "webhook_failed", detail: error instanceof Error ? error.message : String(error) });
         res.sendStatus(503);
     }
 }
