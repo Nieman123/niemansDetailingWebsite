@@ -28,6 +28,7 @@ function eventDetails(id, appointment, origin = process.env.HOSTING_ORIGIN ?? ""
         lines.push("Directions: https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(address));
     add("Vehicle", appointment.vehicle);
     add("Service", appointment.service);
+    add("Customer notes", appointment.customerNotes);
     const base = appointment.finalCents ?? appointment.estimateCents;
     // Sales tax: the frozen amount once invoiced, otherwise an estimate at the rate captured at booking.
     const rate = appointment.taxRateBasisPoints ?? 0;

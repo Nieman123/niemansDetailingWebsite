@@ -1,4 +1,5 @@
 import { appointmentMoney, appointmentRequest, appointmentTime, calendarFile, easternStart, googleCalendarUrl, taxRateLabel } from "./appointment-utils.mjs";
+import { reportBookingConversion } from "./booking-analytics.mjs";
 
 const byId = id => document.getElementById(id);
 const status = byId("appointment-status");
@@ -124,6 +125,7 @@ async function openAppointment() {
   const command = (name, body = {}) => appointmentRequest(name, { ...body, id, token });
   appointment = await command(returned === "complete" ? "recheck-payment" : "details");
   render();
+  reportBookingConversion(id, appointment);
   if (returned === "complete" && appointment.status === "awaiting_deposit") message.textContent = "Payment is being verified. Keep your appointment link to check again.";
   byId("download-calendar").onclick = () => {
     const file = new Blob([calendarFile(id, appointment)], { type: "text/calendar;charset=utf-8" });
