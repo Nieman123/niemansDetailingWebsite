@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.api = exports.notifyLeadAddonUpdate = exports.appointmentMaintenance = void 0;
+exports.api = exports.notifyLeadAddonUpdate = exports.notifyAppointmentBooked = exports.appointmentMaintenance = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -226,6 +226,33 @@ async function sendTelegramMessage(text) {
 }
 // Deliver from the committed Firestore update, independently of the customer's tab.
 // Failed sends throw so Firebase retries the event. Successful event IDs are recorded.
+// A customer's booking lands on the calendar once their deposit is paid: it then either waits for
+// approval or is confirmed straight away. Owner-created appointments don't alert.
+exports.notifyAppointmentBooked = (0, firestore_1.onDocumentUpdated)({
+    document: "appointments/{appointmentId}", region: "us-east1", retry: true,
+}, async (event) => {
+    if (!event.data || !telegramEnabled())
+        return;
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    if (before.status !== "awaiting_deposit" || !["pending_approval", "confirmed"].includes(after.status))
+        return;
+    const receipt = event.data.after.ref.collection("telegramNotifications")
+        .doc((0, node_crypto_1.createHash)("sha256").update(event.id).digest("hex"));
+    if ((await receipt.get()).exists)
+        return;
+    const { eventDetails } = await Promise.resolve().then(() => __importStar(require("./appointment-calendar")));
+    const details = eventDetails(event.params.appointmentId, after, HOSTING_ORIGIN_PARAM.value());
+    const when = (ms, options) => new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", ...options }).format(new Date(ms));
+    const text = [
+        after.status === "pending_approval" ? "New booking (needs your approval)" : "New booking (confirmed)",
+        `When: ${when(after.start, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` +
+            ` to ${when(after.end, { hour: "numeric", minute: "2-digit" })} ET`,
+        details.description,
+    ].join("\n");
+    await sendTelegramMessage(text);
+    await receipt.set({ event_id: event.id, sent_at: firestore_2.FieldValue.serverTimestamp() });
+});
 exports.notifyLeadAddonUpdate = (0, firestore_1.onDocumentUpdated)({
     document: "leads/{leadId}", region: "us-east1", retry: true,
 }, async (event) => {

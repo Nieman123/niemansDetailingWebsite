@@ -46,6 +46,7 @@ jobs:
         run: |
           npm ci
           node scripts/test-addon-notifications.cjs
+          node scripts/test-booking-notifications.cjs
           node scripts/test-ceramic-notifications.cjs
           node scripts/test-appointment-calendar.mjs
           node scripts/test-appointment-integrations.mjs
