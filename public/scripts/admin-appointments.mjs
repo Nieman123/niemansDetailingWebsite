@@ -3,7 +3,7 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from
 import { easternInput, slotPicker } from "./slot-picker.mjs";
 import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
 import { servicePicker } from "./service-picker.mjs";
-import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, rescheduleWorkspace, setupBookingSettings, setupTaxSettings, statusLabels } from "./appointment-admin-tools.mjs";
+import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, rescheduleWorkspace, setupBookingSettings, setupFollowUpSettings, setupTaxSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);
 const form = byId("create-booking");
@@ -17,6 +17,9 @@ const signIn = byId("sign-in");
 const signOutButton = byId("sign-out");
 const links = new Map();
 const filter = byId("filter-appointments");
+const search = byId("search-appointments");
+const loadOlder = byId("load-older");
+let olderCursor = null;
 const detail = byId("owner-detail");
 const detailStatus = byId("detail-status");
 const params = new URLSearchParams(location.search);
@@ -36,7 +39,8 @@ const refundBanner = Object.assign(document.createElement("p"), { className: "ap
 listStatus.before(refundBanner);
 // Keep the queue current when you come back to the app or leave it open.
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && !recordId && !byId("workspace").hidden) refreshList(); });
-setInterval(() => { if (document.visibilityState === "visible" && !recordId && !byId("workspace").hidden && !byId("view-queue").hidden) refreshList(); }, 60000);
+// Skip the auto-refresh after "Show older" so the extra rows don't vanish while you read them.
+setInterval(() => { if (document.visibilityState === "visible" && !recordId && !byId("workspace").hidden && !byId("view-queue").hidden && list.childElementCount <= 50) refreshList(); }, 60000);
 const messages = {
   access_denied: "This account isn’t on the admin list for this site.",
   sign_in_required: "Sign in to manage appointments.",
@@ -57,6 +61,7 @@ const messages = {
   status_changed: "This appointment changed. Refresh the list and try again.",
   scope_acceptance_required: "Record the agreed scope changes and confirm customer approval for the price increase.",
   invalid_payment: "Enter a payment amount within the remaining balance and select its method.",
+  invalid_follow_up_settings: "Add an https Google review link to turn on review requests.",
   invalid_line_items: "Check the invoice lines. Their amounts must add up to the final total.",
   check_pending: "Clear or return the pending check before recording another payment.",
   payment_review_required: "Reconcile the Stripe refund or dispute before recording another payment.",
@@ -452,6 +457,7 @@ function renderDetail(record) {
     }));
     facts.append(Object.assign(document.createElement("dt"), { textContent: "Address" }), dd);
   }
+  fact("Customer notes", record.customerNotes);
   fact("Vehicle", record.vehicle);
   fact("Phone", record.phone);
   fact("Email", record.email);
@@ -601,27 +607,21 @@ async function refreshList() {
       return;
     }
 
-    const records = await ownerRequest("list");
-    if (session !== scope || recordId) return;
     const view = filter.value;
-    const east = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", dateStyle: "short" });
-    const refunds = records.filter(refundOpen);
-    const failed = refunds.filter(record => record.refundState === "failed").length;
-    refundBanner.hidden = !refunds.length;
-    refundBanner.textContent = refunds.length
-      ? `${refunds.length} deposit refund${refunds.length === 1 ? "" : "s"} in progress${failed ? `, ${failed} failed and need${failed === 1 ? "s" : ""} attention in Stripe` : ""}. Choose "Refunds" in the filter to see them.`
+    const query = search.value.trim();
+    const { records, next, refunds } = await ownerRequest("list", { view, search: query });
+    if (session !== scope || recordId) return;
+    refundBanner.hidden = !refunds.open;
+    refundBanner.textContent = refunds.open
+      ? `${refunds.open} deposit refund${refunds.open === 1 ? "" : "s"} in progress${refunds.failed ? `, ${refunds.failed} failed and need${refunds.failed === 1 ? "s" : ""} attention in Stripe` : ""}. Choose "Refunds" in the filter to see them.`
       : "";
-    const visible = records.filter(record => {
-      if (view === "refunds") return refundOpen(record);
-      if (view === "cancelled") return record.status === "cancelled";
-      if (record.status === "cancelled") return false;
-      if (view === "today") return east.format(record.start) === east.format(Date.now());
-      if (view === "due") return record.balanceCents > 0;
-      return view === "all" || record.status === view;
-    });
-    if (view === "today") visible.sort((a, b) => a.start - b.start);
+    // "Recent" hides cancellations; every other filter is already exact on the server.
+    const visible = view === "all" && !query ? records.filter(record => record.status !== "cancelled") : records;
     list.replaceChildren(...visible.map(renderRow));
-    status.textContent = visible.length ? "" : records.length ? "No appointments match this filter." : "Your first appointment will appear here.";
+    olderCursor = next;
+    loadOlder.hidden = !next;
+    status.textContent = visible.length ? (query && records.length === 100 ? "Showing the first 100 matches. Add more of the name or number to narrow it." : "")
+      : query ? "No appointments match that search." : records.length ? "No appointments match this filter." : view === "all" ? "Your first appointment will appear here." : "No appointments match this filter.";
   } catch (error) {
     if (session === scope && recordId === id) {
       status.textContent = id && error.code === "record_not_found" ? "This appointment could not be found." : explain(error);
@@ -737,6 +737,7 @@ if (!appointmentsEnabled) {
     }, { signal: authScope.signal });
     setupBookingSettings(byId("booking-settings"), ownerRequest, explain);
     setupTaxSettings(byId("tax-settings"), ownerRequest, explain);
+    setupFollowUpSettings(byId("follow-up-settings"), ownerRequest, explain);
     await refreshList();
   });
 }
@@ -744,6 +745,23 @@ if (!appointmentsEnabled) {
 filter.addEventListener("change", () => {
   history.replaceState(null, "", appointmentUrl());
   refreshList();
+});
+let searchTimer;
+search.addEventListener("input", () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(refreshList, 350);
+});
+// "Recent" pages back through older bookings 50 at a time.
+loadOlder.addEventListener("click", async () => {
+  if (!olderCursor) return;
+  loadOlder.disabled = true;
+  try {
+    const { records, next } = await ownerRequest("list", { view: "all", before: olderCursor });
+    list.append(...records.filter(record => record.status !== "cancelled").map(renderRow));
+    olderCursor = next;
+    loadOlder.hidden = !next;
+  } catch (error) { listStatus.textContent = explain(error); }
+  finally { loadOlder.disabled = false; }
 });
 byId("export-payments").addEventListener("click", async event => {
   const button = event.currentTarget;

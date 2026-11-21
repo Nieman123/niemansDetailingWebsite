@@ -7,7 +7,7 @@ type CalendarConfig = {
 type CalendarEvent = { id: string; status?: string; transparency?: string };
 type AppointmentEvent = {
   start: number; end: number; service: string; status: string;
-  name?: string; phone?: string; email?: string; address?: string; vehicle?: string; preparation?: string;
+  name?: string; phone?: string; email?: string; address?: string; vehicle?: string; preparation?: string; customerNotes?: string;
   estimateCents?: number | null; finalCents?: number; depositCents?: number; paidDeposit?: number;
   workNotes?: string; scopeChanges?: string; preapproved?: boolean;
   taxCents?: number; taxRateBasisPoints?: number;
@@ -34,6 +34,7 @@ export function eventDetails(id: string, appointment: AppointmentEvent, origin =
   if (address) lines.push("Directions: https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(address));
   add("Vehicle", appointment.vehicle);
   add("Service", appointment.service);
+  add("Customer notes", appointment.customerNotes);
   const base = appointment.finalCents ?? appointment.estimateCents;
   // Sales tax: the frozen amount once invoiced, otherwise an estimate at the rate captured at booking.
   const rate = appointment.taxRateBasisPoints ?? 0;

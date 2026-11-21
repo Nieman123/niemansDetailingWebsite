@@ -2,6 +2,7 @@ import { appointmentsEnabled, auth } from "./firebase-client.js";
 import { slotPicker } from "./slot-picker.mjs";
 import { servicePicker } from "./service-picker.mjs";
 import { appointmentRequest, appointmentMoney, appointmentTime, durationLabel, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
+import { rememberBooking } from "./booking-analytics.mjs";
 
 const el = id => document.getElementById(id);
 const form = el("public-booking");
@@ -18,7 +19,8 @@ let token = makeToken();
 const errors = {
   outside_service_area: "That ZIP is outside the online booking area. Text Nieman to check travel options.",
   existing_booking_hold: "You already have a time on hold. Use your appointment link or text Nieman for help.",
-  invalid_details: "Enter your name and a 10-digit US phone number. Check your email if you included one.",
+  invalid_details: "Enter your name, a 10-digit US phone number and a valid email address.",
+  email_required: "Enter your email so we can send your confirmation and appointment link.",
   verified_email_required: "Please verify your account email or book while signed out.",
   calendar_unavailable: "We couldn’t check the calendars. Try again or text Nieman.",
   vehicle_required: "Select your vehicle size to see your estimate and book.",
@@ -205,6 +207,7 @@ form.onsubmit = async event => {
       ...payload, start, accepted: fields.accepted.checked, token, quoteReceipt, reuseQuoteContact,
     }, bearer);
     const fragment = "#" + result.id + "." + token;
+    rememberBooking(result.id, result.estimateCents, result.service);
     if (!result.depositCents) {
       el("reserve-state").textContent = "Request sent.";
       location.assign("/appointment" + fragment);
