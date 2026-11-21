@@ -133,11 +133,25 @@ assert.equal((await pendingRef.collection('ledger').get()).size, 1);
 assert.equal((await asOwner('cancel', { id: pending.id })).result.refundState, 'queued');
 
 const job = (await asOwner('create', { ...appointment, requestId: randomUUID(), start: paidLater + 86_400_000 })).result;
+assert.equal((await post('save-notes', { id: job.id, workNotes: 'Sneaky' })).status, 401);
+assert.equal((await post('save-notes', { id: job.id, workNotes: 'Sneaky' }, stranger.idToken)).status, 403);
+const noted = await asOwner('save-notes', { id: job.id, workNotes: '  Owner-only note: side gate sticks.  ' });
+assert.equal(noted.result.workNotes, 'Owner-only note: side gate sticks.');
+assert.equal((await asOwner('owner-detail', { id: job.id })).result.workNotes, 'Owner-only note: side gate sticks.');
+assert((await asOwner('list', { search: 'side gate sticks' })).result.records.some(record => record.id === job.id));
+const jobLink = await asOwner('issue-link', { id: job.id });
+const customerView = await post('details', { id: job.id, token: jobLink.result.token });
+assert.equal(customerView.status, 200);
+assert(!('workNotes' in customerView.result));
+assert(!JSON.stringify(customerView).includes('side gate'), 'private notes must not reach the customer');
+assert.equal((await asOwner('save-notes', { id, workNotes: 'Cancelled, call back in spring.' })).result.workNotes, 'Cancelled, call back in spring.');
+console.log('PASS: Private owner notes save on any appointment and stay out of customer views.');
 assert.equal((await asOwner('finish-job', { id: job.id, finalCents: 31_000 })).error, 'scope_acceptance_required');
 const finished = await asOwner('finish-job', {
   id: job.id, finalCents: 31_000, scopeAccepted: true, scopeChanges: 'Approved extra work', maintenanceInviteAfterPayment: true,
 });
 assert.equal(finished.result.balanceCents, 31_000);
+assert.equal(finished.result.workNotes, 'Owner-only note: side gate sticks.');
 const invitations = () => db.collection('appointmentEmails').where('maintenance.appointmentId', '==', job.id).get();
 assert.equal((await invitations()).size, 0);
 const manual = { id: job.id, amountCents: 10_000, method: 'cash', requestId: randomUUID() };

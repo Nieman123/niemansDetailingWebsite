@@ -149,6 +149,7 @@ export function jobWorkspace(record, request, refresh, report) {
     function queueSave() {
       const draft = work();
       pendingNotes.set(record.id, draft);
+      record.workNotes = draft.workNotes;
       clearTimeout(autosave);
       message.textContent = "Changes pending.";
       autosave = setTimeout(async () => {
@@ -188,6 +189,56 @@ export function jobWorkspace(record, request, refresh, report) {
   }
   area.append(form, message, jobPhotosSection(record.id));
   return area;
+}
+
+// The owner's private notes on any appointment, at the top of the appointment detail. They are the same
+// notes as the job screen's, autosave as you type, and never reach the customer.
+export function privateNotesCard(record, request) {
+  const card = elm("section", "", "job-card private-notes");
+  const heading = elm("h4", "Private notes");
+  const saveState = elm("span", "Saved", "job-save-state");
+  heading.append(saveState);
+  const notes = Object.assign(document.createElement("textarea"), {
+    rows: 3, maxLength: 5000, placeholder: "Anything to remember about this appointment or customer.",
+  });
+  notes.setAttribute("aria-label", "Private notes");
+  const current = () => pendingNotes.get(record.id)?.workNotes ?? record.workNotes ?? "";
+  notes.value = current();
+  card.append(heading, notes, elm("p", "Only you see these. They never go to the customer.", "private-notes__hint"));
+
+  async function save(draft) {
+    // A job screen draft also carries scope changes; save those with it while the job is open.
+    const job = "scopeChanges" in draft && ["confirmed", "in_progress"].includes(record.status);
+    const previous = noteSaves.get(record.id) ?? Promise.resolve();
+    const run = previous.catch(() => {}).then(async () => {
+      await request(job ? "save-job" : "save-notes", job ? draft : { id: record.id, workNotes: draft.workNotes });
+      if (pendingNotes.get(record.id) === draft) pendingNotes.delete(record.id);
+    });
+    noteSaves.set(record.id, run);
+    try { await run; }
+    finally { if (noteSaves.get(record.id) === run) noteSaves.delete(record.id); }
+  }
+  let autosave;
+  function queueSave() {
+    const draft = { ...pendingNotes.get(record.id), id: record.id, workNotes: notes.value };
+    pendingNotes.set(record.id, draft);
+    record.workNotes = draft.workNotes;
+    clearTimeout(autosave);
+    saveState.textContent = "Saving…";
+    saveState.dataset.state = "pending";
+    autosave = setTimeout(async () => {
+      if (!notes.isConnected || pendingNotes.get(record.id) !== draft) return;
+      try { await save(draft); saveState.textContent = "Saved"; delete saveState.dataset.state; }
+      catch { saveState.textContent = "Not saved, retrying"; saveState.dataset.state = "error"; setTimeout(() => { if (notes.isConnected) queueSave(); }, 5000); }
+    }, 900);
+  }
+  notes.oninput = queueSave;
+  // Called when coming back from the job screen, where the same notes may have changed.
+  card.sync = () => {
+    notes.value = current();
+    if (!pendingNotes.has(record.id)) { clearTimeout(autosave); saveState.textContent = "Saved"; delete saveState.dataset.state; }
+  };
+  return card;
 }
 
 // Quote add-on prices by vehicle size, in dollars, matching the quote form.
@@ -251,7 +302,7 @@ export function jobScreen(record, request, refresh, report) {
   // Notes autosave while you type, and survive moving between views.
   const pending = pendingNotes.get(record.id);
   const notesCard = elm("section", "", "job-card");
-  notesCard.append(elm("h4", "Job notes"));
+  notesCard.append(elm("h4", "Private notes"));
   const saveState = elm("span", "Saved", "job-save-state");
   notesCard.querySelector("h4").append(saveState);
   const notes = Object.assign(document.createElement("textarea"), { rows: 4, maxLength: 5000, value: pending?.workNotes ?? record.workNotes ?? "", placeholder: "What you noticed, what you did, anything for next time." });
@@ -285,6 +336,7 @@ export function jobScreen(record, request, refresh, report) {
   function queueSave() {
     const draft = work();
     pendingNotes.set(record.id, draft);
+    record.workNotes = draft.workNotes;
     clearTimeout(autosave);
     saveState.textContent = "Saving…";
     saveState.dataset.state = "pending";

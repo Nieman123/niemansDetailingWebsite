@@ -470,9 +470,19 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
       tx.update(ref, { status: "no_show", noShowAt: now, noShowBy: uid, noShowReason: text(body.reason, 300), depositLockedAt: depositLock(appointment, now) });
       return adminDetails(id, { ...appointment, status: "no_show" });
     }
+    if (action === "save-notes") {
+      // The owner's private notes, editable on any appointment. Admin views and the owner's calendar only.
+      const workNotes = text(body.workNotes, 5000);
+      const shown = !["draft", "cancelled"].includes(appointment.status);
+      const update = { workNotes, workUpdatedAt: now, workUpdatedBy: uid,
+        ...(shown && workNotes !== (appointment.workNotes ?? "") ? calendarUpdate(now) : {}) };
+      tx.update(ref, update);
+      return adminDetails(id, { ...appointment, ...update });
+    }
     if (action === "start-job" || action === "save-job" || action === "finish-job") {
       if (!["confirmed", "in_progress"].includes(appointment.status)) throw new AppointmentError(409, "status_changed");
-      const work = { workNotes: text(body.workNotes, 5000), scopeChanges: text(body.scopeChanges, 1500), workUpdatedAt: now, workUpdatedBy: uid };
+      // A request without notes (an older screen, or a script) keeps the notes already saved.
+      const work = { workNotes: typeof body.workNotes === "string" ? text(body.workNotes, 5000) : appointment.workNotes ?? "", scopeChanges: text(body.scopeChanges, 1500), workUpdatedAt: now, workUpdatedBy: uid };
       if (action === "finish-job") {
         const final = body.finalCents;
         if (typeof final !== "number" || !Number.isSafeInteger(final) || final < (appointment.paidDeposit ?? 0) || final > 10_000_000) {
@@ -1325,7 +1335,7 @@ const refundOpenState = (appointment: Appointment) => !!appointment.refund && ap
 const newestFirst = (a: { createdAt: number }, b: { createdAt: number }) => b.createdAt - a.createdAt;
 
 // The admin queue. Each filter runs its own query so older records stay reachable, and search scans
-// the most recent 1,000 bookings by name, phone, email, address or vehicle.
+// the most recent 1,000 bookings by name, phone, email, address, vehicle or notes.
 async function listAppointments(db: Firestore, body: Record<string, unknown>) {
   const collection = db.collection("appointments");
   const view = typeof body.view === "string" && LIST_VIEWS.has(body.view) ? body.view : "all";
@@ -1339,7 +1349,7 @@ async function listAppointments(db: Firestore, body: Record<string, unknown>) {
     const digits = search.replace(/\D/g, "");
     const recent = rows(await collection.orderBy("createdAt", "desc").limit(1000).get());
     records = recent.filter(({ appointment: a }) =>
-      [a.name, a.email, a.address, a.vehicle, a.service, a.customerNotes].some(value => (value ?? "").toLowerCase().includes(search)) ||
+      [a.name, a.email, a.address, a.vehicle, a.service, a.customerNotes, a.workNotes].some(value => (value ?? "").toLowerCase().includes(search)) ||
       (digits.length >= 4 && (a.phone ?? "").replace(/\D/g, "").includes(digits))).slice(0, 100);
   } else if (view === "all") {
     let query = collection.orderBy("createdAt", "desc");
@@ -1598,7 +1608,7 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
             by, reference].map(cell).join(",") + `,${Number.isSafeInteger(amount) ? amount : ""},${Number.isSafeInteger(taxCents) ? taxCents : 0}`;
         });
         result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents,tax_cents", ...rows].join("\r\n") };
-      } else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite"].includes(action)) {
+      } else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "save-notes", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite"].includes(action)) {
         result = await changeAppointment(db, uid, identifier(body.id)!, action, body);
       } else throw new AppointmentError(404, "not_found");
     }

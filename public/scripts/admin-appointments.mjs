@@ -3,7 +3,7 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from
 import { easternInput, slotPicker } from "./slot-picker.mjs";
 import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
 import { servicePicker } from "./service-picker.mjs";
-import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, rescheduleWorkspace, setupBookingSettings, setupFollowUpSettings, setupTaxSettings, statusLabels } from "./appointment-admin-tools.mjs";
+import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, privateNotesCard, rescheduleWorkspace, setupBookingSettings, setupFollowUpSettings, setupTaxSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);
 const form = byId("create-booking");
@@ -427,6 +427,7 @@ function renderDetail(record) {
     viewHost.hidden = true;
     viewHost.replaceChildren();
     hub.hidden = false;
+    notesCard.sync();
     byId("view-detail").scrollIntoView({ block: "start" });
   }
 
@@ -472,6 +473,8 @@ function renderDetail(record) {
   fact("Deposit", record.paidDeposit ? appointmentMoney(record.paidDeposit) + " received" : record.depositCents ? appointmentMoney(record.depositCents) + " due" : "Waived");
   if (record.balanceCents != null) fact("Balance", record.balanceCents ? appointmentMoney(record.balanceCents) : "Paid");
   hub.append(facts);
+  const notesCard = privateNotesCard(record, ownerRequest);
+  hub.append(notesCard);
 
   const alerts = [];
   if (record.rescheduleRequest) alerts.push("The customer asked for a different time. Open Reschedule to review it.");

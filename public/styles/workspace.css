@@ -241,6 +241,8 @@
 .owner-app .job-card textarea { width: 100%; min-height: 120px; font-size: 17px; line-height: 1.5; }
 .owner-app .job-card textarea[rows="2"] { min-height: 72px; }
 .job-label { display: block; margin: 14px 0 6px; color: var(--nd-text-2); font-size: 14px; font-weight: 600; }
+.record-hub .private-notes { margin: 0 0 18px; }
+.private-notes__hint { margin: 8px 0 0; color: var(--nd-text-2); font-size: 14px; }
 .job-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .owner-app .job-chip { min-height: 44px; padding: 8px 14px; border: 1px solid var(--nd-line-strong); border-radius: 999px; background: var(--nd-surface-2); color: var(--nd-text); font: 600 14px var(--nd-font-sans); cursor: pointer; }
 .owner-app .job-chip:active { transform: scale(.97); }
