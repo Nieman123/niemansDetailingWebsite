@@ -359,12 +359,22 @@ try {
   const withOther = (await callWithCalendar('reschedule-availability', { id: moveId, token: moveToken, month })).result.slots;
   assert(!withOther.includes(otherAt), 'other detailing calendar events still block');
   assert(withOther.includes(phoneBooking.start + 30 * 60_000));
+  // An all-day event blocks only its own Eastern date, not the whole month.
+  const easternDay = value => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(value);
+  const allDay = easternDay(otherAt);
+  const nextDay = new Date(Date.parse(allDay + 'T12:00:00Z') + 86_400_000).toISOString().slice(0, 10);
+  detailEvents = [{ id: 'aallday', start: { date: allDay }, end: { date: nextDay } }];
+  const withAllDay = (await callWithCalendar('reschedule-availability', { id: moveId, token: moveToken, month })).result.slots;
+  assert(!withAllDay.some(start => easternDay(start) === allDay), 'the all-day event blocks its day');
+  assert.deepEqual(withAllDay, moveSlots.slots.filter(start => easternDay(start) !== allDay), 'and only its day');
   detailEvents = [];
   assert.equal((await callWithCalendar('reschedule-availability', { id: moveId, token: 'f'.repeat(64), month })).error, 'link_unavailable');
   assert.equal((await callWithCalendar('request-reschedule', { id: moveId, token: moveToken, start: phoneBooking.start + 12 * 3_600_000 })).error, 'time_unavailable');
   const wanted = moveSlots.slots.at(-1);
   assert.equal((await callWithCalendar('request-reschedule', { id: moveId, token: moveToken, start: wanted })).result.hasRescheduleRequest, true);
-  const ownerMove = (await callWithCalendar('admin-availability', { month, durationMinutes: 60, except: moveId }, owner.idToken)).result.slots;
+  const ownerMoveResult = (await callWithCalendar('admin-availability', { month, durationMinutes: 60, except: moveId }, owner.idToken)).result;
+  assert.equal(ownerMoveResult.horizonDays, 45, 'the owner reschedule calendar can page ahead');
+  const ownerMove = ownerMoveResult.slots;
   assert(ownerMove.includes(phoneBooking.start + 30 * 60_000), 'the owner calendar ignores the appointment being moved');
   assert(!(await checkTime({ start: phoneBooking.start + 30 * 60_000, except: moveId })).result.issues.includes('overlap'));
   personalBusy = [{ start: iso(wanted), end: iso(wanted + 60 * 60_000) }];

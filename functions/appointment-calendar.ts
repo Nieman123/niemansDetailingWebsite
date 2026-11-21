@@ -1,4 +1,5 @@
 import { integrationConfig } from "./appointment-secrets";
+import { eastDateTime } from "./appointment-booking";
 
 type CalendarConfig = {
   clientId: string; clientSecret: string; refreshToken: string;
@@ -114,9 +115,10 @@ export async function busyWindows(config: CalendarConfig, start: number, end: nu
       const page = await result.json() as { items?: CalendarEvent[]; nextPageToken?: string };
       for (const evt of page.items ?? []) {
         if (evt.id === eventId(except) || evt.status === "cancelled" || evt.transparency === "transparent") continue;
-        // Timed events block their own window; an all-day event blocks the whole range looked up.
-        const from = evt.start?.dateTime ? Date.parse(evt.start.dateTime) : start;
-        const to = evt.end?.dateTime ? Date.parse(evt.end.dateTime) : end;
+        // Timed events block their own window. An all-day event blocks its own Eastern dates, as freeBusy would,
+        // not the whole range looked up (that hid every opening in the month on a reschedule).
+        const from = evt.start?.dateTime ? Date.parse(evt.start.dateTime) : evt.start?.date ? eastDateTime(evt.start.date, "00:00") ?? start : start;
+        const to = evt.end?.dateTime ? Date.parse(evt.end.dateTime) : evt.end?.date ? eastDateTime(evt.end.date, "00:00") ?? end : end;
         windows.push({ start: from, end: to });
       }
       if (!page.nextPageToken) break;

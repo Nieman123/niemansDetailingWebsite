@@ -1604,7 +1604,11 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
       const uid = await adminUid(db, auth, req, action.startsWith("cms-"));
       if (action.startsWith("cms-")) result = await manageSiteContent(db, uid, action, body);
       else if (action === "context") result = await appointmentContext(db, body);
-      else if (action === "admin-availability") result = await getAvailability(db, body, true, await movingAppointment(db, body.except));
+      else if (action === "admin-availability") {
+        // The horizon lets the reschedule calendar page past this month.
+        const moving = await movingAppointment(db, body.except);
+        result = { ...await getAvailability(db, body, true, moving), ...(moving ? { horizonDays: (await getSettings(db)).horizonDays } : {}) };
+      }
       else if (action === "admin-check-time") result = await checkOwnerTime(db, body);
       else if (action === "owner-detail") {
         const id = identifier(body.id)!;

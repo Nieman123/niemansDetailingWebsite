@@ -107,7 +107,7 @@ function easternParts(timestamp: number) {
   return Object.fromEntries(formatter.formatToParts(timestamp).map(part => [part.type, part.value]));
 }
 
-function eastDateTime(day: string, time: string) {
+export function eastDateTime(day: string, time: string) {
   const wall = Date.parse(`${day}T${time}:00Z`);
   if (!Number.isFinite(wall)) return null;
   const valid = [4, 5].map(offset => wall + offset * 60 * MINUTE).filter(value => {
