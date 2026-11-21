@@ -243,7 +243,9 @@ await db.collection('appointmentSettings').doc('booking').set(publicSettings);
 const originalFetch = globalThis.fetch;
 let calendarReads = 0;
 let personalBusy = [];
+let detailEvents = [];
 globalThis.fetch = (url, init) => {
+  if (String(url).includes('/calendars/detail/events?')) return Promise.resolve(Response.json({items:detailEvents}));
   if (String(url) === 'https://oauth2.googleapis.com/token') return Promise.resolve(Response.json({access_token:'demo',expires_in:3600}));
   if (String(url).endsWith('/freeBusy')) {
     calendarReads++;
@@ -313,6 +315,37 @@ try {
   console.log('PASS: Owner time check explains conflicts, and the owner can book over one on purpose.');
   console.log('PASS: Owner-only appointment details and calendar with public booking paused.');
   await db.collection('appointmentSettings').doc('booking').update({ enabled: true });
+
+  // Rescheduling uses the booking calendar for the appointment's own length, without the appointment blocking itself.
+  const moveId = booked.result.id, moveToken = phoneBooking.token, iso = value => new Date(value).toISOString();
+  await db.collection('appointments').doc(moveId).update({ status: 'confirmed', paidDeposit: 5000 });
+  detailEvents = [{ id: 'a' + moveId, start: { dateTime: iso(phoneBooking.start) }, end: { dateTime: iso(phoneBooking.start + 60 * 60_000) } }];
+  const moveSlots = (await callWithCalendar('reschedule-availability', { id: moveId, token: moveToken, month })).result;
+  assert.equal(moveSlots.horizonDays, 45);
+  assert(!moveSlots.slots.includes(phoneBooking.start), 'the current time is not offered');
+  assert(moveSlots.slots.includes(phoneBooking.start + 30 * 60_000), 'the appointment and its calendar event do not block it');
+  const otherAt = moveSlots.slots.at(-2);
+  detailEvents.push({ id: 'aother', start: { dateTime: iso(otherAt) }, end: { dateTime: iso(otherAt + 30 * 60_000) } });
+  const withOther = (await callWithCalendar('reschedule-availability', { id: moveId, token: moveToken, month })).result.slots;
+  assert(!withOther.includes(otherAt), 'other detailing calendar events still block');
+  assert(withOther.includes(phoneBooking.start + 30 * 60_000));
+  detailEvents = [];
+  assert.equal((await callWithCalendar('reschedule-availability', { id: moveId, token: 'f'.repeat(64), month })).error, 'link_unavailable');
+  assert.equal((await callWithCalendar('request-reschedule', { id: moveId, token: moveToken, start: phoneBooking.start + 12 * 3_600_000 })).error, 'time_unavailable');
+  const wanted = moveSlots.slots.at(-1);
+  assert.equal((await callWithCalendar('request-reschedule', { id: moveId, token: moveToken, start: wanted })).result.hasRescheduleRequest, true);
+  const ownerMove = (await callWithCalendar('admin-availability', { month, durationMinutes: 60, except: moveId }, owner.idToken)).result.slots;
+  assert(ownerMove.includes(phoneBooking.start + 30 * 60_000), 'the owner calendar ignores the appointment being moved');
+  assert(!(await checkTime({ start: phoneBooking.start + 30 * 60_000, except: moveId })).result.issues.includes('overlap'));
+  personalBusy = [{ start: iso(wanted), end: iso(wanted + 60 * 60_000) }];
+  assert((await checkTime({ start: wanted, except: moveId })).result.issues.includes('overlap'));
+  assert.equal((await callWithCalendar('reschedule', { id: moveId, start: wanted }, owner.idToken)).error, 'time_unavailable');
+  const movedAnyway = await callWithCalendar('reschedule', { id: moveId, start: wanted, allowOverlap: true }, owner.idToken);
+  personalBusy = [];
+  assert.equal(movedAnyway.result.start, wanted, JSON.stringify(movedAnyway));
+  assert.equal(movedAnyway.result.rescheduleRequest, null);
+  assert.equal((await db.collection('appointments').doc(moveId).get()).get('overlapApproved'), true);
+  console.log('PASS: Customer and owner reschedule calendars, customer request rules, and moving over a conflict on purpose.');
   const quoteReceipt = { id:'a'.repeat(64),token:'d'.repeat(64) };
   const quoteRef = db.collection('leads').doc(quoteReceipt.id);
   await quoteRef.set({

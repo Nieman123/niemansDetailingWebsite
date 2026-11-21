@@ -1,5 +1,6 @@
-import { appointmentMoney, appointmentRequest, appointmentTime, calendarFile, easternStart, googleCalendarUrl, taxRateLabel } from "./appointment-utils.mjs";
+import { appointmentMoney, appointmentRequest, appointmentTime, calendarFile, googleCalendarUrl, taxRateLabel } from "./appointment-utils.mjs";
 import { reportBookingConversion } from "./booking-analytics.mjs";
+import { slotCalendar, slotPicker } from "./slot-picker.mjs";
 
 const byId = id => document.getElementById(id);
 const status = byId("appointment-status");
@@ -103,6 +104,72 @@ function render() {
   if (offer) byId("alternate-time").textContent = `Nieman offered ${appointmentTime({ start: offer.start, end: offer.start + appointment.end - appointment.start })}.`;
 }
 
+// Deposit terms for a requested time, under the 96-hour policy. A move never restores a refund window that has passed.
+function moveDepositNote(start) {
+  if (!(appointment.paidDeposit > 0)) return "";
+  if (appointment.status === "confirmed" && !appointment.depositRefundable) {
+    return "Your deposit is already inside the 96-hour window, so it stays nonrefundable at the new time.";
+  }
+  if (start - Date.now() < 96 * 3_600_000) {
+    return "This time is less than 96 hours away. Once Nieman approves it, your deposit becomes nonrefundable.";
+  }
+  return "Your deposit carries over. Cancel at least 96 hours before the new time for a refund.";
+}
+
+// Request a new time from the same calendar as /schedule: only times open under the booking rules.
+function setupMove(command) {
+  const form = byId("request-move");
+  const panel = byId("move-panel");
+  const opener = byId("open-move");
+  const choice = byId("move-choice");
+  const send = byId("send-move");
+  const { root, status: calendarStatus, retry } = slotCalendar("move", "Open dates");
+  byId("move-calendar").append(root);
+  let picked = null;
+  let calendar;
+  const toggle = open => {
+    panel.hidden = !open;
+    opener.hidden = open;
+    opener.setAttribute("aria-expanded", String(open));
+  };
+  opener.onclick = () => {
+    toggle(true);
+    calendar ??= slotPicker(root, {
+      status: calendarStatus, retry,
+      getSlots: month => command("reschedule-availability", { month }),
+      empty: "No openings this month. Try another month, or text Nieman.",
+      unavailable: error => errors[error.code] || "The calendar couldn't load. Try again.",
+      onClear() { picked = null; choice.hidden = true; },
+      onSelect(value) {
+        picked = value;
+        byId("move-time").textContent = appointmentTime({ start: value, end: value + appointment.end - appointment.start });
+        const note = moveDepositNote(value);
+        byId("move-deposit").textContent = note;
+        byId("move-deposit").hidden = !note;
+        choice.hidden = false;
+        send.focus({ preventScroll: true });
+        send.scrollIntoView({ block: "nearest" });
+      },
+    });
+    calendar.load();
+  };
+  byId("close-move").onclick = () => { toggle(false); opener.focus(); };
+  form.onsubmit = run(async () => {
+    if (!picked) { message.textContent = "Choose a new time first."; return; }
+    try {
+      appointment = await command("request-reschedule", { start: picked });
+    } catch (error) {
+      if (error.code !== "time_unavailable") throw error;
+      await calendar.load();
+      message.textContent = "That time was just taken. Choose another opening.";
+      return;
+    }
+    render();
+    toggle(false);
+    message.textContent = "Request sent. Your current appointment time is still reserved.";
+  }, send);
+}
+
 function run(action, button) {
   return async event => {
     event.preventDefault();
@@ -141,12 +208,7 @@ async function openAppointment() {
     const { url } = await command("checkout", { accepted: true });
     location.assign(url);
   }, pay);
-  const move = byId("request-move");
-  move.onsubmit = run(async () => {
-    appointment = await command("request-reschedule", { start: easternStart(move.elements.start.value) });
-    render();
-    message.textContent = "Request sent. Your current appointment time is still reserved.";
-  }, move.querySelector("button"));
+  setupMove(command);
   const cancel = byId("cancel-appointment");
   cancel.onclick = run(async () => {
     const consequence = appointment.paidDeposit ?

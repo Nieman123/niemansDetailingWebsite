@@ -4,7 +4,10 @@ type CalendarConfig = {
   clientId: string; clientSecret: string; refreshToken: string;
   detailingId: string; personalId: string; plutoId: string;
 };
-type CalendarEvent = { id: string; status?: string; transparency?: string };
+type CalendarEvent = {
+  id: string; status?: string; transparency?: string;
+  start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string };
+};
 type AppointmentEvent = {
   start: number; end: number; service: string; status: string;
   name?: string; phone?: string; email?: string; address?: string; vehicle?: string; preparation?: string; customerNotes?: string;
@@ -109,9 +112,12 @@ export async function busyWindows(config: CalendarConfig, start: number, end: nu
       const result = await google(config, `calendars/${encodeURIComponent(config.detailingId)}/events?${query}`);
       if (!result.ok) throw new Error("calendar_availability_failed");
       const page = await result.json() as { items?: CalendarEvent[]; nextPageToken?: string };
-      if (page.items?.some(evt => evt.id !== eventId(except) && evt.status !== "cancelled" && evt.transparency !== "transparent")) {
-        windows.push({ start, end });
-        break;
+      for (const evt of page.items ?? []) {
+        if (evt.id === eventId(except) || evt.status === "cancelled" || evt.transparency === "transparent") continue;
+        // Timed events block their own window; an all-day event blocks the whole range looked up.
+        const from = evt.start?.dateTime ? Date.parse(evt.start.dateTime) : start;
+        const to = evt.end?.dateTime ? Date.parse(evt.end.dateTime) : end;
+        windows.push({ start: from, end: to });
       }
       if (!page.nextPageToken) break;
       query.set("pageToken", page.nextPageToken);

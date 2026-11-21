@@ -12,6 +12,41 @@ const noon = date => new Date(date + "T12:00:00Z");
 
 export const easternInput = value => easternDay.format(value) + "T" + clock.format(value);
 
+// The month calendar and time list used on /schedule, built for pages that add it on demand.
+// Returns the root to pass to slotPicker plus its status line and retry button.
+export function slotCalendar(prefix, title = "Available dates") {
+  const make = (tag, props = {}, ...children) => {
+    const node = Object.assign(document.createElement(tag), props);
+    node.append(...children);
+    return node;
+  };
+  const arrow = (label, extra) => {
+    const button = make("button", { type: "button", disabled: true }, make("span", { className: "chevron" + extra }));
+    button.setAttribute("aria-label", label);
+    button.firstChild.setAttribute("aria-hidden", "true");
+    return button;
+  };
+  const status = make("p", { id: prefix + "-calendar-status", textContent: "Checking availability." });
+  status.setAttribute("role", "status");
+  const retry = make("button", { type: "button", className: "btn secondary", textContent: "Try again", hidden: true });
+  const weekdays = make("div", { className: "weekdays" }, ...["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => make("span", { textContent: day })));
+  weekdays.setAttribute("aria-hidden", "true");
+  const grid = make("div", { className: "month-grid" });
+  grid.setAttribute("role", "group");
+  grid.setAttribute("aria-labelledby", prefix + "-month-title");
+  const note = make("p", { className: "slot-note" });
+  note.setAttribute("role", "status");
+  const times = make("div", { className: "time-grid" });
+  times.setAttribute("role", "group");
+  times.setAttribute("aria-labelledby", prefix + "-slot-heading");
+  const root = make("div", { className: "owner-slot-calendar" },
+    make("div", { className: "month-nav" }, make("h2", { id: prefix + "-month-title", textContent: title }),
+      make("div", {}, arrow("Previous month", " previous"), arrow("Next month", ""))),
+    status, retry, weekdays, grid,
+    make("section", { className: "time-section" }, make("h3", { id: prefix + "-slot-heading", textContent: "Available times" }), note, times));
+  return { root, status, retry };
+}
+
 export function slotPicker(root, { getSlots, onSelect, onClear, status, retry, empty, unavailable }) {
   const grid = root.querySelector(".month-grid");
   const heading = root.querySelector(".month-nav h2");
@@ -70,6 +105,11 @@ export function slotPicker(root, { getSlots, onSelect, onClear, status, retry, e
     try {
       const result = await getSlots(month);
       if (version !== revision) return;
+      // A lookup can carry the booking horizon, for pages that don't load booking options first.
+      if (result.horizonDays) {
+        maxMonth = easternDay.format(Date.now() + result.horizonDays * 86_400_000).slice(0, 7);
+        next.disabled = month >= maxMonth;
+      }
       for (const value of result.slots) {
         const key = easternDay.format(value);
         if (!slots.has(key)) slots.set(key, []);
@@ -124,6 +164,13 @@ export function slotPicker(root, { getSlots, onSelect, onClear, status, retry, e
     setHorizon(days) {
       maxMonth = easternDay.format(Date.now() + days * 86_400_000).slice(0, 7);
       if (month > maxMonth) month = maxMonth;
+    },
+    // Open the month holding a start time and select it if it's still offered.
+    show(start) {
+      const target = easternDay.format(start).slice(0, 7);
+      month = target < minMonth ? minMonth : target;
+      if (month > maxMonth) maxMonth = month;
+      return load(easternDay.format(start), start);
     },
     clearSelection() {
       selected = null;
