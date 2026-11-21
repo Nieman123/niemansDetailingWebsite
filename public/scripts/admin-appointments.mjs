@@ -45,7 +45,7 @@ const messages = {
   invalid_details: "Enter a name and either a valid US phone number or email address.",
   invalid_time: "Choose a future appointment with a duration from 15 minutes to seven days.",
   invalid_price: "Enter a valid estimated total.",
-  time_unavailable: "This overlaps a confirmed appointment. Choose another time.",
+  time_unavailable: "This time overlaps another booking or calendar event. Choose another time, or tick “Book it anyway” to keep it.",
   link_unavailable: "Share links are available for active, confirmed appointments.",
   calendar_unavailable: "The configured calendars couldn't be checked.",
   stripe_unavailable: "Configure Stripe test credentials before creating deposit links.",
@@ -90,15 +90,97 @@ const calendar = slotPicker(byId("owner-slot-calendar"), {
   onClear() {
     if (selectedSlot && fields.start.value === easternInput(selectedSlot)) fields.start.value = "";
     selectedSlot = null;
+    checkStart();
   },
   onSelect(value) {
     selectedSlot = value;
     fields.start.value = easternInput(value);
+    checkStart();
   },
 });
 function refreshCalendar() {
   // Keep the chosen time when the deposit, length, or service changes, as long as it's still open.
   if (pickerReady) calendar.load(undefined, selectedSlot);
+  checkStart();
+}
+
+// Live check of whatever start time is in the form, picked from the calendar or typed, using the same
+// hours, notice and calendars as the booking calendar. Conflicts warn instead of blocking: the owner can
+// tick "Book it anyway" to save over one.
+const startCheck = byId("start-check");
+const overlapOverride = byId("overlap-override");
+const rangeTime = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const issueText = {
+  past: "That time has already passed.",
+  too_soon_for_deposit: "That’s too soon for a deposit link. Choose “No deposit required” or a time at least 36 minutes away.",
+  blocked_date: "That date is blocked off in Settings.",
+  closed_day: "You don’t normally take bookings that day.",
+  outside_hours: "It runs outside your business hours for that day.",
+};
+let checkTimer;
+let checkVersion = 0;
+let lastCheck = null;
+function clearStartCheck() {
+  checkVersion++;
+  clearTimeout(checkTimer);
+  lastCheck = null;
+  startCheck.hidden = true;
+  startCheck.replaceChildren();
+  overlapOverride.hidden = true;
+  fields.allowOverlap.checked = false;
+}
+function conflictLine(item, bufferMinutes) {
+  const when = rangeTime.formatRange(item.start, item.end);
+  const who = item.kind === "appointment" ? [item.name, item.service].filter(Boolean).join(" · ") || "Another appointment" : "Busy on your calendar";
+  return item.overlaps ? `Overlaps ${who}, ${when}.` : `Inside your ${bufferMinutes}-minute travel buffer: ${who}, ${when}.`;
+}
+function showStartCheck(result) {
+  const conflict = result.issues.includes("overlap");
+  startCheck.dataset.state = result.open ? "open" : conflict ? "conflict" : "warn";
+  const lines = [
+    ...result.issues.filter(issue => issueText[issue]).map(issue => issueText[issue]),
+    ...result.conflicts.map(item => conflictLine(item, result.bufferMinutes)),
+  ];
+  const heading = document.createElement("p");
+  heading.textContent = result.open ? "Open. Nothing else is booked around this time."
+    : conflict ? "This time isn’t free." : "This time is free, but note:";
+  startCheck.replaceChildren(heading);
+  if (lines.length) {
+    const list = document.createElement("ul");
+    list.append(...lines.map(line => Object.assign(document.createElement("li"), { textContent: line })));
+    startCheck.append(list);
+  }
+  startCheck.hidden = false;
+  overlapOverride.hidden = !conflict;
+  if (!conflict) fields.allowOverlap.checked = false;
+}
+function checkStart() {
+  let start;
+  try { start = easternStart(fields.start.value); } catch { clearStartCheck(); return; }
+  const durationMinutes = Number(fields.durationMinutes.value);
+  if (!fields.durationMinutes.validity.valid || !durationMinutes) { clearStartCheck(); return; }
+  const key = [start, durationMinutes, fields.deposit.value].join();
+  if (lastCheck?.key === key) return;
+  const version = ++checkVersion;
+  clearTimeout(checkTimer);
+  if (lastCheck?.start !== start) fields.allowOverlap.checked = false;
+  lastCheck = { key, start, result: null };
+  startCheck.dataset.state = "checking";
+  startCheck.replaceChildren(Object.assign(document.createElement("p"), { textContent: "Checking your calendar…" }));
+  startCheck.hidden = false;
+  checkTimer = setTimeout(async () => {
+    try {
+      const result = await ownerRequest("admin-check-time", { start, durationMinutes, deposit: fields.deposit.value });
+      if (version !== checkVersion) return;
+      lastCheck.result = result;
+      showStartCheck(result);
+    } catch (error) {
+      if (version !== checkVersion) return;
+      lastCheck = null;
+      startCheck.dataset.state = "warn";
+      startCheck.replaceChildren(Object.assign(document.createElement("p"), { textContent: "Couldn’t check this time: " + explain(error) }));
+    }
+  }, 350);
 }
 function syncEstimate() {
   const service = services.find(item => item.name === fields.service.value);
@@ -120,6 +202,7 @@ fields.durationMinutes.addEventListener("change", refreshCalendar);
 fields.start.addEventListener("input", () => {
   selectedSlot = null;
   calendar.clearSelection();
+  checkStart();
 });
 
 function syncDeposit() {
@@ -145,6 +228,7 @@ function fillForm(prefill) {
   fields.deposit.value = prefill.deposit || "required";
   byId("client-default").hidden = !prefill.clientId;
   syncDeposit();
+  clearStartCheck();
 }
 
 function actionButton(label, handler) {
@@ -557,8 +641,15 @@ form.addEventListener("submit", async event => {
     let start;
     try { start = easternStart(payload.start); }
     catch (error) { formStatus.textContent = error.message; return; }
+    const overlapping = !overlapOverride.hidden && lastCheck?.start === start;
+    if (overlapping && !fields.allowOverlap.checked) {
+      formStatus.textContent = "This time overlaps another booking. Tick “Book it anyway” to keep it, or choose another time.";
+      fields.allowOverlap.focus();
+      return;
+    }
     const record = await ownerRequest("create", {
       ...payload, vehicle: payload.vehicle || vehicleLabels[payload.vehicleType] || "", start, useCalendarSlot: selectedSlot === start, durationMinutes: Number(payload.durationMinutes),
+      allowOverlap: overlapping && fields.allowOverlap.checked,
       estimateCents: payload.estimate ? Math.round(Number(payload.estimate) * 100) : null,
       saveClientDefault: !!context.clientId && fields.saveClientDefault.checked,
       clientId: context.clientId, leadId: context.leadId, requestId,
@@ -566,7 +657,10 @@ form.addEventListener("submit", async event => {
     if (session !== scope) return;
     location.assign(appointmentUrl(record.id));
   } catch (error) {
-    if (session === scope) formStatus.textContent = explain(error);
+    if (session !== scope) return;
+    formStatus.textContent = explain(error);
+    // Something was booked since the last check: re-check so the conflict and the override show.
+    if (error.code === "time_unavailable") { lastCheck = null; checkStart(); }
   } finally {
     saving = button.disabled = false;
   }

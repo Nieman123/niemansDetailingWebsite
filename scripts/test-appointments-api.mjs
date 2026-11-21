@@ -192,11 +192,12 @@ const publicSettings = {enabled:true,services:[{id:'full',name:'Full Detail',dur
 await db.collection('appointmentSettings').doc('booking').set(publicSettings);
 const originalFetch = globalThis.fetch;
 let calendarReads = 0;
+let personalBusy = [];
 globalThis.fetch = (url, init) => {
   if (String(url) === 'https://oauth2.googleapis.com/token') return Promise.resolve(Response.json({access_token:'demo',expires_in:3600}));
   if (String(url).endsWith('/freeBusy')) {
     calendarReads++;
-    return Promise.resolve(Response.json({calendars:{detail:{busy:[]},personal:{busy:[]},pluto:{busy:[]}}}));
+    return Promise.resolve(Response.json({calendars:{detail:{busy:[]},personal:{busy:personalBusy},pluto:{busy:[]}}}));
   }
   return originalFetch(url,init);
 };
@@ -234,6 +235,29 @@ try {
   const ownerTimes = await callWithCalendar('admin-availability', { month, durationMinutes: 90, deposit: 'waived' }, owner.idToken);
   assert(ownerTimes.result.slots.length);
   assert(!ownerTimes.result.slots.includes(phoneBooking.start));
+  const checkTime = data => callWithCalendar('admin-check-time', { durationMinutes: 60, deposit: 'waived', ...data }, owner.idToken);
+  const clash = (await checkTime({ start: phoneBooking.start })).result;
+  assert.equal(clash.open, false);
+  assert(clash.issues.includes('overlap'));
+  assert.deepEqual([clash.conflicts[0].name, clash.conflicts[0].kind, clash.conflicts[0].start], ['Phone customer', 'appointment', phoneBooking.start]);
+  const free = (await checkTime({ start: ownerTimes.result.slots.at(-1), durationMinutes: 90 })).result;
+  assert.deepEqual([free.open, free.issues, free.conflicts], [true, [], []]);
+  const near = (await checkTime({ start: phoneBooking.start + 90 * 60_000 })).result;
+  assert.deepEqual(near.issues, ['buffer'], JSON.stringify(near));
+  const late = new Date(ownerTimes.result.slots.at(-1)); late.setUTCHours(late.getUTCHours() + 6);
+  assert((await checkTime({ start: late.getTime() })).result.issues.includes('outside_hours'));
+  const lastSlot = ownerTimes.result.slots.at(-1);
+  personalBusy = [{ start: new Date(lastSlot).toISOString(), end: new Date(lastSlot + 30 * 60_000).toISOString() }];
+  const personal = (await checkTime({ start: lastSlot })).result;
+  personalBusy = [];
+  assert.deepEqual([personal.issues, personal.conflicts[0].kind], [['overlap'], 'calendar']);
+  const overlapping = { name: 'Squeezed in', phone: '828-555-0177', start: phoneBooking.start, durationMinutes: 60, deposit: 'waived' };
+  assert.equal((await callWithCalendar('create', { ...overlapping, requestId: randomUUID() }, owner.idToken)).error, 'time_unavailable');
+  const forced = await callWithCalendar('create', { ...overlapping, allowOverlap: true, requestId: randomUUID() }, owner.idToken);
+  assert.equal(forced.result.status, 'confirmed');
+  assert.equal((await db.collection('appointments').doc(forced.result.id).get()).get('overlapApproved'), true);
+  assert.equal((await asOwner('cancel', { id: forced.result.id })).result.status, 'cancelled');
+  console.log('PASS: Owner time check explains conflicts, and the owner can book over one on purpose.');
   console.log('PASS: Owner-only appointment details and calendar with public booking paused.');
   await db.collection('appointmentSettings').doc('booking').update({ enabled: true });
   const quoteReceipt = { id:'a'.repeat(64),token:'d'.repeat(64) };

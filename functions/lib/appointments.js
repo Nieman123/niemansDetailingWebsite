@@ -88,7 +88,7 @@ function reservationDays(db, { start, end }) {
     }
     return refs;
 }
-async function updateReservation(db, tx, reservation, remove, now, before) {
+async function updateReservation(db, tx, reservation, remove, now, before, allowOverlap = false) {
     // Read fixed UTC-day documents, including missing ones, so concurrent bookings serialize.
     const next = reservationDays(db, reservation);
     const newPaths = new Set(next.map(ref => ref.path));
@@ -96,7 +96,7 @@ async function updateReservation(db, tx, reservation, remove, now, before) {
     const days = await tx.getAll(...next, ...oldOnly);
     const activeByDay = days.map(day => (day.get("slots") ?? [])
         .filter(slot => slot.end > now && slot.id !== reservation.id));
-    if (!remove && activeByDay.some(slots => slots.some(slot => slot.start < reservation.end && slot.end > reservation.start))) {
+    if (!remove && !allowOverlap && activeByDay.some(slots => slots.some(slot => slot.start < reservation.end && slot.end > reservation.start))) {
         throw new AppointmentError(409, "time_unavailable");
     }
     days.forEach((day, index) => tx.set(day.ref, { slots: remove || !newPaths.has(day.ref.path) ? activeByDay[index] : [...activeByDay[index], reservation] }));
@@ -251,9 +251,10 @@ async function createAppointment(db, uid, body) {
     const bufferMinutes = body.useCalendarSlot === true ? (await getSettings(db)).bufferMinutes : undefined;
     const salesTax = await getTaxSettings(db);
     const requested = buildAppointment(body, uid, Date.now());
+    const allowOverlap = body.allowOverlap === true;
     if (bufferMinutes !== undefined)
         requested.bufferMinutes = bufferMinutes;
-    if (requested.status === "confirmed")
+    if (requested.status === "confirmed" && !allowOverlap)
         await assertCalendarOpen(requested);
     return db.runTransaction(async (tx) => {
         const existing = (await tx.get(ref)).data();
@@ -263,6 +264,8 @@ async function createAppointment(db, uid, body) {
         const appointment = buildAppointment(body, uid, now);
         if (bufferMinutes !== undefined)
             appointment.bufferMinutes = bufferMinutes;
+        if (allowOverlap)
+            appointment.overlapApproved = true;
         if (salesTax.enabled)
             appointment.taxRateBasisPoints = salesTax.rateBasisPoints;
         const client = appointment.clientId ? db.collection("clients").doc(appointment.clientId) : null;
@@ -273,7 +276,7 @@ async function createAppointment(db, uid, body) {
         if (body.saveClientDefault === true && !client)
             throw new AppointmentError(400, "client_required");
         if (appointment.status === "confirmed")
-            await updateReservation(db, tx, reservationFor(id, appointment), false, now);
+            await updateReservation(db, tx, reservationFor(id, appointment), false, now, undefined, allowOverlap);
         tx.create(ref, { ...appointment, ...(appointment.status === "confirmed" ? { confirmedAt: now, confirmedBy: uid, ...calendarUpdate(now) } : {}) });
         if (body.saveClientDefault === true && client) {
             tx.update(client, { appointment_deposit_default: body.deposit, appointment_deposit_updated_at: now, appointment_deposit_updated_by: uid });
@@ -304,7 +307,7 @@ async function changeAppointment(db, uid, id, action, body) {
         newStart = validMoveStart(body.start ?? previous.rescheduleRequest?.start);
         await assertCalendarOpen({ ...previous, start: newStart, end: newStart + previous.end - previous.start }, id);
     }
-    else if (action === "approve" || (action === "issue-link" && previous.status === "draft" && stripe)) {
+    else if ((action === "approve" || (action === "issue-link" && previous.status === "draft" && stripe)) && !previous.overlapApproved) {
         await assertCalendarOpen(previous, id);
     }
     return db.runTransaction(async (tx) => {
@@ -343,7 +346,7 @@ async function changeAppointment(db, uid, id, action, body) {
             const moved = { ...appointment, start: newStart, end: newStart + appointment.end - appointment.start };
             await updateReservation(db, tx, reservationFor(id, moved), false, now, reservationFor(id, appointment));
             const locked = appointment.status === "confirmed" ? depositLock(appointment, now) || depositLock(moved, now) : null;
-            const update = { start: moved.start, end: moved.end, depositLockedAt: locked, rescheduleRequest: null, alternateOffer: null,
+            const update = { start: moved.start, end: moved.end, depositLockedAt: locked, rescheduleRequest: null, alternateOffer: null, overlapApproved: false,
                 calendarSequence: (appointment.calendarSequence ?? 0) + 1, ...calendarUpdate(now),
                 ...(appointment.status === "pending_approval" ? { reconcileAt: moved.start } : {}),
                 ...(appointment.linkHash ? { linkExpiresAt: moved.end + 30 * DAY } : {}),
@@ -504,7 +507,7 @@ async function changeAppointment(db, uid, id, action, body) {
                 throw new AppointmentError(503, "stripe_unavailable");
             if (appointment.start < now + 36 * MINUTE)
                 throw new AppointmentError(409, "checkout_too_close");
-            await updateReservation(db, tx, reservationFor(id, appointment), false, now);
+            await updateReservation(db, tx, reservationFor(id, appointment), false, now, undefined, !!appointment.overlapApproved);
             const deadline = Math.min(appointment.start, now + DAY);
             tx.update(ref, { status: "awaiting_deposit", preapproved: true, depositDeadline: deadline, reconcileAt: deadline, ...calendarUpdate(now) });
         }
@@ -655,6 +658,73 @@ async function getAvailability(db, body, owner = false) {
             const range = reservationFor("", { start, end: start + service.duration * MINUTE, bufferMinutes: settings.bufferMinutes });
             return !all.some(block => block.start < range.end && block.end > range.start);
         }),
+    };
+}
+// Checks one owner-chosen start time against the same rules and calendars the booking calendar uses, and says
+// why it isn't open. Owners may still book over a conflict; this only powers the warning on the New booking form.
+async function checkOwnerTime(db, body) {
+    const start = body.start;
+    const duration = body.durationMinutes;
+    if (typeof start !== "number" || !Number.isSafeInteger(start) || typeof duration !== "number" || !Number.isInteger(duration) ||
+        duration < 15 || duration > 7 * 1440)
+        throw new AppointmentError(400, "invalid_time");
+    const now = Date.now();
+    const end = start + duration * MINUTE;
+    const settings = await getSettings(db);
+    const deposit = body.deposit === "required";
+    const issues = [];
+    const date = (0, appointment_booking_1.easternDate)(start);
+    const hours = (0, appointment_booking_1.businessHours)(settings, date);
+    if (start <= now)
+        issues.push("past");
+    else if (deposit && start < now + 36 * MINUTE)
+        issues.push("too_soon_for_deposit");
+    if (settings.blockedDates.includes(date))
+        issues.push("blocked_date");
+    else if (!hours)
+        issues.push("closed_day");
+    else if (start < hours.start || end > hours.end)
+        issues.push("outside_hours");
+    const buffer = settings.bufferMinutes * MINUTE;
+    const lower = start - buffer;
+    const upper = end + buffer;
+    const [config, days] = await Promise.all([(0, appointment_calendar_1.calendarConfig)(), db.getAll(...reservationDays(db, { id: "", start: lower, end: upper }))]);
+    if (!config)
+        throw new AppointmentError(503, "calendar_unavailable");
+    const google = await (0, appointment_calendar_1.busyWindows)(config, lower, upper).catch(() => { throw new AppointmentError(503, "calendar_unavailable"); });
+    const reservations = new Map();
+    for (const slot of days.flatMap(day => (day.get("slots") ?? []))) {
+        if (slot.end > now && slot.start < upper && slot.end > lower)
+            reservations.set(slot.id, slot);
+    }
+    const records = reservations.size ? await db.getAll(...[...reservations.keys()].map(id => db.collection("appointments").doc(id))) : [];
+    const conflicts = records.map(record => {
+        const slot = reservations.get(record.id);
+        const appointment = record.data();
+        return {
+            kind: "appointment", name: appointment?.name ?? "", service: appointment?.service ?? "",
+            start: appointment?.start ?? slot.start, end: appointment?.end ?? slot.end,
+            // Overlapping the reservation itself (it already includes that booking's travel buffer) blocks a save.
+            overlaps: slot.start < end && slot.end > start, reserved: slot,
+        };
+    });
+    // Booked appointments are mirrored to the detailing calendar, so skip busy time they already explain.
+    for (const busy of google) {
+        if (busy.start >= upper || busy.end <= lower)
+            continue;
+        if (conflicts.some(item => item.reserved.start <= busy.start && item.reserved.end >= busy.end))
+            continue;
+        conflicts.push({ kind: "calendar", name: "", service: "", start: busy.start, end: busy.end,
+            overlaps: busy.start < end && busy.end > start, reserved: busy });
+    }
+    conflicts.sort((a, b) => a.start - b.start);
+    if (conflicts.some(item => item.overlaps))
+        issues.push("overlap");
+    else if (conflicts.length)
+        issues.push("buffer");
+    return {
+        open: !issues.length, issues, bufferMinutes: settings.bufferMinutes,
+        conflicts: conflicts.map(({ reserved: _reserved, ...item }) => item),
     };
 }
 async function authenticatedCustomer(auth, req) {
@@ -907,7 +977,7 @@ async function openCheckout(db, id, body) {
         if (session.status === "complete")
             throw new AppointmentError(409, "checkout_finished");
     }
-    if (current.status === "awaiting_deposit")
+    if (current.status === "awaiting_deposit" && !current.overlapApproved)
         await assertCalendarOpen(current, id);
     const reservation = await db.runTransaction(async (tx) => {
         const appointment = (await tx.get(ref)).data();
@@ -1243,6 +1313,8 @@ async function handleAppointments(db, auth, req, res, action) {
                 result = await appointmentContext(db, body);
             else if (action === "admin-availability")
                 result = await getAvailability(db, body, true);
+            else if (action === "admin-check-time")
+                result = await checkOwnerTime(db, body);
             else if (action === "owner-detail") {
                 const id = identifier(body.id);
                 const appointment = await readAppointment(db, id);

@@ -117,15 +117,22 @@ function eastDateTime(day: string, time: string) {
   return valid.length === 1 ? valid[0] : null;
 }
 
-export function bookingSlots(settings: BookingSettings, date: string, service: BookingService, now: number) {
-  if (!settings.enabled || !/^\d{4}-\d{2}-\d{2}$/.test(date) || settings.blockedDates.includes(date)) return [];
+// The bookable window for one Eastern date, ignoring notice and horizon: null when the day is closed or blocked.
+export function businessHours(settings: BookingSettings, date: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || settings.blockedDates.includes(date)) return null;
   const day = Date.parse(`${date}T12:00:00Z`);
-  if (!Number.isFinite(day) || date < easternDate(now) || date > easternDate(now + settings.horizonDays * DAY) ||
-    !settings.days.includes(new Date(day).getUTCDay())) return [];
+  if (!Number.isFinite(day) || !settings.days.includes(new Date(day).getUTCDay())) return null;
   const hours = settings.hours?.[String(new Date(day).getUTCDay())] ?? { open: settings.open, close: settings.close };
   const start = eastDateTime(date, hours.open);
   const end = eastDateTime(date, hours.close);
-  if (start === null || end === null) return [];
+  return start === null || end === null ? null : { start, end };
+}
+
+export function bookingSlots(settings: BookingSettings, date: string, service: BookingService, now: number) {
+  if (!settings.enabled || date < easternDate(now) || date > easternDate(now + settings.horizonDays * DAY)) return [];
+  const window = businessHours(settings, date);
+  if (!window) return [];
+  const { start, end } = window;
   const result: number[] = [];
   for (let candidate = start; candidate + service.duration * MINUTE <= end; candidate += 30 * MINUTE) {
     if (candidate >= now + settings.minimumHours * 60 * MINUTE) result.push(candidate);
