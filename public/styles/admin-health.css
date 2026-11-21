@@ -1,0 +1,33 @@
+/* Admin Site health page. Uses the brand tokens from brand.css. */
+.health { display: grid; gap: 1.25rem; }
+#health { display: grid; gap: 1.25rem; }
+#health[hidden] { display: none; }
+.health-banner { display: grid; gap: .25rem; padding: 1rem 1.25rem; border-radius: 14px; border: 1px solid var(--nd-line-strong); background: var(--nd-surface); }
+.health-banner strong { font: 700 1.15rem/1.3 "Archivo", system-ui, sans-serif; }
+.health-banner span { color: var(--nd-text-2); }
+.health-banner[data-tone="ok"] { border-color: rgba(95, 211, 162, .45); background: var(--nd-success-tint); }
+.health-banner[data-tone="warning"] { border-color: rgba(242, 180, 90, .5); background: var(--nd-warning-tint); }
+.health-banner[data-tone="error"] { border-color: rgba(255, 138, 128, .5); background: var(--nd-danger-tint); }
+.health-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.health-tile { padding: 1rem; border-radius: 14px; background: var(--nd-surface); border: 1px solid var(--nd-line); display: grid; gap: .35rem; min-width: 0; }
+.health-tile span { color: var(--nd-muted); font-size: .85rem; }
+.health-tile strong { font: 800 1.9rem/1 "Archivo", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.health-tile[data-tone="error"] strong { color: var(--nd-danger); }
+.health-tile[data-tone="warning"] strong { color: var(--nd-warning); }
+.health-tile[data-tone="ok"] strong { color: var(--nd-success); }
+.health-checks, .health-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.health-checks li, .health-list li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .25rem .75rem; align-items: start; padding: .8rem .9rem; border-radius: 12px; background: var(--nd-surface-2); border: 1px solid var(--nd-line); }
+.health-dot { width: .7rem; height: .7rem; border-radius: 50%; margin-top: .4rem; background: var(--nd-muted); }
+.health-dot[data-tone="ok"] { background: var(--nd-success); }
+.health-dot[data-tone="warning"] { background: var(--nd-warning); }
+.health-dot[data-tone="error"] { background: var(--nd-danger); }
+.health-item { display: grid; gap: .2rem; min-width: 0; }
+.health-item strong { color: var(--nd-text); }
+.health-item span, .health-item small { color: var(--nd-text-2); overflow-wrap: anywhere; }
+.health-item small { color: var(--nd-muted); }
+.health-item a { color: var(--nd-purple-text); }
+.health-empty { color: var(--nd-muted); }
+@media (max-width: 700px) {
+  .health-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .health-tile strong { font-size: 1.6rem; }
+}

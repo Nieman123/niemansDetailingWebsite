@@ -18,6 +18,7 @@ const db = {
     update: (reference, data) => records.set(reference.path, { ...records.get(reference.path), ...data }),
   }),
 };
+const opsEvents = [];
 const sandbox = {
   exports: {}, process: { env: {} }, AbortSignal,
   require(name) {
@@ -30,6 +31,7 @@ const sandbox = {
       case 'firebase-admin': return { initializeApp() {}, firestore: () => db };
       case 'firebase-admin/firestore': return { FieldValue: { serverTimestamp: () => 'server-time', arrayUnion: (...values) => values, increment: value => value } };
       case 'node:crypto': return crypto;
+      case './ops-health': return { recordOpsEvent: async (_db, event) => { opsEvents.push(event); return true; } };
       default: throw new Error(`Unexpected module: ${name}`);
     }
   },
@@ -95,6 +97,8 @@ const request = overrides => ({
   assert.equal(failure.status, 200, 'Telegram downtime must not lose a saved customer request');
   assert(records.has(`leads/${failure.data.id}`));
   assert.equal(failures.length, 1);
+  assert.deepEqual(opsEvents.map(event => `${event.source}:${event.code}:${event.ref}`), [`leads:telegram_failed:${failure.data.id}`],
+    'a missed lead alert shows on the Health page');
   failTelegram = false;
   const count = messages.length;
   await post(request({ honeypot: true }));

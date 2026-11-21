@@ -491,6 +491,46 @@ export function setupTaxSettings(form, request, report) {
   void refresh();
 }
 
+// Day-before reminders and review requests, sent by the 5-minute maintenance job.
+export function setupFollowUpSettings(form, request, report) {
+  if (!form) return;
+  if (form.dataset.bound) { form.dispatchEvent(new Event("reload-settings")); return; }
+  form.dataset.bound = "1";
+  const status = form.querySelector("[role=status]");
+  const fields = form.elements;
+  const button = form.querySelector("button[type=submit]");
+  let revision = "";
+  const sync = () => { fields.reviewUrl.required = fields.reviewRequests.checked; };
+  fields.reviewRequests.addEventListener("change", sync);
+  function load(settings) {
+    revision = settings.revision ?? "";
+    fields.reminders.checked = settings.reminders;
+    fields.reviewRequests.checked = settings.reviewRequests;
+    fields.reviewUrl.value = settings.reviewUrl ?? "";
+    sync();
+    status.textContent = [settings.reminders ? "Reminders on." : "Reminders off.",
+      settings.reviewRequests ? "Review requests on." : "Review requests off."].join(" ");
+  }
+  const refresh = async () => {
+    button.disabled = true;
+    try { load(await request("follow-up-settings")); button.disabled = false; }
+    catch (error) { status.textContent = report(error); }
+  };
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    button.disabled = true;
+    try {
+      load(await request("save-follow-up-settings", { revision, reminders: fields.reminders.checked,
+        reviewRequests: fields.reviewRequests.checked, reviewUrl: fields.reviewUrl.value.trim() }));
+      status.textContent = "Saved. " + status.textContent;
+    } catch (error) { status.textContent = report(error); }
+    finally { button.disabled = false; }
+  });
+  form.addEventListener("reload-settings", refresh);
+  void refresh();
+}
+
 export function setupBookingSettings(form, request, report) {
   if (form.dataset.bound) { form.dispatchEvent(new Event("reload-settings")); return; }
   form.dataset.bound = "1";

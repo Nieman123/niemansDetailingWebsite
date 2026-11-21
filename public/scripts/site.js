@@ -2,6 +2,14 @@
 (function () {
   'use strict';
 
+  // JavaScript errors on public pages show up on the admin Health page.
+  if (!window.__ndErrorReport) {
+    var errorReport = document.createElement('script');
+    errorReport.src = '/scripts/error-report.js';
+    errorReport.defer = true;
+    document.head.appendChild(errorReport);
+  }
+
   if (typeof window.trackEvent !== 'function') {
     window.trackEvent = function (category, action, label) {
       var clean = function (value) {
