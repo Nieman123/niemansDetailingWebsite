@@ -30,7 +30,7 @@
 <main class="booking-shell"><p class="booking-eyebrow">Book online</p><h1>Schedule your detail</h1>
 <p class="booking-intro">Mobile detailing in the Asheville area. Choose a time that works for you.</p>
 <ol class="booking-steps" id="booking-steps" aria-label="Booking progress"><li class="is-current" aria-current="step">Pick a time</li><li>Your details</li><li>$50 deposit</li></ol>
-<p id="booking-state" role="status">Checking availability…</p><button id="booking-retry" type="button" class="btn secondary" hidden>Try again</button>
+<p id="booking-state" role="status" tabindex="-1">Checking availability…</p><button id="booking-retry" type="button" class="btn secondary" hidden>Try again</button>
 <form id="public-booking" hidden><div class="booking-layout"><div class="booking-work">
 <section id="pick-time">
 <fieldset class="picker-field" id="booking-vehicle"><legend>What are you driving?</legend>
@@ -39,12 +39,13 @@
   <label class="vehicle-choice"><input class="sr-only" type="radio" name="vehicleChoice" value="suv_truck"><span>SUV or truck</span></label>
   <label class="vehicle-choice"><input class="sr-only" type="radio" name="vehicleChoice" value="van_3row"><span>Van or 3-row</span></label>
 </div>
+<p id="vehicle-selection-hint" class="picker-alert" role="alert"></p>
 <select name="vehicleType" hidden tabindex="-1">
   <option value="">Choose your vehicle</option>
   <option value="sedan">Sedan / coupe</option>
   <option value="suv_truck">SUV / truck</option>
   <option value="van_3row">3-row SUV / full-size truck / van</option>
-</select></fieldset><p id="vehicle-selection-hint" role="status"></p>
+</select></fieldset>
 <fieldset class="picker-field service-select"><legend>Choose your service</legend><div id="service-picker"></div><select name="serviceId" hidden tabindex="-1"></select>
 <p class="service-picker__custom">Paint correction, ceramic coating, or odor removal? <a href="/quote">Get a custom quote</a> or <a href="/ceramic-quote">plan a ceramic coating</a>.</p></fieldset><p id="service-facts" class="mobile-facts"></p>
 <div id="schedule-calendar"><div class="month-nav"><h2 id="month-title"></h2><div><button type="button" id="prev-month" aria-label="Previous month"><span aria-hidden="true" class="chevron previous"></span></button><button type="button" id="next-month" aria-label="Next month"><span aria-hidden="true" class="chevron"></span></button></div></div>

@@ -344,6 +344,43 @@
   box-shadow: 0 0 0 3px rgba(228, 187, 92, .14);
 }
 .vehicle-choice input:focus-visible + span, .service-choice:has(input:focus-visible) { outline: 3px solid var(--nd-gold); outline-offset: 3px; }
+.vehicle-choice { position: relative; }
+
+/* A required step the customer skipped (set from public-booking.mjs). */
+.booking-page .picker-field, .booking-page #booking-state, .booking-page .field input { scroll-margin-top: 84px; }
+.picker-field.is-missing legend { color: var(--nd-danger); }
+.picker-field.is-missing .vehicle-choice span { border-color: var(--nd-danger); background: var(--nd-danger-tint); }
+.picker-field.is-missing .vehicle-picker { animation: picker-nudge .42s ease-in-out 2; }
+@keyframes picker-nudge { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { .picker-field.is-missing .vehicle-picker { animation: none; } }
+.picker-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 138, 128, .5);
+  border-radius: 12px;
+  background: var(--nd-danger-tint);
+  color: var(--nd-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.picker-alert::before {
+  content: "!";
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--nd-danger);
+  color: var(--nd-bg);
+  font-weight: 800;
+  font-size: 15px;
+}
+.picker-alert:empty { display: none; }
+#booking-state:focus { outline: none; }
 
 .service-picker { display: grid; gap: 12px; }
 .service-picker__lead { display: grid; gap: 10px; }
