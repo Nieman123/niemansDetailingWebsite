@@ -70,9 +70,11 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           node scripts/test-addon-notifications.cjs
+          node scripts/test-booking-notifications.cjs
           node scripts/test-ceramic-notifications.cjs
           node scripts/test-appointment-calendar.mjs
           node scripts/test-appointment-integrations.mjs
+          node scripts/test-deposit-waiver.mjs
 
       - name: Install Firebase CLI
         run: npm install --global "firebase-tools@$FIREBASE_CLI_VERSION"
@@ -167,7 +169,7 @@ jobs:
 
       - name: Deploy Functions and Firestore rules/indexes
         run: |
-          targets=functions:api,functions:notifyLeadAddonUpdate,firestore:rules,firestore:indexes
+          targets=functions:api,functions:notifyLeadAddonUpdate,functions:notifyAppointmentBooked,firestore:rules,firestore:indexes
           # The reconciliation job runs every 5 minutes, and job photos need Storage rules, so both
           # deploy only once appointments are on.
           if [ "$ENABLE_APPOINTMENTS" = true ]; then targets="$targets,functions:appointmentMaintenance,storage"; fi

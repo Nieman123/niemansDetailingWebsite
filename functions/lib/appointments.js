@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.depositWaived = depositWaived;
 exports.applyStripeSession = applyStripeSession;
 exports.reconcileAppointments = reconcileAppointments;
 exports.handleAppointments = handleAppointments;
@@ -665,6 +666,28 @@ async function authenticatedCustomer(auth, req) {
         throw new AppointmentError(403, "verified_email_required");
     return { uid: user.uid, email: user.email.toLowerCase() };
 }
+// Returning customers skip the online deposit. Only a signed-in, verified email counts, so typing
+// someone else's phone or email can't skip it: the email must match a past completed detail whose
+// deposit was paid, or a client record the owner set to "No deposit required".
+async function depositWaived(db, customer) {
+    if (!customer)
+        return false;
+    const [byAccount, byEmail, clients] = await Promise.all([
+        db.collection("appointments").where("customerUid", "==", customer.uid).limit(50).get(),
+        db.collection("appointments").where("email", "==", customer.email).limit(50).get(),
+        db.collection("clients").where("email", "==", customer.email).limit(10).get(),
+    ]);
+    if (clients.docs.some(client => client.get("appointment_deposit_default") === "waived"))
+        return true;
+    const past = [...byAccount.docs, ...byEmail.docs].map(doc => doc.data());
+    if (past.some(appointment => appointment.status === "completed" && (appointment.paidDeposit ?? 0) > 0))
+        return true;
+    const linked = [...new Set(past.map(appointment => appointment.clientId).filter((id) => !!id))].slice(0, 10);
+    if (!linked.length)
+        return false;
+    const records = await db.getAll(...linked.map(id => db.collection("clients").doc(id)));
+    return records.some(client => client.get("appointment_deposit_default") === "waived");
+}
 async function bookingQuote(db, receipt) {
     if (!receipt || typeof receipt !== "object")
         return null;
@@ -712,11 +735,12 @@ async function publicBooking(db, auth, req, body) {
         throw new AppointmentError(400, "vehicle_required");
     }
     const quotedPrice = quote && quote.service === service.id && quote.vehicle === vehicleType ? quote.estimateCents : null;
+    const waived = await depositWaived(db, customer);
     const appointment = buildAppointment({
         ...body, address: `${text(body.address, 390)} ${postalCode}`,
         ...(body.reuseQuoteContact === true ? { name: quote.name, phone: quote.phone } : {}),
         clientId: null, leadId: quote?.id ?? null, email, service: service.name,
-        durationMinutes: service.duration, estimateCents: quotedPrice ?? prices[vehicleType ?? "sedan"], deposit: "required",
+        durationMinutes: service.duration, estimateCents: quotedPrice ?? prices[vehicleType ?? "sedan"], deposit: waived ? "waived" : "required",
     }, customer?.uid ?? "guest", Date.now(), true);
     if (!(0, appointment_booking_1.bookingSlots)(settings, (0, appointment_booking_1.easternDate)(appointment.start), service, Date.now()).includes(appointment.start)) {
         throw new AppointmentError(409, "time_unavailable");
@@ -753,12 +777,24 @@ async function publicBooking(db, auth, req, body) {
         await updateReservation(db, tx, reservationFor(id, appointment), false, now);
         const deadline = now + 40 * MINUTE;
         const record = {
-            ...appointment, status: "awaiting_deposit", preapproved: false,
-            depositDeadline: deadline, reconcileAt: deadline, linkHash: digest(token), linkExpiresAt: appointment.end + 30 * DAY,
+            ...appointment, preapproved: false, linkHash: digest(token), linkExpiresAt: appointment.end + 30 * DAY,
             acceptedPolicy: DEPOSIT_POLICY, policyVersion: POLICY_VERSION,
+            ...(waived
+                // No payment step: the request goes straight to the owner for approval.
+                ? { status: "pending_approval", depositWaivedReason: "returning_customer" }
+                : { status: "awaiting_deposit", depositDeadline: deadline, reconcileAt: deadline }),
             ...(customer ? { customerUid: customer.uid } : {}),
         };
         tx.create(ref, { ...record, bookingChannel: "public", acceptedAt: now });
+        if (waived) {
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `request-${id}`, email, "We got your booking request", {
+                eyebrow: "Request received", heading: "No deposit needed this time",
+                paragraphs: [`Thanks for coming back, ${record.name.split(" ")[0] || "there"}! As a returning customer you don't need a deposit. Nieman will review your request and text to confirm.`,
+                    "Keep this email. The button below is your link to check status, add the appointment to your calendar, or request a change."],
+                details: emailFacts(record), action: { label: "View appointment", url: `${checkoutOrigin()}/appointment#${id}.${token}` },
+            });
+            return { id, ...customerDetails(record) };
+        }
         for (const throttle of throttles)
             tx.set(throttle, { until: deadline, appointmentId: id });
         (0, appointment_email_1.queueAppointmentEmail)(db, tx, `request-${id}`, email, "Finish booking your detail", {
@@ -1139,6 +1175,10 @@ async function handleAppointments(db, auth, req, res, action) {
         }
         else if (action === "book") {
             result = await publicBooking(db, auth, req, body);
+        }
+        else if (action === "deposit-status") {
+            // Lets the booking page tell a signed-in returning customer up front that no deposit is due.
+            result = { waived: await depositWaived(db, await authenticatedCustomer(auth, req)) };
         }
         else if (["my-appointments", "my-link", "claim-appointment"].includes(action)) {
             result = await customerAccount(db, auth, req, body, action);
