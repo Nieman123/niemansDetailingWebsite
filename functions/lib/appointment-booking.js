@@ -5,6 +5,7 @@ exports.bookingPrices = bookingPrices;
 exports.bookingVehicle = bookingVehicle;
 exports.parseBookingSettings = parseBookingSettings;
 exports.easternDate = easternDate;
+exports.eastDateTime = eastDateTime;
 exports.businessHours = businessHours;
 exports.bookingSlots = bookingSlots;
 const DAY = 86400000;

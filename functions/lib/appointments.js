@@ -1640,8 +1640,11 @@ async function handleAppointments(db, auth, req, res, action) {
                 result = await (0, appointment_content_1.manageSiteContent)(db, uid, action, body);
             else if (action === "context")
                 result = await appointmentContext(db, body);
-            else if (action === "admin-availability")
-                result = await getAvailability(db, body, true, await movingAppointment(db, body.except));
+            else if (action === "admin-availability") {
+                // The horizon lets the reschedule calendar page past this month.
+                const moving = await movingAppointment(db, body.except);
+                result = { ...await getAvailability(db, body, true, moving), ...(moving ? { horizonDays: (await getSettings(db)).horizonDays } : {}) };
+            }
             else if (action === "admin-check-time")
                 result = await checkOwnerTime(db, body);
             else if (action === "owner-detail") {
