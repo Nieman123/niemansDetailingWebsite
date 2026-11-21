@@ -16,7 +16,10 @@ const sandbox = {
     switch (name) {
       case 'firebase-functions/v2/https': return { onRequest: (_options, handler) => handler };
       case 'firebase-functions/v2/scheduler': return { onSchedule: (_options, handler) => handler };
-      case 'firebase-functions/v2/firestore': return { onDocumentUpdated: (options, handler) => { handlers[options.document] = { options, handler }; return handler; } };
+      case 'firebase-functions/v2/firestore': {
+        const register = (options, handler) => { handlers[options.document] = { options, handler }; return handler; };
+        return { onDocumentUpdated: register, onDocumentWritten: register };
+      }
       case 'firebase-functions': return { logger: { error() {} } };
       case 'firebase-functions/params': return { defineString: name => ({ value: () => ({ HOSTING_ORIGIN: 'https://example.test', TELEGRAM_BOT_TOKEN: 'test-token', TELEGRAM_CHAT_ID: 'test-chat' })[name] }) };
       case 'firebase-admin': return { initializeApp() {}, firestore: () => ({}) };
@@ -65,8 +68,16 @@ const event = (id, before, after) => ({
   await notify(event('owner-created', { ...booking, status: 'draft' }, { ...booking, status: 'confirmed' }));
   await notify(event('expired', booking, { ...booking, status: 'cancelled' }));
   assert.equal(requests.length, 2, 'Only a customer booking whose deposit cleared alerts');
+  const created = (id, after) => ({ ...event(id, null, after), data: { ...event(id, null, after).data, before: { data: () => undefined } } });
+  await notify(created('returning', { ...booking, status: 'pending_approval', depositCents: 0, bookingChannel: 'public' }));
+  assert.equal(requests.length, 3);
+  assert(requests[2].text.startsWith('New booking (needs your approval) · returning customer, no deposit'));
+  await notify(created('owner-direct', { ...booking, status: 'confirmed', depositCents: 0 }));
+  await notify(created('public-hold', { ...booking, bookingChannel: 'public' }));
+  await notify({ ...event('deleted', booking, null), data: { ...event('deleted', booking, null).data, after: { data: () => undefined } } });
+  assert.equal(requests.length, 3, 'Owner bookings, unpaid holds and deletions do not alert');
   sandbox.process.env.ENABLE_TELEGRAM_NOTIFICATIONS = 'false';
   await notify(event('staging', booking, { ...booking, status: 'confirmed' }));
-  assert.equal(requests.length, 2, 'Staging must not send Telegram messages');
+  assert.equal(requests.length, 3, 'Staging must not send Telegram messages');
   console.log('PASS: booking alerts on paid deposits with time, customer and admin link; no alerts for approvals, owner bookings, expiries, retries or staging.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

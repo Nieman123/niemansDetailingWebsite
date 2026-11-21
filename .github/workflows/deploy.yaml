@@ -74,6 +74,7 @@ jobs:
           node scripts/test-ceramic-notifications.cjs
           node scripts/test-appointment-calendar.mjs
           node scripts/test-appointment-integrations.mjs
+          node scripts/test-deposit-waiver.mjs
 
       - name: Install Firebase CLI
         run: npm install --global "firebase-tools@$FIREBASE_CLI_VERSION"

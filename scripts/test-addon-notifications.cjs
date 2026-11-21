@@ -16,7 +16,10 @@ const sandbox = {
     switch (name) {
       case 'firebase-functions/v2/https': return { onRequest: (_options, handler) => handler };
       case 'firebase-functions/v2/scheduler': return { onSchedule: (_options, handler) => handler };
-      case 'firebase-functions/v2/firestore': return { onDocumentUpdated: (options, handler) => { triggerOptions = options; return handler; } };
+      case 'firebase-functions/v2/firestore': return {
+        onDocumentUpdated: (options, handler) => { triggerOptions = options; return handler; },
+        onDocumentWritten: (_options, handler) => handler,
+      };
       case 'firebase-functions': return { logger: { error() {} } };
       case 'firebase-functions/params': return { defineString: name => ({ value: () => ({ HOSTING_ORIGIN: 'https://example.test', TELEGRAM_BOT_TOKEN: 'test-token', TELEGRAM_CHAT_ID: 'test-chat' })[name] }) };
       case 'firebase-admin': return { initializeApp() {}, firestore: () => ({}) };

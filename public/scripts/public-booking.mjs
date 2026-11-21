@@ -11,6 +11,8 @@ const retry = el("booking-retry");
 let options, quote, quoteReceipt, service, start, calendar, picker;
 let saving = false;
 let reuseQuoteContact = false;
+// A signed-in returning customer books without a deposit; the server decides and enforces it.
+let depositWaived = false;
 const makeToken = () => Array.from(crypto.getRandomValues(new Uint8Array(32)), byte => byte.toString(16).padStart(2, "0")).join("");
 let token = makeToken();
 const errors = {
@@ -54,7 +56,7 @@ function showSummary() {
   fields.vehicleType.required = min !== max;
   const duration = service.duration;
   const length = durationLabel(duration);
-  const deposit = appointmentMoney(options.depositCents);
+  const deposit = depositWaived ? "No deposit" : appointmentMoney(options.depositCents);
   // Sales tax goes on the final invoice, so the estimate is shown before tax with the rate beside it.
   const taxRate = options.salesTax?.enabled ? options.salesTax.rateBasisPoints : 0;
   const plusTax = taxRate ? " + tax" : "";
@@ -64,8 +66,12 @@ function showSummary() {
   el("summary-duration").textContent = length;
   el("summary-price").textContent = estimate;
   el("summary-deposit").textContent = deposit;
-  el("service-facts").textContent = length + " · " + estimate + plusTax + " estimated · " + deposit + " deposit";
-  el("contact-cost").textContent = service.name + " · " + estimate + plusTax + " estimated · " + deposit + " deposit";
+  const depositFact = depositWaived ? "no deposit (returning customer)" : deposit + " deposit";
+  el("service-facts").textContent = length + " · " + estimate + plusTax + " estimated · " + depositFact;
+  el("contact-cost").textContent = service.name + " · " + estimate + plusTax + " estimated · " + depositFact;
+  el("deposit-note").textContent = depositWaived
+    ? "Welcome back! As a returning customer you don't need a deposit. Nieman reviews your request and texts to confirm."
+    : "The deposit goes toward your total. Nieman reviews your request after payment and texts to confirm.";
   el("summary-time").textContent = start ? appointmentTime({ start, end: start + duration * 60000 }) : "Choose a date and start time.";
 }
 const vehicleChoices = [...document.querySelectorAll('[name="vehicleChoice"]')];
@@ -143,7 +149,10 @@ async function begin() {
     if (!quote && featured) fields.serviceId.value = featured.id;
     picker = servicePicker(el("service-picker"), fields.serviceId, options.services, { vehicle: () => fields.vehicleType.value });
     await auth.authStateReady();
-    if (auth.currentUser?.emailVerified) { fields.email.value = auth.currentUser.email || ""; fields.email.readOnly = true; }
+    if (auth.currentUser?.emailVerified) {
+      fields.email.value = auth.currentUser.email || ""; fields.email.readOnly = true;
+      try { depositWaived = (await appointmentRequest("deposit-status", {}, await auth.currentUser.getIdToken())).waived === true; } catch {}
+    }
     el("public-policy").textContent = options.depositPolicy;
     form.hidden = false;
     calendar = slotPicker(el("pick-time"), {
@@ -196,6 +205,11 @@ form.onsubmit = async event => {
       ...payload, start, accepted: fields.accepted.checked, token, quoteReceipt, reuseQuoteContact,
     }, bearer);
     const fragment = "#" + result.id + "." + token;
+    if (!result.depositCents) {
+      el("reserve-state").textContent = "Request sent.";
+      location.assign("/appointment" + fragment);
+      return;
+    }
     el("reserve-state").textContent = "Opening payment.";
     showStep(2);
     try {
