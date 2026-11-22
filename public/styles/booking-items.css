@@ -18,18 +18,20 @@
 }
 .owner-record .record-facts dd { white-space: pre-line; }
 
-/* Customer booking: add-ons for each vehicle, and extra vehicles. */
-.booking-extras { display: grid; gap: 14px; }
-.booking-extras__vehicle { display: grid; gap: 10px; margin: 0; padding: 14px; border: 1px solid var(--nd-line); border-radius: 16px; }
-.booking-extras__vehicle legend { padding: 0 6px; font-weight: 700; }
-.booking-extras__head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.booking-extras__chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.booking-extras__chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--nd-line-strong); border-radius: 999px; cursor: pointer; }
+/* Customer booking: add-ons for each vehicle, and extra vehicles, in a drawer under Other services. */
+.booking-extras-drawer { margin-top: 10px; }
+.booking-extras-drawer #booking-extras { padding: 0 14px 14px; }
+.booking-extras { display: grid; gap: 12px; }
+.booking-extras__vehicle { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.booking-extras__vehicle + .booking-extras__vehicle, .booking-extras > .booking-extras .booking-extras__vehicle { padding-top: 12px; border-top: 1px solid var(--nd-line); }
+.booking-extras__vehicle legend { float: left; width: 100%; margin-bottom: 8px; padding: 0; color: var(--nd-text-2); font-size: 14px; font-weight: 600; }
+.booking-extras__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.booking-extras__chip { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 12px; border: 1px solid var(--nd-line-strong); border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .booking-extras__chip:has(input:checked) { border-color: var(--nd-gold); background: var(--nd-gold-tint); }
 .booking-extras__chip:has(input:focus-visible) { outline: 2px solid var(--nd-gold); outline-offset: 2px; }
-.booking-extras__chip small { color: var(--nd-text-2); }
-.booking-extras__vehicle input[type=text], .booking-extras__vehicle select { width: 100%; }
-.booking-extras__remove { justify-self: start; }
-.booking-extras__add { justify-self: start; }
+.booking-extras__chip small { color: var(--nd-gold); font-size: 13px; font-weight: 700; }
+.booking-extras__vehicle .vehicle-choice span { min-height: 40px; font-size: 14px; }
+.booking-extras__vehicle input[type=text] { width: 100%; min-height: 44px; padding-block: 10px; }
+.booking-extras__remove, .booking-extras__add { justify-self: start; min-height: 40px; font-size: 14px; }
 .booking-lines { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; color: var(--nd-text-2); }
 .booking-lines li { display: flex; justify-content: space-between; gap: 12px; }
