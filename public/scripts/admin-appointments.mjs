@@ -417,6 +417,7 @@ function renderDetail(record) {
   }
   if (record.phone) quick.append(quickLink("Call", "tel:" + record.phone, "phone"), quickLink("Text", "sms:" + record.phone, "chat"));
   if (record.email) quick.append(quickLink("Email", "mailto:" + record.email, "mail"));
+  if (record.clientId) quick.append(quickLink("Client", "/admin/clients?id=" + encodeURIComponent(record.clientId), "user"));
   if (record.status !== "cancelled") quick.append(quickLink("Invoice", "/admin/invoices?appointment=" + encodeURIComponent(record.id), "invoice"));
   if (quick.childElementCount) hub.append(quick);
 

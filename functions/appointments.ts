@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Auth } from "firebase-admin/auth";
-import type { Firestore, Transaction } from "firebase-admin/firestore";
+import { FieldValue, type Firestore, type Transaction } from "firebase-admin/firestore";
 import { logger } from "firebase-functions";
 import type { Request } from "firebase-functions/v2/https";
 import type { Response } from "express";
@@ -17,6 +17,7 @@ import {
   createStripeSession, findCheckoutAttempt, isSessionId, releaseStripeSession, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
   type StripeSession,
 } from "./appointment-stripe";
+import { bookingIdFor, clientChanges, clientEmail, findClientForJob, saveJobToClient, type ClientJob } from "./appointment-clients";
 import { defaultTaxSettings, parseTaxSettings, taxLineLabel, taxOn, taxPortion, taxRateLabel, type TaxSettings } from "./appointment-tax";
 
 const DAY = 86_400_000;
@@ -111,6 +112,8 @@ type Appointment = {
   reminderSentFor?: number;
   reviewRequestedAt?: number;
   bookingChannel?: string;
+  // When this finished job was added to the client record's booking history.
+  clientBookingSyncedAt?: number;
 };
 
 type Reservation = { id: string; start: number; end: number };
@@ -336,6 +339,76 @@ async function appointmentContext(db: Firestore, body: Record<string, unknown>) 
   };
 }
 
+function clientJob(id: string, appointment: Appointment): ClientJob {
+  const totalCents = typeof appointment.finalCents === "number" ? appointment.finalCents + (appointment.taxCents ?? 0) : null;
+  return {
+    id, date: easternDate(appointment.start), service: appointment.service, totalCents, vehicle: appointment.vehicle ?? "",
+    name: appointment.name, email: appointment.email, phone: appointment.phone, address: appointment.address, leadId: appointment.leadId,
+  };
+}
+
+// A client's appointments for the Clients page: ones linked to the record, plus unlinked ones with
+// the same email, which get linked here. Finished jobs that predate the automatic sync are added to
+// the booking history once; a booking entry the owner removed afterwards stays removed.
+async function clientHistory(db: Firestore, uid: string, body: Record<string, unknown>) {
+  const clientId = identifier(body.clientId)!;
+  const clientRef = db.collection("clients").doc(clientId);
+  const client = (await clientRef.get()).data();
+  if (!client) throw new AppointmentError(404, "record_not_found");
+  const email = clientEmail(client.email);
+  const appointments = db.collection("appointments");
+  const [linked, sameEmail] = await Promise.all([
+    appointments.where("clientId", "==", clientId).limit(200).get(),
+    email ? appointments.where("email", "==", email).limit(200).get() : Promise.resolve(null),
+  ]);
+  const rows = new Map<string, Appointment>();
+  for (const doc of [...linked.docs, ...(sameEmail?.docs ?? [])]) {
+    const appointment = doc.data() as Appointment;
+    if (!appointment.clientId || appointment.clientId === clientId) rows.set(doc.id, appointment);
+  }
+  const needsLink = [...rows].filter(([, appointment]) => !appointment.clientId).map(([id]) => id);
+  const needsSync = [...rows].filter(([, appointment]) => appointment.status === "completed" && !appointment.clientBookingSyncedAt).map(([id]) => id);
+  let record = client;
+  if (needsLink.length || needsSync.length) {
+    record = await db.runTransaction(async tx => {
+      const fresh = (await tx.get(clientRef)).data();
+      if (!fresh) throw new AppointmentError(404, "record_not_found");
+      const touched = [...new Set([...needsLink, ...needsSync])].slice(0, 200);
+      const current = await tx.getAll(...touched.map(id => appointments.doc(id)));
+      const now = Date.now();
+      const jobs: ClientJob[] = [];
+      for (const snapshot of current) {
+        const appointment = snapshot.data() as Appointment | undefined;
+        if (!appointment || (appointment.clientId && appointment.clientId !== clientId)) continue;
+        const sync = appointment.status === "completed" && !appointment.clientBookingSyncedAt;
+        if (sync) jobs.push(clientJob(snapshot.id, appointment));
+        tx.update(snapshot.ref, { clientId, ...(sync ? { clientBookingSyncedAt: now } : {}) });
+        rows.set(snapshot.id, { ...appointment, clientId });
+      }
+      const changes = clientChanges(fresh, jobs, now);
+      if (Object.keys(changes).length) tx.update(clientRef, { ...changes, updated_at: FieldValue.serverTimestamp(), updated_by: uid });
+      return { ...fresh, ...changes };
+    });
+  }
+  const list = [...rows].map(([id, appointment]) => {
+    const details = adminDetails(id, appointment);
+    return {
+      id, start: appointment.start, end: appointment.end, status: appointment.status, service: appointment.service, vehicle: appointment.vehicle ?? "",
+      totalCents: details.totalCents ?? null, estimateCents: appointment.estimateCents, balanceCents: details.balanceCents ?? null,
+      inHistory: (Array.isArray(record.bookings) ? record.bookings : []).some((item: { id?: string }) => item?.id === bookingIdFor(id)),
+    };
+  }).sort((a, b) => b.start - a.start);
+  return {
+    appointments: list,
+    client: {
+      bookings: Array.isArray(record.bookings) ? record.bookings : [], last_service_date: record.last_service_date ?? null,
+      next_followup_date: record.next_followup_date ?? null, status: record.status ?? null,
+      email: record.email ?? null, phone: record.phone ?? null, phone_e164: record.phone_e164 ?? null,
+      address: record.address ?? null, city: record.city ?? null, state: record.state ?? null, zip: record.zip ?? null,
+    },
+  };
+}
+
 async function createAppointment(db: Firestore, uid: string, body: Record<string, unknown>) {
   const requestId = identifier(body.requestId)!;
   const id = digest(`${uid}:${requestId}`);
@@ -508,8 +581,13 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
         const taxFields = tax.enabled
           ? { taxCents: taxOn(final, tax.rateBasisPoints), taxRateBasisPoints: tax.rateBasisPoints, taxId: tax.taxId }
           : { taxCents: 0 };
+        // Transactions read before they write, so find the customer's client record first.
+        const clientRecord = await findClientForJob(db, tx, appointment.clientId, appointment.email, appointment.phone);
+        const job = clientJob(id, { ...appointment, finalCents: final, taxCents: taxFields.taxCents });
+        const clientId = saveJobToClient(db, tx, clientRecord, job, uid, now);
         const update = { ...work, ...calendarUpdate(now), status: "completed" as const, finalCents: final, ...taxFields, invoiceLines, completedAt: now, completedBy: uid,
           maintenanceInviteAfterPayment: body.maintenanceInviteAfterPayment === true && !!appointment.email && maintenanceService(appointment.service),
+          clientId, clientBookingSyncedAt: now,
         };
         const completed = { ...appointment, ...update };
         tx.update(ref, update);
@@ -1648,6 +1726,7 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
         });
       }
       else if (action === "list") result = await listAppointments(db, body);
+      else if (action === "client-history") result = await clientHistory(db, uid, body);
       else if (action === "health") result = await healthReport(db);
       else if (action === "follow-up-settings") result = await getFollowUpSettings(db);
       else if (action === "save-follow-up-settings") {

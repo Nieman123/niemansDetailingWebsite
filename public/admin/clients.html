@@ -514,6 +514,14 @@
       font-size: 0.85rem;
     }
 
+    .booking-row a.booking-row-link { color: inherit; text-decoration: none; }
+    .booking-row a.booking-row-link:hover strong, .booking-row a.booking-row-link:focus-visible strong { text-decoration: underline; }
+    .appt-group-label { list-style: none; margin: 6px 0 0; color: var(--muted); font-size: 0.78rem; letter-spacing: 0.06em; text-transform: uppercase; }
+    .appt-status { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+    .appt-status[data-status="completed"] { color: #8fd6a3; border-color: rgba(143, 214, 163, 0.4); }
+    .appt-status[data-status="confirmed"], .appt-status[data-status="in_progress"] { color: #e8c872; border-color: rgba(232, 200, 114, 0.45); }
+    .appt-status[data-status="cancelled"], .appt-status[data-status="no_show"] { color: #e99a9a; border-color: rgba(233, 154, 154, 0.4); }
+
     .save-row {
       display: flex;
       justify-content: flex-end;
@@ -898,8 +906,15 @@
             </div>
           </details>
 
+          <details id="client-appointments-section" class="detail-section records-fold" open hidden>
+            <summary>Appointments</summary>
+            <p id="client-appointments-status" class="muted" style="margin:0 0 8px;">Loading appointments...</p>
+            <ul id="client-appointments-list" class="booking-list"></ul>
+          </details>
+
           <details class="detail-section records-fold" open data-mobile-collapsed>
             <summary>Booking history</summary>
+            <p class="muted" style="margin:0 0 8px;">Finished appointments are added here automatically. Add past jobs done outside the app below.</p>
             <div class="booking-form">
               <div>
                 <label for="client-booking-date-input">Date</label>
@@ -950,7 +965,7 @@
   </div>
 
   <script type="module">
-    import("/scripts/admin-clients.js?v=20261121").catch(error => {
+    import("/scripts/admin-clients.js?v=20261122").catch(error => {
       console.error("Client manager initialization failed", error);
       const status = document.getElementById("admin-status");
       status.textContent = "Could not load the Client Manager. Reload to try again.";

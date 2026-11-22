@@ -173,6 +173,12 @@ const finished = await asOwner('finish-job', {
   id: job.id, finalCents: 31_000, scopeAccepted: true, scopeChanges: 'Approved extra work', maintenanceInviteAfterPayment: true,
 });
 assert.equal(finished.result.balanceCents, 31_000);
+assert.equal(finished.result.clientId, client.id);
+const historyEntry = (await client.get()).get('bookings').find(entry => entry.appointment_id === job.id);
+assert.equal(historyEntry?.amount, 310);
+assert.equal(historyEntry.source, 'appointment');
+assert.equal((await client.get()).get('last_service_date'), historyEntry.date);
+assert.equal((await client.get()).get('status'), 'active');
 assert.equal(finished.result.workNotes, 'Owner-only note: side gate sticks.');
 const invitations = () => db.collection('appointmentEmails').where('maintenance.appointmentId', '==', job.id).get();
 assert.equal((await invitations()).size, 0);
@@ -210,6 +216,37 @@ assert.equal(taxedDone.taxCents, 2100);
 assert.equal(taxedDone.totalCents, 32_100);
 assert.equal(taxedDone.balanceCents, 32_100);
 assert.equal(taxedDone.taxId, '600-1234567');
+assert.equal((await client.get()).get('bookings').find(entry => entry.appointment_id === taxed.id)?.amount, 321);
+// A customer with no client record gets one when the job is finished, and a repeat sync adds nothing.
+const walkIn = (await asOwner('create', { ...appointment, requestId: randomUUID(), clientId: null, leadId: null, saveClientDefault: false,
+  name: 'Walk In Customer', email: 'walk.in@example.test', phone: '828-555-0177', address: '9 Elm Road, Weaverville, NC 28787',
+  start: paidLater + 3 * 86_400_000 })).result;
+assert.equal(walkIn.clientId, null);
+const walkInDone = (await asOwner('finish-job', { id: walkIn.id, finalCents: 20_000, taxRateBasisPoints: 700 })).result;
+const walkInClients = await db.collection('clients').where('email', '==', 'walk.in@example.test').get();
+assert.equal(walkInClients.size, 1);
+const walkInClient = walkInClients.docs[0];
+assert.equal(walkInDone.clientId, walkInClient.id);
+assert.equal(walkInClient.get('phone_e164'), '+18285550177');
+assert.equal(walkInClient.get('city'), 'Weaverville');
+assert.equal(walkInClient.get('zip'), '28787');
+assert.equal(walkInClient.get('bookings').length, 1);
+assert.equal(walkInClient.get('bookings')[0].amount, 214);
+// Client history lists linked and same-email appointments, links them, and backfills older finished jobs once.
+const older = db.collection('appointments').doc('f'.repeat(64));
+await older.set({ ...(await db.collection('appointments').doc(walkIn.id).get()).data(), clientId: null, clientBookingSyncedAt: null,
+  start: paidLater - 40 * 86_400_000, end: paidLater - 40 * 86_400_000 + 3_600_000, finalCents: 15_000, taxCents: 0, service: 'Interior Only' });
+const walkInUpcoming = (await asOwner('create', { ...appointment, requestId: randomUUID(), clientId: null, leadId: null, saveClientDefault: false,
+  name: 'Walk In Customer', email: 'walk.in@example.test', phone: '828-555-0177', start: paidLater + 30 * 86_400_000 })).result;
+assert.equal((await post('client-history', { clientId: walkInClient.id })).status, 401);
+const walkInHistory = (await asOwner('client-history', { clientId: walkInClient.id })).result;
+assert.deepEqual(walkInHistory.appointments.map(item => item.id).sort(), [walkIn.id, older.id, walkInUpcoming.id].sort());
+assert.equal(walkInHistory.client.bookings.length, 2);
+assert.equal(walkInHistory.client.last_service_date, walkInClient.get('last_service_date'));
+assert.equal((await db.collection('appointments').doc(walkInUpcoming.id).get()).get('clientId'), walkInClient.id);
+assert.equal((await asOwner('client-history', { clientId: walkInClient.id })).result.client.bookings.length, 2);
+assert.equal((await asOwner('client-history', { clientId: 'missing-client' })).error, 'record_not_found');
+console.log('PASS: Finished jobs save to the client record, new customers get one, and client history links and backfills appointments.');
 const servicePart = { id: taxed.id, amountCents: 30_000, method: 'cash', requestId: randomUUID() };
 assert.equal((await asOwner('record-payment', servicePart)).result.balanceCents, 2100);
 const taxPart = { id: taxed.id, amountCents: 2100, method: 'venmo', requestId: randomUUID() };

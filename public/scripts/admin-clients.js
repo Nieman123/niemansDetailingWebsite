@@ -1,4 +1,5 @@
 import { appointmentsEnabled, auth, db } from "/scripts/firebase-client.js?v=20261119";
+import { appointmentMoney, appointmentRequest, appointmentTime } from "/scripts/appointment-utils.mjs";
 import {
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -94,6 +95,9 @@ const els = {
   bookingNoteInput: document.getElementById("client-booking-note-input"),
   addBookingBtn: document.getElementById("add-booking-btn"),
   bookingsList: document.getElementById("client-bookings-list"),
+  appointmentsSection: document.getElementById("client-appointments-section"),
+  appointmentsStatus: document.getElementById("client-appointments-status"),
+  appointmentsList: document.getElementById("client-appointments-list"),
   deleteClientBtn: document.getElementById("delete-client-btn"),
   saveClientBtn: document.getElementById("save-client-btn"),
 };
@@ -361,6 +365,7 @@ function normalizeBooking(raw) {
   const notes = sanitizeText(raw?.notes, 280);
   const source = sanitizeText(raw?.source, 40) || "manual";
   const leadId = sanitizeText(raw?.lead_id, 120);
+  const appointmentId = sanitizeText(raw?.appointment_id, 80);
   const id = sanitizeText(raw?.id, 80) || (window.crypto?.randomUUID ? window.crypto.randomUUID() : `b_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`);
 
   if (!date || !service) return null;
@@ -372,6 +377,7 @@ function normalizeBooking(raw) {
     notes: notes || null,
     source,
     lead_id: leadId || null,
+    appointment_id: appointmentId || null,
     created_at: sanitizeText(raw?.created_at, 40) || new Date().toISOString(),
   };
 }
@@ -846,6 +852,7 @@ function showClientDetails(client) {
 
   setClientActionLinks(normalized);
   renderBookingsList();
+  loadClientAppointments(normalized.id || null);
 
   if (normalized.id) {
     setQueryParams({ clientId: normalized.id, fromLeadId: null });
@@ -910,11 +917,13 @@ function renderBookingsList() {
     return `
       <li class="booking-row">
         <div class="booking-row-top">
-          <strong>${escapeHtml(booking.service)}</strong>
+          ${booking.appointment_id
+            ? `<a class="booking-row-link" href="/admin/appointments?appointment=${encodeURIComponent(booking.appointment_id)}"><strong>${escapeHtml(booking.service)}</strong></a>`
+            : `<strong>${escapeHtml(booking.service)}</strong>`}
           <button type="button" class="btn booking-remove-btn" data-booking-id="${escapeHtml(booking.id)}">Remove</button>
         </div>
         <div class="booking-row-sub">
-          <span>${escapeHtml(formatDateLabel(booking.date))}</span>
+          <span>${escapeHtml(formatDateLabel(booking.date))}${booking.appointment_id ? " · From appointment" : ""}</span>
           <span>${escapeHtml(amountLabel)}</span>
         </div>
         ${booking.notes ? `<div class="booking-row-sub"><span>${escapeHtml(booking.notes)}</span></div>` : ""}
@@ -930,6 +939,95 @@ function renderBookingsList() {
       renderBookingsList();
     });
   });
+}
+
+const appointmentStatusLabels = {
+  draft: "Draft", awaiting_deposit: "Awaiting deposit", pending_approval: "Needs approval", confirmed: "Confirmed",
+  in_progress: "In progress", completed: "Finished", cancelled: "Cancelled", no_show: "No-show",
+};
+let appointmentsRequest = 0;
+
+function renderClientAppointments(appointments) {
+  if (!els.appointmentsList) return;
+  const now = Date.now();
+  const upcoming = appointments.filter((item) => item.end >= now && !["completed", "cancelled", "no_show"].includes(item.status))
+    .sort((a, b) => a.start - b.start);
+  const past = appointments.filter((item) => !upcoming.includes(item));
+  const row = (item) => {
+    const money = item.totalCents != null ? appointmentMoney(item.totalCents)
+      : item.estimateCents != null ? `Est. ${appointmentMoney(item.estimateCents)}` : "";
+    const balance = item.status === "completed" && item.balanceCents ? ` · ${appointmentMoney(item.balanceCents)} due` : "";
+    return `
+      <li class="booking-row">
+        <a class="booking-row-link" href="/admin/appointments?appointment=${encodeURIComponent(item.id)}">
+          <div class="booking-row-top">
+            <strong>${escapeHtml(item.service || "Appointment")}</strong>
+            <span class="appt-status" data-status="${escapeHtml(item.status)}">${escapeHtml(appointmentStatusLabels[item.status] || item.status)}</span>
+          </div>
+          <div class="booking-row-sub">
+            <span>${escapeHtml(appointmentTime(item))}</span>
+            <span>${escapeHtml(money + balance)}</span>
+          </div>
+          ${item.vehicle ? `<div class="booking-row-sub"><span>${escapeHtml(item.vehicle)}</span></div>` : ""}
+        </a>
+      </li>`;
+  };
+  els.appointmentsList.innerHTML = [
+    upcoming.length ? `<li class="appt-group-label">Upcoming</li>${upcoming.map(row).join("")}` : "",
+    past.length ? `<li class="appt-group-label">Past</li>${past.map(row).join("")}` : "",
+  ].join("");
+}
+
+// Shows the client's appointments and pulls in any finished job not yet in their booking history.
+async function loadClientAppointments(clientId) {
+  const ticket = ++appointmentsRequest;
+  if (!els.appointmentsSection) return;
+  els.appointmentsSection.hidden = !appointmentsEnabled || !clientId;
+  if (els.appointmentsList) els.appointmentsList.innerHTML = "";
+  if (!appointmentsEnabled || !clientId) return;
+  if (els.appointmentsStatus) { els.appointmentsStatus.hidden = false; els.appointmentsStatus.textContent = "Loading appointments..."; }
+  try {
+    const result = await appointmentRequest("client-history", { clientId }, await auth.currentUser?.getIdToken());
+    if (ticket !== appointmentsRequest || state.activeClientId !== clientId) return;
+    renderClientAppointments(result.appointments || []);
+    if (els.appointmentsStatus) {
+      els.appointmentsStatus.hidden = !!result.appointments?.length;
+      els.appointmentsStatus.textContent = "No appointments yet. Use Create appointment to book one.";
+    }
+    applyServerHistory(clientId, result.client || {});
+  } catch (error) {
+    if (ticket !== appointmentsRequest) return;
+    console.error("Failed to load client appointments", error);
+    if (els.appointmentsStatus) { els.appointmentsStatus.hidden = false; els.appointmentsStatus.textContent = "Could not load appointments."; }
+  }
+}
+
+// Brings booking entries the server added (finished jobs) into the open form without dropping
+// anything typed but not saved yet.
+function applyServerHistory(clientId, server) {
+  const known = new Set((state.activeDraft?.bookings || []).map((booking) => booking.id));
+  const added = normalizeBookings(server.bookings).filter((booking) => !known.has(booking.id));
+  const fields = ["last_service_date", "next_followup_date", "status", "email", "phone", "phone_e164", "address", "city", "state", "zip"];
+  const patch = Object.fromEntries(fields.filter((key) => server[key] != null && server[key] !== "").map((key) => [key, server[key]]));
+  const client = state.clients.find((item) => item.id === clientId);
+  const changed = added.length || (client && fields.some((key) => patch[key] !== undefined && patch[key] !== client[key]));
+  if (!changed) return;
+  updateClientInState(clientId, { ...patch, bookings: mergeBookings(client?.bookings || [], added) });
+  if (state.activeDraft) state.activeDraft = { ...state.activeDraft, bookings: mergeBookings(state.activeDraft.bookings || [], added) };
+  state.editingBookings = mergeBookings(state.editingBookings, added);
+  renderBookingsList();
+  const fill = (input, value) => { if (input && value && !input.value) input.value = value; };
+  const newer = (input, value) => { if (input && value && (!input.value || value > input.value)) input.value = value; };
+  newer(els.lastServiceInput, normalizeDateInput(patch.last_service_date));
+  newer(els.nextFollowupInput, normalizeDateInput(patch.next_followup_date));
+  fill(els.emailInput, patch.email);
+  fill(els.phoneInput, patch.phone);
+  fill(els.addressInput, patch.address);
+  fill(els.cityInput, patch.city);
+  fill(els.stateInput, patch.state);
+  fill(els.zipInput, patch.zip);
+  if (els.statusInput && patch.status === "active" && els.statusInput.value === "prospect") els.statusInput.value = "active";
+  renderClientList();
 }
 
 function selectClient(clientId) {
@@ -1181,6 +1279,15 @@ async function saveClient() {
       selectClient(ref.id);
       setStatus("Client created.", "success");
     } else {
+      // A job finished while this page was open adds a booking entry on the server; keep it.
+      const fresh = await getDoc(doc(db, "clients", state.activeClientId));
+      if (fresh.exists()) {
+        const loaded = new Set((state.activeDraft?.bookings || []).map((booking) => booking.id));
+        const arrived = normalizeBookings(fresh.data().bookings).filter((booking) => !loaded.has(booking.id));
+        if (arrived.length) payload.bookings = mergeBookings(payload.bookings, arrived);
+        const freshLast = normalizeDateInput(fresh.data().last_service_date);
+        if (freshLast && (!payload.last_service_date || freshLast > payload.last_service_date)) payload.last_service_date = freshLast;
+      }
       await updateDoc(doc(db, "clients", state.activeClientId), {
         ...payload,
         updated_at: serverTimestamp(),

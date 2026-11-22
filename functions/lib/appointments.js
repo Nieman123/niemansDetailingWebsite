@@ -6,6 +6,7 @@ exports.reconcileAppointments = reconcileAppointments;
 exports.handleAppointments = handleAppointments;
 exports.handleStripeWebhook = handleStripeWebhook;
 const node_crypto_1 = require("node:crypto");
+const firestore_1 = require("firebase-admin/firestore");
 const firebase_functions_1 = require("firebase-functions");
 const appointment_email_1 = require("./appointment-email");
 const ops_health_1 = require("./ops-health");
@@ -17,6 +18,7 @@ const appointment_content_1 = require("./appointment-content");
 const appointment_calendar_1 = require("./appointment-calendar");
 const appointment_booking_1 = require("./appointment-booking");
 const appointment_stripe_1 = require("./appointment-stripe");
+const appointment_clients_1 = require("./appointment-clients");
 const appointment_tax_1 = require("./appointment-tax");
 const DAY = 86400000;
 const DEPOSIT_CENTS = 5000;
@@ -246,6 +248,80 @@ async function appointmentContext(db, body) {
         deposit: client?.appointment_deposit_default === "waived" ? "waived" : "required",
     };
 }
+function clientJob(id, appointment) {
+    const totalCents = typeof appointment.finalCents === "number" ? appointment.finalCents + (appointment.taxCents ?? 0) : null;
+    return {
+        id, date: (0, appointment_booking_1.easternDate)(appointment.start), service: appointment.service, totalCents, vehicle: appointment.vehicle ?? "",
+        name: appointment.name, email: appointment.email, phone: appointment.phone, address: appointment.address, leadId: appointment.leadId,
+    };
+}
+// A client's appointments for the Clients page: ones linked to the record, plus unlinked ones with
+// the same email, which get linked here. Finished jobs that predate the automatic sync are added to
+// the booking history once; a booking entry the owner removed afterwards stays removed.
+async function clientHistory(db, uid, body) {
+    const clientId = identifier(body.clientId);
+    const clientRef = db.collection("clients").doc(clientId);
+    const client = (await clientRef.get()).data();
+    if (!client)
+        throw new AppointmentError(404, "record_not_found");
+    const email = (0, appointment_clients_1.clientEmail)(client.email);
+    const appointments = db.collection("appointments");
+    const [linked, sameEmail] = await Promise.all([
+        appointments.where("clientId", "==", clientId).limit(200).get(),
+        email ? appointments.where("email", "==", email).limit(200).get() : Promise.resolve(null),
+    ]);
+    const rows = new Map();
+    for (const doc of [...linked.docs, ...(sameEmail?.docs ?? [])]) {
+        const appointment = doc.data();
+        if (!appointment.clientId || appointment.clientId === clientId)
+            rows.set(doc.id, appointment);
+    }
+    const needsLink = [...rows].filter(([, appointment]) => !appointment.clientId).map(([id]) => id);
+    const needsSync = [...rows].filter(([, appointment]) => appointment.status === "completed" && !appointment.clientBookingSyncedAt).map(([id]) => id);
+    let record = client;
+    if (needsLink.length || needsSync.length) {
+        record = await db.runTransaction(async (tx) => {
+            const fresh = (await tx.get(clientRef)).data();
+            if (!fresh)
+                throw new AppointmentError(404, "record_not_found");
+            const touched = [...new Set([...needsLink, ...needsSync])].slice(0, 200);
+            const current = await tx.getAll(...touched.map(id => appointments.doc(id)));
+            const now = Date.now();
+            const jobs = [];
+            for (const snapshot of current) {
+                const appointment = snapshot.data();
+                if (!appointment || (appointment.clientId && appointment.clientId !== clientId))
+                    continue;
+                const sync = appointment.status === "completed" && !appointment.clientBookingSyncedAt;
+                if (sync)
+                    jobs.push(clientJob(snapshot.id, appointment));
+                tx.update(snapshot.ref, { clientId, ...(sync ? { clientBookingSyncedAt: now } : {}) });
+                rows.set(snapshot.id, { ...appointment, clientId });
+            }
+            const changes = (0, appointment_clients_1.clientChanges)(fresh, jobs, now);
+            if (Object.keys(changes).length)
+                tx.update(clientRef, { ...changes, updated_at: firestore_1.FieldValue.serverTimestamp(), updated_by: uid });
+            return { ...fresh, ...changes };
+        });
+    }
+    const list = [...rows].map(([id, appointment]) => {
+        const details = adminDetails(id, appointment);
+        return {
+            id, start: appointment.start, end: appointment.end, status: appointment.status, service: appointment.service, vehicle: appointment.vehicle ?? "",
+            totalCents: details.totalCents ?? null, estimateCents: appointment.estimateCents, balanceCents: details.balanceCents ?? null,
+            inHistory: (Array.isArray(record.bookings) ? record.bookings : []).some((item) => item?.id === (0, appointment_clients_1.bookingIdFor)(id)),
+        };
+    }).sort((a, b) => b.start - a.start);
+    return {
+        appointments: list,
+        client: {
+            bookings: Array.isArray(record.bookings) ? record.bookings : [], last_service_date: record.last_service_date ?? null,
+            next_followup_date: record.next_followup_date ?? null, status: record.status ?? null,
+            email: record.email ?? null, phone: record.phone ?? null, phone_e164: record.phone_e164 ?? null,
+            address: record.address ?? null, city: record.city ?? null, state: record.state ?? null, zip: record.zip ?? null,
+        },
+    };
+}
 async function createAppointment(db, uid, body) {
     const requestId = identifier(body.requestId);
     const id = digest(`${uid}:${requestId}`);
@@ -440,8 +516,13 @@ async function changeAppointment(db, uid, id, action, body) {
                 const taxFields = tax.enabled
                     ? { taxCents: (0, appointment_tax_1.taxOn)(final, tax.rateBasisPoints), taxRateBasisPoints: tax.rateBasisPoints, taxId: tax.taxId }
                     : { taxCents: 0 };
+                // Transactions read before they write, so find the customer's client record first.
+                const clientRecord = await (0, appointment_clients_1.findClientForJob)(db, tx, appointment.clientId, appointment.email, appointment.phone);
+                const job = clientJob(id, { ...appointment, finalCents: final, taxCents: taxFields.taxCents });
+                const clientId = (0, appointment_clients_1.saveJobToClient)(db, tx, clientRecord, job, uid, now);
                 const update = { ...work, ...calendarUpdate(now), status: "completed", finalCents: final, ...taxFields, invoiceLines, completedAt: now, completedBy: uid,
-                    maintenanceInviteAfterPayment: body.maintenanceInviteAfterPayment === true && !!appointment.email && maintenanceService(appointment.service), };
+                    maintenanceInviteAfterPayment: body.maintenanceInviteAfterPayment === true && !!appointment.email && maintenanceService(appointment.service),
+                    clientId, clientBookingSyncedAt: now, };
                 const completed = { ...appointment, ...update };
                 tx.update(ref, update);
                 queueOptedInMaintenance(db, tx, id, completed);
@@ -1696,6 +1777,8 @@ async function handleAppointments(db, auth, req, res, action) {
             }
             else if (action === "list")
                 result = await listAppointments(db, body);
+            else if (action === "client-history")
+                result = await clientHistory(db, uid, body);
             else if (action === "health")
                 result = await healthReport(db);
             else if (action === "follow-up-settings")
