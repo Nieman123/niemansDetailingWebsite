@@ -30,6 +30,9 @@ const el = (tag, props = {}, ...children) => {
 const TERMS = { due_on_receipt: 0, net_15: 15, net_30: 30, net_45: 45, net_60: 60 };
 const addDays = (date, days) => new Date(Date.parse(date + "T00:00:00Z") + days * 86400000).toISOString().slice(0, 10);
 const methodLabels = { check: "Check", cash: "Cash", ach: "Bank transfer (ACH)", card: "Card", other: "Other" };
+// Payments that came in through the pay page. Not offered in the manual payment form.
+const paidLabel = method => method === "stripe" ? "Paid online" : methodLabels[method] ?? method;
+const SETTING_TOGGLES = ["onlinePayments", "invoiceTips", "autoReminders"];
 const statusLabels = { open: "Unpaid", paid: "Paid", void: "Void" };
 
 const messages = {
@@ -60,6 +63,8 @@ const messages = {
   business_name_required: "Enter your business name.",
   invoice_not_found: "That invoice wasn’t found.",
   record_not_found: "That appointment or client wasn’t found.",
+  online_payments_unavailable: "Online payments aren’t available for this invoice. Stripe needs to be set up, Pay online turned on in Settings, and at least $0.50 due.",
+  checkout_active: "The customer has a card payment open right now. Wait about 35 minutes for it to finish or expire.",
 };
 const explain = error => messages[error?.code] || "Something went wrong. Try again in a minute.";
 
@@ -81,6 +86,7 @@ async function request(action, body = {}) {
 
 let settings = null;
 let salesTax = { enabled: false, rateBasisPoints: 700 };
+let onlineReady = false;
 let invoices = [];
 let current = null;
 let editing = null; // { id, updatedAt, source } while editing
@@ -203,7 +209,10 @@ function renderDetail(invoice) {
   if (invoice.taxRateBasisPoints) sum(`Sales tax (${rateLabel(invoice.taxRateBasisPoints)})`, money(totals.taxCents));
   sum("Total", money(totals.totalCents), true);
   for (const credit of invoice.credits) sum(credit.description, "−" + money(credit.cents));
-  for (const payment of invoice.payments) sum(`${methodLabels[payment.method] ?? payment.method}${payment.reference ? ` #${payment.reference}` : ""}, ${shortDate(payment.date)}`, "−" + money(payment.cents));
+  for (const payment of invoice.payments) {
+    sum(`${paidLabel(payment.method)}${payment.reference ? ` #${payment.reference}` : ""}, ${shortDate(payment.date)}`, "−" + money(payment.cents));
+    if (payment.tipCents) sum("Tip with that payment", money(payment.tipCents));
+  }
   sum(invoice.status === "paid" ? "Paid in full" : "Balance due", money(totals.balanceCents), true);
 
   const actions = el("div", { className: "appointment-actions record-primary" });
@@ -224,10 +233,60 @@ function renderDetail(invoice) {
 
   host.replaceChildren(el("div", { className: "invoice-head" }, pill, el("strong", { className: "invoice-head__due", textContent: money(invoice.status === "open" ? totals.balanceCents : totals.totalCents) })),
     actions, facts, lines, sums);
-  if (invoice.status === "open") host.append(paymentForm(invoice));
+  if (invoice.status === "open") host.append(onlineSection(invoice), paymentForm(invoice));
   if (invoice.payments.length) host.append(paymentList(invoice));
   if (invoice.status !== "void") host.append(emailForm(invoice));
   host.append(moreActions(invoice));
+}
+
+// Pay link and automatic reminders for an unpaid invoice.
+function onlineSection(invoice) {
+  const section = el("div", { className: "invoice-online-status" });
+  const reminder = invoice.nextReminder;
+  const sentReminders = (invoice.reminders ?? []).length;
+  const lines = [];
+  if (invoice.checkoutOpen) lines.push("The customer has a card payment open right now.");
+  if (!settings?.autoReminders) lines.push("Automatic reminders are off in Settings.");
+  else if (!invoice.billTo.email) lines.push("Add an email address to send automatic reminders.");
+  else if (invoice.remindersPaused) lines.push("Automatic reminders are paused for this invoice.");
+  else if (reminder) lines.push(`Next automatic reminder: ${shortDate(reminder.date)}${reminder.overdue ? " (past due)" : ""}.`);
+  else lines.push("No more automatic reminders are scheduled.");
+  if (sentReminders) {
+    const last = invoice.reminders[sentReminders - 1];
+    lines.push(`${sentReminders} reminder${sentReminders === 1 ? "" : "s"} sent, last on ${new Date(last.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`);
+  }
+  section.append(...lines.map(text => el("p", { className: "sub", textContent: text })));
+  const actions = el("div", { className: "appointment-actions" });
+  if (onlineReady && settings?.onlinePayments && invoice.totals.balanceCents >= 50) {
+    const copy = el("button", { type: "button", className: "btn secondary", textContent: "Copy pay link" });
+    copy.onclick = async () => {
+      copy.disabled = true;
+      try {
+        // Safari needs the clipboard write to start inside the tap, so hand it the pending text.
+        const url = request("pay-link", { id: invoice.id }).then(result => result.url);
+        if (window.ClipboardItem && navigator.clipboard?.write) {
+          await navigator.clipboard.write([new ClipboardItem({ "text/plain": url.then(text => new Blob([text], { type: "text/plain" })) })]);
+        } else await navigator.clipboard.writeText(await url);
+        byId("detail-status").textContent = "Pay link copied. Text or email it to the customer.";
+      } catch (error) {
+        byId("detail-status").textContent = error.code ? explain(error) : "Couldn’t copy the link. Try again.";
+      } finally { copy.disabled = false; }
+    };
+    actions.append(copy);
+  }
+  if (settings?.autoReminders && invoice.billTo.email) {
+    const pause = el("button", { type: "button", className: "btn secondary", textContent: invoice.remindersPaused ? "Resume reminders" : "Pause reminders" });
+    pause.onclick = async () => {
+      pause.disabled = true;
+      try {
+        renderDetail(await request("pause-reminders", { id: invoice.id, paused: !invoice.remindersPaused }));
+        byId("detail-status").textContent = invoice.remindersPaused ? "Reminders resumed." : "Reminders paused for this invoice.";
+      } catch (error) { byId("detail-status").textContent = explain(error); pause.disabled = false; }
+    };
+    actions.append(pause);
+  }
+  if (actions.children.length) section.append(actions);
+  return section;
 }
 
 function paymentForm(invoice) {
@@ -301,7 +360,11 @@ function paymentList(invoice) {
   for (const payment of invoice.payments) {
     const remove = el("button", { type: "button", className: "btn secondary small", textContent: "Remove" });
     remove.onclick = async () => {
-      if (remove.dataset.confirm !== "yes") { remove.dataset.confirm = "yes"; remove.textContent = "Tap again to remove"; return; }
+      if (remove.dataset.confirm !== "yes") {
+        remove.dataset.confirm = "yes";
+        remove.textContent = payment.method === "stripe" ? "Refund it in Stripe first, then tap again" : "Tap again to remove";
+        return;
+      }
       remove.disabled = true;
       try {
         renderDetail(await request("remove-payment", { id: invoice.id, paymentId: payment.id }));
@@ -309,7 +372,8 @@ function paymentList(invoice) {
         loadList();
       } catch (error) { byId("detail-status").textContent = explain(error); remove.disabled = false; }
     };
-    list.append(el("li", {}, el("span", { textContent: `${methodLabels[payment.method] ?? payment.method}${payment.reference ? ` #${payment.reference}` : ""} · ${shortDate(payment.date)} · ${money(payment.cents)}` }), remove));
+    const tip = payment.tipCents ? ` + ${money(payment.tipCents)} tip` : "";
+    list.append(el("li", {}, el("span", { textContent: `${paidLabel(payment.method)}${payment.reference ? ` #${payment.reference}` : ""} · ${shortDate(payment.date)} · ${money(payment.cents)}${tip}` }), remove));
   }
   section.append(list);
   return section;
@@ -330,7 +394,8 @@ function emailForm(invoice) {
   if (invoice.status === "paid" && invoice.payments.length) mail.elements.kind.value = "receipt";
   const submit = el("button", { type: "submit", className: "btn secondary", textContent: "Send email with PDF" });
   const status = el("p", { role: "status" });
-  const sent = (invoice.emails ?? []).slice(-3).reverse().map(entry => `${entry.kind === "receipt" ? "Receipt" : "Invoice"} sent to ${entry.to} on ${new Date(entry.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+  const kindLabel = { receipt: "Receipt", reminder: "Reminder", invoice: "Invoice" };
+  const sent = (invoice.emails ?? []).slice(-3).reverse().map(entry => `${kindLabel[entry.kind] ?? "Invoice"} sent to ${entry.to} on ${new Date(entry.at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
   mail.append(submit, status, ...sent.map(text => el("p", { className: "sub", textContent: text })));
   mail.onsubmit = async event => {
     event.preventDefault();
@@ -560,7 +625,15 @@ form.onsubmit = async event => {
 
 // ---- Settings ----
 function fillSettings() {
-  for (const [key, value] of Object.entries(settings)) if (settingsForm.elements[key]) settingsForm.elements[key].value = value ?? "";
+  for (const [key, value] of Object.entries(settings)) {
+    const field = settingsForm.elements[key];
+    if (!field) continue;
+    if (field.type === "checkbox") field.checked = !!value; else field.value = value ?? "";
+  }
+  settingsForm.elements.invoiceTips.disabled = !settingsForm.elements.onlinePayments.checked;
+  byId("settings-online").textContent = onlineReady
+    ? "Stripe is connected, so customers can pay by card from the invoice email."
+    : "Stripe isn’t connected on this site yet, so invoices go out without a Pay online button until it is. Reminders still send.";
   byId("settings-tax").innerHTML = "";
   byId("settings-tax").append(`Sales tax is ${salesTax.enabled ? `on at ${rateLabel(salesTax.rateBasisPoints)}` : "off"}. New invoices start with that setting, and you can change it on each invoice. `,
     el("a", { href: "/admin/appointments", textContent: "Change it in Appointments settings" }), ".");
@@ -569,7 +642,8 @@ function fillSettings() {
 settingsForm.onsubmit = async event => {
   event.preventDefault();
   const status = byId("settings-status");
-  const body = Object.fromEntries([...new FormData(settingsForm)].map(([key, value]) => [key, String(value)]));
+  const body = Object.fromEntries([...new FormData(settingsForm)].filter(([key]) => !SETTING_TOGGLES.includes(key)).map(([key, value]) => [key, String(value)]));
+  for (const key of SETTING_TOGGLES) body[key] = settingsForm.elements[key].checked;
   status.textContent = "Saving…";
   try {
     ({ settings } = await request("save-settings", { ...body, revision: settings.revision }));
@@ -587,6 +661,9 @@ for (const button of document.querySelectorAll("[data-view]")) {
     else { editing = null; show("list"); setUrl({}); renderList(); }
   });
 }
+settingsForm.elements.onlinePayments.addEventListener("change", () => {
+  settingsForm.elements.invoiceTips.disabled = !settingsForm.elements.onlinePayments.checked;
+});
 byId("back-to-list").onclick = () => { show("list"); setUrl({}); renderList(); };
 byId("invoice-filter").onchange = renderList;
 byId("invoice-search").oninput = renderList;
@@ -606,7 +683,7 @@ onAuthStateChanged(auth, async user => {
   authStatus.textContent = user ? "Loading invoices…" : "Sign in to manage invoices.";
   if (!user) return;
   try {
-    ({ settings, salesTax } = await request("settings"));
+    ({ settings, salesTax, onlineReady } = await request("settings"));
   } catch (error) {
     authStatus.textContent = explain(error);
     return;

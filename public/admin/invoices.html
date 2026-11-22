@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="/quote.css">
   <link rel="stylesheet" href="/styles/appointments.css">
 <link rel="stylesheet" href="/styles/workspace.css">
-<link rel="stylesheet" href="/styles/admin-invoices.css?v=20261121">
+<link rel="stylesheet" href="/styles/admin-invoices.css?v=20261122">
 </head>
 <body class="quote-page appointment-app owner-app invoices-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="invoices"></nav></header>
   <main class="wrap">
@@ -131,6 +131,14 @@
           </select></label>
           <label class="field"><span>Default note on invoices <small>Optional</small></span><textarea name="invoiceNote" rows="2" maxlength="1200" placeholder="Questions about this invoice? Call or text (828) 273-3894."></textarea></label>
           <label class="field"><span>Default note on receipts <small>Optional</small></span><textarea name="receiptNote" rows="2" maxlength="600"></textarea></label>
+          <fieldset class="invoice-online">
+            <legend>Online payments and reminders</legend>
+            <label class="appointment-checkbox"><input name="onlinePayments" type="checkbox"> Add a Pay online button to emailed invoices</label>
+            <label class="appointment-checkbox"><input name="invoiceTips" type="checkbox"> Offer an optional tip when paying an invoice online</label>
+            <label class="appointment-checkbox"><input name="autoReminders" type="checkbox"> Email unpaid invoices automatically</label>
+            <p class="sub">Reminders go out at 10 AM: 3 days before the due date (when the terms give at least a week), then 1, 7, 14 and 30 days after it. Each one includes the PDF and a fresh pay link. You can pause them on any invoice.</p>
+            <p class="sub" id="settings-online"></p>
+          </fieldset>
           <p class="sub" id="settings-tax"></p>
           <button class="btn primary" type="submit">Save settings</button>
           <p role="status" id="settings-status"></p>
@@ -138,7 +146,7 @@
       </section>
     </div>
   </main>
-  <script type="module" src="/scripts/admin-invoices.mjs?v=20261121"></script>
+  <script type="module" src="/scripts/admin-invoices.mjs?v=20261122"></script>
 <script type="module" src="/scripts/workspace.mjs"></script>
 </body>
 </html>

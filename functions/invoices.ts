@@ -13,6 +13,7 @@ import {
 import { friendlyDate, invoicePdf, type PdfKind } from "./invoice-pdf";
 import { sendEmailNow } from "./appointment-email";
 import { recordOpsEvent } from "./ops-health";
+import { mintPayLink, nextReminder, onlinePaymentsReady } from "./invoice-payments";
 
 const ID = /^[\w-]{1,128}$/;
 const settingsRef = (db: Firestore) => db.collection("invoiceSettings").doc("business");
@@ -47,7 +48,23 @@ async function salesTax(db: Firestore) {
 }
 
 function view(id: string, invoice: InvoiceRecord) {
-  return { id, ...invoice, totals: invoiceTotals(invoice), overdue: invoice.status === "open" && invoice.dueDate < easternDay(Date.now()) };
+  // Pay-link hashes stay on the server.
+  const { payLinks: _links, ...rest } = invoice;
+  return { id, ...rest, totals: invoiceTotals(invoice), overdue: invoice.status === "open" && invoice.dueDate < easternDay(Date.now()),
+    checkoutOpen: !!invoice.checkout && invoice.checkout.expiresAt > Date.now() };
+}
+
+// A pay link for an open invoice when online payments are set up, written onto the invoice.
+async function payLinkFor(db: Firestore, id: string, settings: InvoiceSettings) {
+  if (!(await onlinePaymentsReady(settings))) return null;
+  return db.runTransaction(async tx => {
+    const snapshot = await tx.get(invoiceRef(db, id));
+    const invoice = snapshot.data() as InvoiceRecord | undefined;
+    if (!invoice || invoice.status !== "open" || invoiceTotals(invoice).balanceCents < 50) return null;
+    const link = mintPayLink(db, tx, id, invoice);
+    if (link) tx.update(invoiceRef(db, id), { payLinks: link.payLinks });
+    return link?.url ?? null;
+  });
 }
 
 async function readInvoice(db: Firestore, id: string) {
@@ -149,7 +166,8 @@ async function emailInvoice(db: Firestore, uid: string, id: string, body: Record
     ...(invoice.reference ? [["PO / reference", invoice.reference] as [string, string]] : []),
     ...(settings.mailingAddress ? [["Mail checks to", [payable, ...settings.mailingAddress.split("\n")].join(", ")] as [string, string]] : []),
   ];
-  const pdf = await invoicePdf(invoice, settings, kind);
+  const payUrl = kind === "invoice" ? await payLinkFor(db, id, settings) : null;
+  const pdf = await invoicePdf(invoice, settings, kind, payUrl ?? undefined);
   const sent = await sendEmailNow({
     to, subject, attachment: { filename: filename(invoice, kind), content: pdf },
     idempotencyKey: `invoice/${id}/${kind}/${body.requestId ? identifier(body.requestId) : randomBytes(8).toString("hex")}`,
@@ -159,9 +177,10 @@ async function emailInvoice(db: Firestore, uid: string, id: string, body: Record
       paragraphs: [
         ...(message ? [message] : []),
         kind === "receipt" ? `Your receipt for invoice ${invoice.number} is attached as a PDF.`
-          : `Your invoice is attached as a PDF.${settings.mailingAddress ? ` Please make checks payable to ${payable} and write ${invoice.number} on the memo line.` : ""}`,
+          : `Your invoice is attached as a PDF.${payUrl ? " You can pay securely online by card with the button below." : ""}${settings.mailingAddress ? ` ${payUrl ? "Or make" : "Please make"} checks payable to ${payable} and write ${invoice.number} on the memo line.` : ""}`,
       ],
       details,
+      ...(payUrl ? { action: { label: `Pay ${money(totals.balanceCents)} online`, url: payUrl } } : {}),
     },
   });
   if (!sent.ok) {
@@ -186,7 +205,8 @@ export async function handleInvoices(db: Firestore, auth: Auth, req: Request, re
     const uid = await ownerUid(db, auth, req);
     let result: unknown;
     if (action === "settings") {
-      result = { settings: await getInvoiceSettings(db), salesTax: await salesTax(db) };
+      const settings = await getInvoiceSettings(db);
+      result = { settings, salesTax: await salesTax(db), onlineReady: await onlinePaymentsReady({ ...settings, onlinePayments: true }) };
     } else if (action === "save-settings") {
       const settings = parseInvoiceSettings(body);
       result = await db.runTransaction(async tx => {
@@ -271,6 +291,7 @@ export async function handleInvoices(db: Firestore, auth: Auth, req: Request, re
           revised = { ...invoice, payments: invoice.payments.filter(payment => payment.id !== body.paymentId) };
         } else if (action === "void") {
           if (invoice.payments.length) throw new InvoiceError(409, "remove_payments_first");
+          if (invoice.checkout && invoice.checkout.expiresAt > now) throw new InvoiceError(409, "checkout_active");
           revised = { ...invoice, status: "void", voidedAt: now };
         } else {
           revised = { ...invoice, status: "open", voidedAt: null };
@@ -290,7 +311,26 @@ export async function handleInvoices(db: Firestore, auth: Auth, req: Request, re
       result = { filename: filename(invoice, kind), pdf: pdf.toString("base64") };
     } else if (action === "email") {
       result = await emailInvoice(db, uid, identifier(body.id), body);
+    } else if (action === "pay-link") {
+      // A link the owner can text or paste. Each call mints a new one; older links keep working.
+      const url = await payLinkFor(db, identifier(body.id), await getInvoiceSettings(db));
+      if (!url) throw new InvoiceError(409, "online_payments_unavailable");
+      result = { url };
+    } else if (action === "pause-reminders") {
+      const id = identifier(body.id);
+      if (typeof body.paused !== "boolean") throw new InvoiceError(400, "invalid_request");
+      result = await db.runTransaction(async tx => {
+        const snapshot = await tx.get(invoiceRef(db, id));
+        if (!snapshot.exists) throw new InvoiceError(404, "invoice_not_found");
+        const revised = { ...(snapshot.data() as InvoiceRecord), remindersPaused: body.paused as boolean, updatedAt: Date.now() };
+        tx.set(invoiceRef(db, id), revised);
+        return view(id, revised);
+      });
     } else throw new InvoiceError(404, "not_found");
+    // Invoice views also say when the next automatic reminder goes out.
+    if (result && typeof result === "object" && "number" in result && "payments" in result && "billTo" in result) {
+      result = { ...result, nextReminder: nextReminder(result as InvoiceRecord, await getInvoiceSettings(db)) };
+    }
     res.json({ ok: true, result });
   } catch (error) {
     if (error instanceof InvoiceError) {
