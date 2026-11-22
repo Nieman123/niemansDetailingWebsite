@@ -47,8 +47,9 @@
   <option value="van_3row">3-row SUV / full-size truck / van</option>
 </select></fieldset>
 <fieldset class="picker-field service-select"><legend>Choose your service</legend><div id="service-picker"></div><select name="serviceId" hidden tabindex="-1"></select>
+<details class="service-picker__drawer booking-extras-drawer" id="booking-extras-field" hidden><summary class="service-picker__label"><span class="service-picker__summary"><span>Add a service or vehicle</span></span></summary><div id="booking-extras"></div></details>
 <p class="service-picker__custom">Paint correction, ceramic coating, or odor removal? <a href="/quote">Get a custom quote</a> or <a href="/ceramic-quote">plan a ceramic coating</a>.</p></fieldset>
-<details class="picker-field optional-details" id="booking-extras-field" hidden><summary>Add a service or another vehicle <small>Optional</small></summary><div id="booking-extras"></div></details><p id="service-facts" class="mobile-facts"></p>
+<p id="service-facts" class="mobile-facts"></p>
 <div id="schedule-calendar"><div class="month-nav"><h2 id="month-title"></h2><div><button type="button" id="prev-month" aria-label="Previous month"><span aria-hidden="true" class="chevron previous"></span></button><button type="button" id="next-month" aria-label="Next month"><span aria-hidden="true" class="chevron"></span></button></div></div>
 <div class="weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
 <div id="days" class="month-grid" role="group" aria-labelledby="month-title"></div>
