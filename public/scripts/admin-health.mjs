@@ -47,7 +47,7 @@ function tile(id, value, tone) {
 }
 const messages = {
   access_denied: "This account isn’t on the admin list for this site.",
-  sign_in_required: "Sign in to see site health.",
+  sign_in_required: "Sign in to see your dashboard.",
   not_found: "The health report isn’t available on this deployment yet.",
 };
 const explain = error => messages[error.code] || "Couldn’t load the health report. Try again in a minute.";
@@ -141,7 +141,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 setInterval(() => { if (document.visibilityState === "visible" && !panel.hidden) load(); }, 60000);
 
 if (!appointmentsEnabled) {
-  authStatus.textContent = "Site health needs the appointments backend, which isn't turned on for this site yet.";
+  authStatus.textContent = "The dashboard needs the appointments backend, which isn't turned on for this site yet.";
 } else {
   signIn.addEventListener("click", async () => {
     try { await signInWithPopup(auth, new GoogleAuthProvider()); }
@@ -154,7 +154,7 @@ if (!appointmentsEnabled) {
     signOutButton.hidden = refreshButton.hidden = !user;
     signIn.hidden = !!user;
     authStatus.hidden = false;
-    authStatus.textContent = user ? "Checking site health…" : "Sign in to see site health.";
+    authStatus.textContent = user ? "Loading your dashboard…" : "Sign in to see your dashboard.";
     if (user) await load();
   });
 }

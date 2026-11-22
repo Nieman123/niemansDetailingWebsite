@@ -183,6 +183,11 @@
         "type": 301
       },
       {
+        "source": "/admin/health",
+        "destination": "/admin/dashboard",
+        "type": 301
+      },
+      {
         "source": "/links/index.html",
         "destination": "/links",
         "type": 301

@@ -11,6 +11,7 @@ const firebase_functions_1 = require("firebase-functions");
 const appointment_email_1 = require("./appointment-email");
 const ops_health_1 = require("./ops-health");
 const telegram_1 = require("./telegram");
+const business_report_1 = require("./business-report");
 const appointment_short_links_1 = require("./appointment-short-links");
 const appointment_secrets_1 = require("./appointment-secrets");
 const appointment_email_template_1 = require("./appointment-email-template");
@@ -1781,6 +1782,8 @@ async function handleAppointments(db, auth, req, res, action) {
                 result = await clientHistory(db, uid, body);
             else if (action === "health")
                 result = await healthReport(db);
+            else if (action === "business-report")
+                result = await (0, business_report_1.businessReport)(db);
             else if (action === "follow-up-settings")
                 result = await getFollowUpSettings(db);
             else if (action === "save-follow-up-settings") {

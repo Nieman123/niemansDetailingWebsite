@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>Site health | Nieman's Detailing</title>
+  <title>Dashboard | Nieman's Detailing</title>
   <meta name="theme-color" content="#0a0912">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,17 +14,54 @@
   <link rel="stylesheet" href="/styles/appointments.css">
 <link rel="stylesheet" href="/styles/workspace.css">
 <link rel="stylesheet" href="/styles/admin-health.css">
+<link rel="stylesheet" href="/styles/admin-reports.css">
 </head>
-<body class="quote-page appointment-app owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="health"></nav></header>
+<body class="quote-page appointment-app owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="dashboard"></nav></header>
   <main class="wrap health">
-    <div class="work-title"><h1>Site health</h1><nav class="appointment-actions" aria-label="Health tools">
+    <div class="work-title"><h1>Dashboard</h1><nav class="appointment-actions" aria-label="Dashboard tools">
       <button type="button" class="quiet" id="refresh-health" hidden>Refresh</button>
       <button type="button" class="quiet" id="sign-out" hidden>Sign out</button>
     </nav></div>
     <p id="auth-status" role="status">Checking admin access…</p>
     <button class="btn primary" type="button" id="sign-in" hidden>Sign in with Google</button>
 
+    <section id="reports" class="reports" aria-labelledby="reports-heading" hidden>
+      <div class="reports-head">
+        <h2 id="reports-heading">Money and jobs</h2>
+        <div class="chip-row" role="group" aria-label="Period" id="report-period">
+          <button type="button" class="report-chip" data-period="month" aria-pressed="true">This month</button>
+          <button type="button" class="report-chip" data-period="last" aria-pressed="false">Last month</button>
+          <button type="button" class="report-chip" data-period="year" aria-pressed="false">This year</button>
+          <button type="button" class="report-chip" data-period="12" aria-pressed="false">Last 12 months</button>
+        </div>
+      </div>
+      <p class="sub" id="report-range"></p>
+      <section class="health-tiles report-tiles" aria-label="Totals for this period">
+        <div class="health-tile" id="tile-revenue"><span>Revenue</span><strong></strong><small></small></div>
+        <div class="health-tile" id="tile-jobs"><span>Jobs finished</span><strong></strong><small></small></div>
+        <div class="health-tile" id="tile-ticket"><span>Average ticket</span><strong></strong><small></small></div>
+        <div class="health-tile" id="tile-tax"><span>Sales tax collected</span><strong></strong><small></small></div>
+      </section>
+      <section class="panel" aria-labelledby="chart-heading">
+        <h2 id="chart-heading">Revenue by month</h2>
+        <div class="revenue-chart" id="revenue-chart" role="img" aria-label="Revenue for each of the last 12 months"></div>
+        <details class="report-table-wrap">
+          <summary>Show as a table</summary>
+          <div class="report-table-scroll"><table class="report-table">
+            <thead><tr><th scope="col">Month</th><th scope="col">Revenue</th><th scope="col">Jobs</th><th scope="col">Avg ticket</th><th scope="col">Sales tax</th></tr></thead>
+            <tbody id="report-rows"></tbody>
+          </table></div>
+        </details>
+      </section>
+      <section class="panel" aria-labelledby="services-heading">
+        <h2 id="services-heading">Top services</h2>
+        <ul class="service-bars" id="top-services"></ul>
+      </section>
+      <p class="sub">Revenue is the pre-tax amount billed for finished jobs, counted in the month you finished the job or issued the invoice. It includes work that isn't paid yet. Invoices made from an appointment count once, with the appointment.</p>
+    </section>
+
     <div id="health" hidden>
+      <h2 class="dashboard-section">Site health</h2>
       <section class="health-banner" id="health-banner" aria-live="polite"><strong id="banner-title"></strong><span id="banner-detail"></span></section>
 
       <section class="health-tiles" aria-label="Last 24 hours">
@@ -62,6 +99,7 @@
     </div>
   </main>
   <script type="module" src="/scripts/admin-health.mjs"></script>
+  <script type="module" src="/scripts/admin-reports.mjs"></script>
 <script type="module" src="/scripts/workspace.mjs"></script>
 </body>
 </html>

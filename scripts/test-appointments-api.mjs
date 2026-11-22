@@ -232,6 +232,14 @@ assert.equal(walkInClient.get('city'), 'Weaverville');
 assert.equal(walkInClient.get('zip'), '28787');
 assert.equal(walkInClient.get('bookings').length, 1);
 assert.equal(walkInClient.get('bookings')[0].amount, 214);
+// The Dashboard report counts finished jobs this month, with their pre-tax revenue and sales tax.
+assert.equal((await post('business-report', {}, stranger.idToken)).status, 403);
+const businessReport = (await asOwner('business-report')).result;
+assert.equal(businessReport.months.length, 24);
+const thisMonth = businessReport.months.at(-1);
+assert.equal(thisMonth.month, businessReport.currentMonth);
+assert(thisMonth.jobs >= 2 && thisMonth.revenueCents >= 50_000 && thisMonth.taxCents >= 3_500, JSON.stringify(thisMonth));
+assert(thisMonth.services.some(service => service.name === 'Full Detail'));
 // Client history lists linked and same-email appointments, links them, and backfills older finished jobs once.
 const older = db.collection('appointments').doc('f'.repeat(64));
 await older.set({ ...(await db.collection('appointments').doc(walkIn.id).get()).data(), clientId: null, clientBookingSyncedAt: null,

@@ -7,6 +7,7 @@ import type { Response } from "express";
 import { deliverAppointmentEmails, emailConfigured, queueAppointmentEmail } from "./appointment-email";
 import { describeOpsEvent, pruneOpsEvents, recordOpsEvent } from "./ops-health";
 import { telegramConfigured } from "./telegram";
+import { businessReport } from "./business-report";
 import { createShortLink, resolveShortLink, shortLinkPath } from "./appointment-short-links";
 import { liveMode } from "./appointment-secrets";
 import { emailSiteOrigin } from "./appointment-email-template";
@@ -1728,6 +1729,7 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
       else if (action === "list") result = await listAppointments(db, body);
       else if (action === "client-history") result = await clientHistory(db, uid, body);
       else if (action === "health") result = await healthReport(db);
+      else if (action === "business-report") result = await businessReport(db);
       else if (action === "follow-up-settings") result = await getFollowUpSettings(db);
       else if (action === "save-follow-up-settings") {
         const followUps = parseFollowUpSettings(body);
