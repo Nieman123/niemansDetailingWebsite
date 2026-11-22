@@ -261,6 +261,20 @@ const elapsed = ms => {
 
 // The on-site job screen for confirmed and in-progress appointments: big targets, autosaving notes,
 // one-tap photos, and a closeout builder that adds up line items instead of free-typed text.
+// Closeout starts with one line per booked service. When the estimate was set by hand, the difference is its own line.
+function bookedLines(record) {
+  const items = record.items ?? [];
+  if (items.length < 2) return [{ description: record.service, cents: record.estimateCents ?? 0 }];
+  const several = new Set(items.map(item => item.vehicleIndex)).size > 1;
+  const lines = items.map(item => ({
+    description: several ? `${item.name} (${item.vehicle || vehicleLabels[item.vehicleType] || "Vehicle " + (item.vehicleIndex + 1)})` : item.name,
+    cents: item.cents ?? 0,
+  }));
+  const sum = lines.reduce((total, line) => total + line.cents, 0);
+  if (record.estimateCents != null && record.estimateCents !== sum) lines.push({ description: "Adjustment", cents: record.estimateCents - sum });
+  return lines;
+}
+
 export function jobScreen(record, request, refresh, report) {
   const screen = elm("div", "", "job-screen");
   const started = record.status === "in_progress";
@@ -415,7 +429,7 @@ export function jobScreen(record, request, refresh, report) {
     return total;
   }
 
-  const saved = record.invoiceLines?.length ? record.invoiceLines : [{ description: record.service, cents: record.estimateCents ?? 0 }];
+  const saved = record.invoiceLines?.length ? record.invoiceLines : bookedLines(record);
   saved.forEach(line => lineRow(line.description, line.cents ? (line.cents / 100).toFixed(2) : ""));
   const addOns = elm("div", "", "job-chips");
   for (const [label, prices] of Object.entries(addOnPrices)) {

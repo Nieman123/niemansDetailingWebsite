@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/styles/appointments.css">
 <link rel="stylesheet" href="/styles/workspace.css">
 <link rel="stylesheet" href="/styles/booking.css">
+<link rel="stylesheet" href="/styles/booking-items.css">
 </head>
 <body class="quote-page appointment-app owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="appointments"></nav></header>
   <main class="wrap">
@@ -66,6 +67,7 @@
               <label class="field"><span>Vehicle details <small>Optional</small></span><input name="vehicle" maxlength="150" placeholder="Year, make and model"></label>
             </div>
             <fieldset class="picker-field"><legend>Service</legend><div id="owner-service-picker"></div><select name="service" hidden tabindex="-1"><option value="">Choose later</option></select></fieldset>
+            <fieldset class="picker-field"><legend>Add-ons and more vehicles <small>Optional</small></legend><p class="sub">Add another service for this vehicle, or services for a second vehicle. The length and estimate update to match.</p><div id="owner-extra-items"></div></fieldset>
             <label class="field"><span>Appointment length</span><select name="durationMinutes" required><option value="60">1 hour</option></select></label>
             <div id="owner-slot-calendar" class="owner-slot-calendar">
               <div class="month-nav">

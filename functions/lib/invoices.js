@@ -9,6 +9,17 @@ const invoice_model_1 = require("./invoice-model");
 const invoice_pdf_1 = require("./invoice-pdf");
 const appointment_email_1 = require("./appointment-email");
 const ops_health_1 = require("./ops-health");
+const appointment_items_1 = require("./appointment-items");
+// A booking with several services starts its invoice with one line per service, when those add up to the amount owed.
+function bookedLines(appointment) {
+    if (!Array.isArray(appointment.items) || appointment.items.length < 2)
+        return null;
+    const lines = (0, appointment_items_1.itemInvoiceLines)(appointment.items);
+    const owed = appointment.finalCents ?? appointment.estimateCents;
+    if (typeof owed === "number" && lines.reduce((total, line) => total + line.cents, 0) !== owed)
+        return null;
+    return lines.map(line => ({ description: line.description, quantity: 1, unitCents: line.cents }));
+}
 const ID = /^[\w-]{1,128}$/;
 const settingsRef = (db) => db.collection("invoiceSettings").doc("business");
 const counterRef = (db) => db.collection("invoiceSettings").doc("counter");
@@ -75,7 +86,7 @@ async function invoiceContext(db, body) {
         draft.serviceDetail = [[appointment.service, VEHICLES[appointment.vehicle] ?? appointment.vehicle].filter(Boolean).join(" · "), appointment.address].filter(Boolean).join("\n");
         const lines = Array.isArray(appointment.invoiceLines) && appointment.invoiceLines.length
             ? appointment.invoiceLines.map((line) => ({ description: line.description, quantity: 1, unitCents: line.cents }))
-            : [{ description: appointment.service || "Detailing service", quantity: 1, unitCents: appointment.finalCents ?? appointment.estimateCents ?? 0 }];
+            : bookedLines(appointment) ?? [{ description: appointment.service || "Detailing service", quantity: 1, unitCents: appointment.finalCents ?? appointment.estimateCents ?? 0 }];
         draft.lines = lines;
         if (appointment.finalCents !== undefined)
             draft.taxRateBasisPoints = appointment.taxCents ? appointment.taxRateBasisPoints ?? tax.rateBasisPoints : 0;

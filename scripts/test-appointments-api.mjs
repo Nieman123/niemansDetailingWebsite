@@ -454,6 +454,60 @@ try {
   assert.equal((await asOwner('create',{...appointment, requestId:randomUUID(), deposit:'required', service:'', saveClientDefault:false})).result.service,
     'Detailing appointment');
   console.log('PASS: Vehicle pricing, masked quote preview, contact reuse, expired receipt fallback and optional admin service.');
+
+  // Several services and vehicles on one booking.
+  const multiSettings = { ...publicSettings, enabled: true, revision: 'multi', services: [
+    { id: 'full', name: 'Full Detail', duration: 60, cents: 30000, vehiclePrices: { sedan: 30000, suv_truck: 35000, van_3row: 40000 } },
+    { id: 'monthly_mini', name: 'Monthly Mini', duration: 30, cents: 10000, vehiclePrices: { sedan: 10000, suv_truck: 14000, van_3row: 14000 } },
+  ] };
+  await db.collection('appointmentSettings').doc('booking').set(multiSettings);
+  const longer = await callWithCalendar('availability', { serviceId: 'full', serviceIds: ['full', 'monthly_mini', 'monthly_mini'], month });
+  assert(longer.result.slots.length);
+  assert.equal((await callWithCalendar('availability', { serviceId: 'full', serviceIds: ['nope'], month })).error, 'invalid_items');
+  const multiBooking = { name: 'Two Car Customer', phone: '828-555-0177', email: 'two.cars@example.test', start: longer.result.slots[0],
+    serviceId: 'full', vehicleType: 'suv_truck', vehicle: 'Ford Explorer', accepted: true, token: '9'.repeat(64),
+    items: [
+      { serviceId: 'full', vehicleIndex: 0, vehicleType: 'suv_truck', vehicle: 'Ford Explorer' },
+      { serviceId: 'monthly_mini', vehicleIndex: 1, vehicleType: 'sedan', vehicle: 'Honda Civic' },
+    ] };
+  assert.equal((await callWithCalendar('book', { ...multiBooking, items: [multiBooking.items[0], { serviceId: 'monthly_mini', vehicleIndex: 1 }] })).error, 'vehicle_required');
+  assert.equal((await callWithCalendar('book', { ...multiBooking, items: [multiBooking.items[0], { ...multiBooking.items[1], vehicleIndex: 2 }] })).error, 'invalid_items');
+  assert.equal((await callWithCalendar('book', { ...multiBooking, items: [multiBooking.items[1], multiBooking.items[0]] })).error, 'invalid_items');
+  const multi = await callWithCalendar('book', multiBooking);
+  assert(multi.ok, JSON.stringify(multi));
+  assert.equal(multi.result.estimateCents, 45000, JSON.stringify(multi));
+  assert.equal(multi.result.end - multi.result.start, 90 * 60_000);
+  assert.equal(multi.result.service, 'Full Detail (Ford Explorer); Monthly Mini (Honda Civic)');
+  assert.equal(multi.result.vehicle, 'Ford Explorer + Honda Civic');
+  assert.equal(multi.result.items.length, 2);
+
+  // The owner books a main service plus an add-on, then adds a second vehicle to the existing booking.
+  const ownerStart = longer.result.slots[longer.result.slots.length - 1] - 3 * 60 * 60_000;
+  const ownerMulti = await asOwner('create', { ...appointment, clientId: null, leadId: null, requestId: randomUUID(), start: ownerStart, durationMinutes: 90,
+    estimateCents: 40_000, saveClientDefault: false, allowOverlap: true, items: [
+      { serviceId: 'full', name: 'Full Detail', vehicleIndex: 0, vehicleType: 'sedan', vehicle: 'Chad sedan', cents: 30_000, minutes: 60 },
+      { serviceId: 'monthly_mini', name: 'Monthly Mini', vehicleIndex: 0, cents: 10_000, minutes: 30 },
+    ] });
+  assert.equal(ownerMulti.result.service, 'Full Detail + Monthly Mini', JSON.stringify(ownerMulti));
+  assert.equal(ownerMulti.result.items[1].vehicle, 'Chad sedan');
+  assert.equal((await asOwner('create', { ...appointment, requestId: randomUUID(), items: [{ name: 'X', vehicleIndex: 1, minutes: 30 }] })).error, 'invalid_items');
+  const added = await asOwner('update-services', { id: ownerMulti.result.id, allowOverlap: true, items: [
+    ...ownerMulti.result.items, { name: 'Monthly Mini', serviceId: 'monthly_mini', vehicleIndex: 1, vehicleType: 'suv_truck', vehicle: 'Second truck', cents: 14_000, minutes: 30 },
+  ] });
+  assert.equal(added.result.estimateCents, 54_000, JSON.stringify(added));
+  assert.equal(added.result.end - added.result.start, 120 * 60_000);
+  assert.equal(added.result.service, 'Full Detail + Monthly Mini (Chad sedan); Monthly Mini (Second truck)');
+  const reserved = (await db.collection('appointmentDays').doc(String(Math.floor(ownerStart / 86_400_000))).get()).get('slots')
+    .find(slot => slot.id === ownerMulti.result.id);
+  assert.equal(reserved.end - reserved.start, 120 * 60_000);
+  assert.equal((await asOwner('update-services', { id: ownerMulti.result.id, items: [] })).error, 'invalid_items');
+  const taxNow = (await asOwner('tax-settings')).result;
+  await asOwner('start-job', { id: ownerMulti.result.id });
+  const multiDone = await asOwner('finish-job', { id: ownerMulti.result.id, finalCents: 54_000, taxRateBasisPoints: taxNow.enabled ? taxNow.rateBasisPoints : 0 });
+  assert.deepEqual(multiDone.result.invoiceLines.map(line => line.cents), [30_000, 10_000, 14_000], JSON.stringify(multiDone));
+  assert.equal(multiDone.result.invoiceLines[2].description, 'Monthly Mini (Second truck)');
+  assert.equal((await asOwner('update-services', { id: ownerMulti.result.id, items: added.result.items })).error, 'status_changed');
+  console.log('PASS: Add-ons and extra vehicles on public and owner bookings, adding to an existing booking, and itemized closeout.');
   console.log('PASS: Month availability, email-required booking with notes, retry, hold protection and owner contact updates.');
 } finally { globalThis.fetch = originalFetch; }
 await admin.app().delete();
