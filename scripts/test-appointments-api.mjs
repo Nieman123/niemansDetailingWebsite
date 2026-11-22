@@ -300,8 +300,8 @@ console.log('PASS: Day-before reminders and review requests go out once.');
 
 // Unpaid balance reminders and a tip on a balance paid online.
 {
-  process.env.HOSTING_ORIGIN ??= 'https://' + projectId + '.web.app';
-  process.env.APPOINTMENT_INTEGRATIONS_PROJECT ??= projectId;
+  process.env.HOSTING_ORIGIN = 'https://' + projectId + '.web.app';
+  process.env.APPOINTMENT_INTEGRATIONS_PROJECT = projectId;
   const owing = (await asOwner('create', { ...appointment, requestId: randomUUID(), start: start + 30 * 86_400_000, saveClientDefault: false })).result;
   assert.equal((await asOwner('finish-job', { id: owing.id, finalCents: 20_000, scopeAccepted: true })).result.balanceCents, 20_000);
   const owingRef = db.collection('appointments').doc(owing.id);
