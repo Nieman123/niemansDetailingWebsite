@@ -10,6 +10,7 @@ const periodButtons = [...document.querySelectorAll("#report-period [data-period
 let report = null;
 let period = "month";
 let scope = 0;
+let scrolledToTax = false;
 
 const dollars = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const exact = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -139,7 +140,138 @@ function renderChart() {
 function render() {
   renderTiles();
   renderChart();
+  renderTax();
 }
+
+// ---------- Sales tax filing ----------
+const tax = {
+  frequency: byId("tax-frequency"), period: byId("tax-period"), callout: byId("tax-callout"), summary: byId("tax-summary"),
+  copy: byId("tax-copy"), csv: byId("tax-csv"), filed: byId("tax-filed"), status: byId("tax-status"), note: byId("tax-note"),
+};
+const dayLabel = date => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(`${date}T12:00:00Z`));
+const cents = value => exact.format(value / 100);
+let selectedPeriod = null;
+
+function chosenPeriod() {
+  const periods = report.salesTax.periods;
+  return periods.find(period => period.key === selectedPeriod) ?? null;
+}
+
+function renderTax() {
+  const { salesTax } = report;
+  tax.frequency.value = salesTax.frequency;
+  const periods = salesTax.periods;
+  const toFile = periods.filter(period => period.needsFiling).sort((a, b) => a.due.localeCompare(b.due));
+  const open = periods.find(period => !period.ended);
+  // Default to the oldest return still to file, otherwise the most recent finished period.
+  if (!periods.some(period => period.key === selectedPeriod)) selectedPeriod = (toFile[0] ?? periods.find(period => period.ended) ?? periods[0])?.key ?? null;
+  tax.period.replaceChildren(...periods.map(period => element("option", { value: period.key,
+    textContent: `${period.label}${!period.ended ? " (in progress)" : period.filedAt ? " · filed" : period.overdue ? " · overdue" : period.needsFiling ? " · to file" : ""}` })));
+  tax.period.value = selectedPeriod ?? "";
+
+  const callout = tax.callout;
+  const next = toFile[0];
+  if (!salesTax.frequencyChosen) {
+    callout.dataset.tone = "warning";
+    callout.querySelector("strong").textContent = "Choose how often you file";
+    callout.querySelector("span").textContent = "Pick monthly, quarterly or yearly above to match your NCDOR filing schedule. You'll get a Telegram reminder a week before each return is due.";
+  } else if (next) {
+    callout.dataset.tone = next.overdue ? "error" : "warning";
+    callout.querySelector("strong").textContent = `${next.label} return ${next.overdue ? "was due" : "is due"} ${dayLabel(next.due)}`;
+    callout.querySelector("span").textContent = `${cents(next.taxCents)} in sales tax on ${cents(next.taxableCents)} of taxable sales.${toFile.length > 1 ? ` ${toFile.length - 1} more period${toFile.length === 2 ? "" : "s"} not marked filed.` : ""} Mark it filed once you've sent it to NCDOR.`;
+  } else {
+    callout.dataset.tone = "ok";
+    callout.querySelector("strong").textContent = "You're caught up";
+    callout.querySelector("span").textContent = open ? `Next return: ${open.label}, due ${dayLabel(open.due)}. ${cents(open.taxCents)} collected so far.` : "Every finished period is marked filed.";
+  }
+  tax.note.textContent = [
+    salesTax.enabled ? "" : "Sales tax is turned off in Settings, so new jobs aren't charging tax.",
+    "Due dates follow NCDOR: monthly returns by the 20th of the next month, quarterly by the last day of the month after the quarter, yearly by January 31. If a due date lands on a weekend or holiday, it moves to the next business day.",
+    "Amounts are what you billed, by the month the job was finished or the invoice issued, including anything not paid yet.",
+  ].filter(Boolean).join(" ");
+  renderTaxPeriod();
+}
+
+function renderTaxPeriod() {
+  const period = chosenPeriod();
+  tax.status.textContent = "";
+  [tax.copy, tax.csv, tax.filed].forEach(button => { button.disabled = !period; });
+  if (!period) { tax.summary.replaceChildren(); return; }
+  const item = (label, value, key = false) => {
+    const node = element("div", {}, element("dt", { textContent: label }), element("dd", { textContent: value }));
+    if (key) node.className = "tax-key";
+    return node;
+  };
+  tax.summary.replaceChildren(
+    item("Gross sales", cents(period.grossCents)),
+    item("Taxable sales", cents(period.taxableCents)),
+    item("Exempt or untaxed", cents(period.exemptCents)),
+    item("Sales tax collected", cents(period.taxCents), true),
+    item("Jobs", String(period.jobs)),
+    item(period.filedAt ? "Filed" : "Due", period.filedAt ? when.format(period.filedAt) : dayLabel(period.due)),
+  );
+  tax.filed.hidden = !period.ended;
+  tax.filed.textContent = period.filedAt ? "Mark as not filed" : "Mark as filed";
+}
+const when = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" });
+
+function summaryText(period) {
+  const { salesTax } = report;
+  return [
+    `Sales tax summary: ${period.label}`,
+    `Period: ${period.months[0]} to ${period.months[period.months.length - 1]}`,
+    `Gross sales: ${cents(period.grossCents)}`,
+    `Taxable sales: ${cents(period.taxableCents)}`,
+    `Exempt or untaxed sales: ${cents(period.exemptCents)}`,
+    `Sales tax collected: ${cents(period.taxCents)}${salesTax.rateBasisPoints ? ` (rate ${(salesTax.rateBasisPoints / 100).toFixed(2)}%)` : ""}`,
+    `Jobs: ${period.jobs}`,
+    `Due: ${dayLabel(period.due)}`,
+    salesTax.taxId ? `NC account ID: ${salesTax.taxId}` : null,
+    ...(period.byMonth.length > 1 ? ["", "By month:", ...period.byMonth.map(row => `${monthName(row.month)}: gross ${cents(row.grossCents)}, taxable ${cents(row.taxableCents)}, tax ${cents(row.taxCents)}`)] : []),
+  ].filter(line => line !== null).join("\n").replace(/\n{3,}/g, "\n\n");
+}
+
+tax.period.addEventListener("change", () => { selectedPeriod = tax.period.value; renderTaxPeriod(); });
+tax.copy.addEventListener("click", async () => {
+  const period = chosenPeriod();
+  if (!period) return;
+  try { await navigator.clipboard.writeText(summaryText(period)); tax.status.textContent = "Summary copied."; }
+  catch { tax.status.textContent = "Couldn't copy. Try Download CSV instead."; }
+});
+tax.csv.addEventListener("click", () => {
+  const period = chosenPeriod();
+  if (!period) return;
+  const amount = value => (value / 100).toFixed(2);
+  const rows = [["month", "gross_sales", "taxable_sales", "exempt_sales", "sales_tax", "jobs"],
+    ...period.byMonth.map(row => [row.month, amount(row.grossCents), amount(row.taxableCents), amount(row.grossCents - row.taxableCents), amount(row.taxCents), row.jobs]),
+    ["total", amount(period.grossCents), amount(period.taxableCents), amount(period.exemptCents), amount(period.taxCents), period.jobs]];
+  const link = element("a", { href: URL.createObjectURL(new Blob([rows.map(row => row.join(",")).join("\r\n")], { type: "text/csv" })),
+    download: `sales-tax-${period.key}.csv` });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+});
+
+async function saveFiling(change, done) {
+  const session = scope;
+  tax.frequency.disabled = tax.filed.disabled = true;
+  try {
+    const result = await appointmentRequest("save-tax-filing", change, await auth.currentUser?.getIdToken());
+    if (session !== scope) return;
+    report = result;
+    render();
+    tax.status.textContent = done;
+  } catch {
+    tax.status.textContent = "Couldn't save. Try again.";
+    if (report) tax.frequency.value = report.salesTax.frequency;
+  } finally { tax.frequency.disabled = false; tax.filed.disabled = !chosenPeriod(); }
+}
+tax.frequency.addEventListener("change", () => { selectedPeriod = null; saveFiling({ frequency: tax.frequency.value }, "Filing schedule saved."); });
+tax.filed.addEventListener("click", () => {
+  const period = chosenPeriod();
+  if (period) saveFiling({ period: period.key, filed: !period.filedAt }, period.filedAt ? `${period.label} marked not filed.` : `${period.label} marked filed.`);
+});
 
 for (const button of periodButtons) {
   button.addEventListener("click", () => {
@@ -157,6 +289,7 @@ async function load() {
     report = result;
     render();
     section.hidden = false;
+    if (location.hash === "#sales-tax" && !scrolledToTax) { scrolledToTax = true; byId("sales-tax").scrollIntoView(); }
   } catch {
     // The health section below explains sign-in and access problems, so the report just stays hidden.
     if (session === scope && !report) section.hidden = true;

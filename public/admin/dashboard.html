@@ -57,6 +57,24 @@
         <h2 id="services-heading">Top services</h2>
         <ul class="service-bars" id="top-services"></ul>
       </section>
+      <section class="panel tax-panel" id="sales-tax" aria-labelledby="tax-heading">
+        <div class="reports-head">
+          <h2 id="tax-heading">Sales tax filing</h2>
+          <label class="field tax-frequency"><span>I file</span><select id="tax-frequency">
+            <option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annual">Yearly</option>
+          </select></label>
+        </div>
+        <div class="tax-callout" id="tax-callout" aria-live="polite"><strong></strong><span></span></div>
+        <label class="field"><span>Filing period</span><select id="tax-period"></select></label>
+        <dl class="tax-summary" id="tax-summary"></dl>
+        <div class="tax-actions">
+          <button type="button" class="btn primary" id="tax-copy">Copy summary</button>
+          <button type="button" class="btn" id="tax-csv">Download CSV</button>
+          <button type="button" class="btn" id="tax-filed">Mark as filed</button>
+        </div>
+        <p class="sub" id="tax-status" role="status"></p>
+        <p class="sub" id="tax-note"></p>
+      </section>
       <p class="sub">Revenue is the pre-tax amount billed for finished jobs, counted in the month you finished the job or issued the invoice. It includes work that isn't paid yet. Invoices made from an appointment count once, with the appointment.</p>
     </section>
 

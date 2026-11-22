@@ -240,6 +240,15 @@ const thisMonth = businessReport.months.at(-1);
 assert.equal(thisMonth.month, businessReport.currentMonth);
 assert(thisMonth.jobs >= 2 && thisMonth.revenueCents >= 50_000 && thisMonth.taxCents >= 3_500, JSON.stringify(thisMonth));
 assert(thisMonth.services.some(service => service.name === 'Full Detail'));
+assert.equal(businessReport.salesTax.frequencyChosen, false);
+assert.equal((await asOwner('save-tax-filing', { frequency: 'weekly' })).error, 'invalid_frequency');
+const monthlyFiling = (await asOwner('save-tax-filing', { frequency: 'monthly' })).result.salesTax;
+assert.equal(monthlyFiling.frequency, 'monthly');
+assert(monthlyFiling.periods[0].taxCents >= 3_500 && monthlyFiling.periods[0].taxableCents >= 50_000, JSON.stringify(monthlyFiling.periods[0]));
+const lastPeriod = monthlyFiling.periods[1].key;
+assert.equal((await asOwner('save-tax-filing', { period: '2026-13' })).error, 'invalid_period');
+assert((await asOwner('save-tax-filing', { period: lastPeriod })).result.salesTax.periods[1].filedAt > 0);
+assert.equal((await asOwner('save-tax-filing', { period: lastPeriod, filed: false })).result.salesTax.periods[1].filedAt, null);
 // Client history lists linked and same-email appointments, links them, and backfills older finished jobs once.
 const older = db.collection('appointments').doc('f'.repeat(64));
 await older.set({ ...(await db.collection('appointments').doc(walkIn.id).get()).data(), clientId: null, clientBookingSyncedAt: null,

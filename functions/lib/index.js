@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.api = exports.notifyLeadAddonUpdate = exports.notifyAppointmentBooked = exports.invoiceReminders = exports.appointmentMaintenance = void 0;
+exports.api = exports.notifyLeadAddonUpdate = exports.notifyAppointmentBooked = exports.invoiceReminders = exports.salesTaxReminders = exports.appointmentMaintenance = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -63,6 +63,13 @@ exports.appointmentMaintenance = (0, scheduler_1.onSchedule)({
     }
     const { recordSchedulerRun } = await Promise.resolve().then(() => __importStar(require("./ops-health")));
     await recordSchedulerRun(db, startedAt);
+});
+// Sales tax filing reminders on Telegram, once a day at 9 AM Eastern, for the frequency chosen on the Dashboard.
+exports.salesTaxReminders = (0, scheduler_1.onSchedule)({
+    schedule: "0 9 * * *", timeZone: "America/New_York", region: "us-east1", timeoutSeconds: 120, maxInstances: 1, concurrency: 1,
+}, async () => {
+    const { remindSalesTax } = await Promise.resolve().then(() => __importStar(require("./business-report")));
+    await remindSalesTax(db);
 });
 // Automatic reminder emails for unpaid invoices, once a day at 10 AM Eastern. Invoices work before online
 // booking launches, so this runs whether or not appointments are on.

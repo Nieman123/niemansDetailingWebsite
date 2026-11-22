@@ -1957,6 +1957,11 @@ async function handleAppointments(db, auth, req, res, action) {
                 result = await healthReport(db);
             else if (action === "business-report")
                 result = await (0, business_report_1.businessReport)(db);
+            else if (action === "save-tax-filing") {
+                result = await (0, business_report_1.saveTaxFiling)(db, uid, body).catch(error => {
+                    throw error instanceof business_report_1.ReportError ? new AppointmentError(error.status, error.code) : error;
+                });
+            }
             else if (action === "follow-up-settings")
                 result = await getFollowUpSettings(db);
             else if (action === "save-follow-up-settings") {

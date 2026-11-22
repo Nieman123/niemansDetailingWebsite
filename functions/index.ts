@@ -29,6 +29,14 @@ export const appointmentMaintenance = onSchedule({
   await recordSchedulerRun(db, startedAt);
 });
 
+// Sales tax filing reminders on Telegram, once a day at 9 AM Eastern, for the frequency chosen on the Dashboard.
+export const salesTaxReminders = onSchedule({
+  schedule: "0 9 * * *", timeZone: "America/New_York", region: "us-east1", timeoutSeconds: 120, maxInstances: 1, concurrency: 1,
+}, async () => {
+  const { remindSalesTax } = await import("./business-report");
+  await remindSalesTax(db);
+});
+
 // Automatic reminder emails for unpaid invoices, once a day at 10 AM Eastern. Invoices work before online
 // booking launches, so this runs whether or not appointments are on.
 export const invoiceReminders = onSchedule({

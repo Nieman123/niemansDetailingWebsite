@@ -53,3 +53,27 @@
   .revenue-bar > b { display: none; }
   .revenue-bar { padding: 0 1px; }
 }
+
+/* Sales tax filing */
+.tax-panel { display: grid; gap: 1rem; scroll-margin-top: 1rem; }
+.tax-panel .reports-head h2 { font-size: 1.25rem; }
+.tax-frequency { display: flex; align-items: center; gap: .6rem; margin: 0; }
+.tax-frequency span { white-space: nowrap; }
+.tax-frequency select { width: auto; }
+.tax-callout { display: grid; gap: .2rem; padding: .85rem 1rem; border-radius: 12px; border: 1px solid var(--nd-line-strong); background: var(--nd-surface-2); }
+.tax-callout strong { color: var(--nd-text); }
+.tax-callout span { color: var(--nd-text-2); }
+.tax-callout[data-tone="warning"] { border-color: rgba(242, 180, 90, .5); background: var(--nd-warning-tint); }
+.tax-callout[data-tone="error"] { border-color: rgba(255, 138, 128, .5); background: var(--nd-danger-tint); }
+.tax-callout[data-tone="ok"] { border-color: rgba(95, 211, 162, .45); background: var(--nd-success-tint); }
+.tax-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; margin: 0; }
+.tax-summary div { padding: .75rem .85rem; border-radius: 12px; background: var(--nd-surface-2); border: 1px solid var(--nd-line); display: grid; gap: .25rem; min-width: 0; }
+.tax-summary dt { color: var(--nd-muted); font-size: .82rem; }
+.tax-summary dd { margin: 0; color: var(--nd-text); font: 700 1.15rem/1.2 var(--nd-font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tax-summary .tax-key dd { color: var(--nd-gold-hover); }
+.tax-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.tax-panel #tax-status:empty, .tax-panel #tax-note:empty { display: none; }
+@media (max-width: 700px) {
+  .tax-actions .btn { flex: 1 1 100%; }
+  .tax-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
