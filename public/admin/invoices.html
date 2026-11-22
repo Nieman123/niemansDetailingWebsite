@@ -54,7 +54,7 @@
             <legend>Bill to</legend>
             <label class="field"><span>Business or customer name</span><input name="billName" required maxlength="120" autocomplete="off"></label>
             <label class="field"><span>Attention <small>Optional, like Accounts Payable or a person</small></span><input name="billAttention" maxlength="120" autocomplete="off"></label>
-            <label class="field"><span>Billing address</span><textarea name="billAddress" rows="3" maxlength="300" placeholder="Street&#10;City, State ZIP"></textarea></label>
+            <label class="field"><span>Billing address</span><textarea name="billAddress" rows="3" maxlength="300" placeholder="Start typing an address" data-address-autocomplete="multiline"></textarea></label>
             <div class="appointment-fields">
               <label class="field"><span>Email <small>For sending the PDF</small></span><input name="billEmail" type="email" maxlength="200" autocomplete="off"></label>
               <label class="field"><span>Phone <small>Optional</small></span><input name="billPhone" type="tel" maxlength="40" autocomplete="off"></label>
@@ -148,5 +148,6 @@
   </main>
   <script type="module" src="/scripts/admin-invoices.mjs?v=20261122"></script>
 <script type="module" src="/scripts/workspace.mjs"></script>
+<script type="module" src="/scripts/address-autocomplete.mjs?v=20261122"></script>
 </body>
 </html>

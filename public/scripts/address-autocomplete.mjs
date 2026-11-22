@@ -1,4 +1,5 @@
-// Google-style address suggestions for any <input data-address-autocomplete>.
+// Google-style address suggestions for any <input data-address-autocomplete>
+// (or <textarea data-address-autocomplete="multiline">, which fills "Street\nCity, ST ZIP").
 // Uses Places API (New) through the Maps JavaScript API and renders its own dark dropdown,
 // so the input stays a normal text field that existing form code reads. If Google can't
 // load (blocked key, offline), the field simply works as plain text.
@@ -81,6 +82,7 @@ export function attachAddressAutocomplete(input) {
   const fields = componentFiller(input);
   // Only use the street line when separate city/state/ZIP fields exist.
   const streetOnly = input.dataset.addressAutocomplete === "street";
+  const multiline = input.dataset.addressAutocomplete === "multiline";
   let suggestions = [];
   let active = -1;
   let token;
@@ -111,7 +113,12 @@ export function attachAddressAutocomplete(input) {
       const parts = Object.fromEntries((place.addressComponents ?? []).flatMap(part => part.types.map(type => [type, part])));
       const street = [parts.street_number?.longText, parts.route?.shortText].filter(Boolean).join(" ");
       const zip = parts.postal_code?.longText ?? "";
-      input.value = streetOnly && street ? street : (place.formattedAddress ?? fallback).replace(/, USA$/, "");
+      const city = parts.locality?.longText ?? parts.sublocality?.longText ?? parts.postal_town?.longText ?? "";
+      const state = parts.administrative_area_level_1?.shortText ?? "";
+      const cityLine = [city, [state, zip].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+      const unit = parts.subpremise?.longText ? ` #${parts.subpremise.longText.replace(/^#/, "")}` : "";
+      if (multiline && street && cityLine) input.value = `${street}${unit}\n${cityLine}`;
+      else input.value = streetOnly && street ? street : (place.formattedAddress ?? fallback).replace(/, USA$/, "");
       if (fields.zip && zip) fields.zip.value = zip;
       if (fields.city) fields.city.value = parts.locality?.longText ?? parts.sublocality?.longText ?? fields.city.value;
       if (fields.state) fields.state.value = parts.administrative_area_level_1?.shortText ?? fields.state.value;
@@ -125,7 +132,7 @@ export function attachAddressAutocomplete(input) {
   }
 
   async function lookup() {
-    const text = input.value.trim();
+    const text = (multiline ? input.value.split("\n").map(line => line.trim()).filter(Boolean).join(", ") : input.value).trim();
     if (text.length < 3) { close(); return; }
     const mine = ++request;
     let places;
@@ -174,14 +181,15 @@ export function attachAddressAutocomplete(input) {
   input.addEventListener("focus", () => { loadPlaces().catch(() => {}); }, { once: true });
 }
 
+const SELECTOR = "input[data-address-autocomplete], textarea[data-address-autocomplete]";
 function scan(root = document) {
-  root.querySelectorAll?.("input[data-address-autocomplete]").forEach(attachAddressAutocomplete);
+  root.querySelectorAll?.(SELECTOR).forEach(attachAddressAutocomplete);
 }
 scan();
 new MutationObserver(records => {
   for (const record of records) for (const node of record.addedNodes) {
     if (node.nodeType !== 1) continue;
-    if (node.matches?.("input[data-address-autocomplete]")) attachAddressAutocomplete(node);
+    if (node.matches?.(SELECTOR)) attachAddressAutocomplete(node);
     else scan(node);
   }
 }).observe(document.documentElement, { childList: true, subtree: true });
