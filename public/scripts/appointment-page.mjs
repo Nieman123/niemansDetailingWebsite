@@ -1,6 +1,7 @@
 import { appointmentMoney, appointmentRequest, appointmentTime, calendarFile, googleCalendarUrl, taxRateLabel } from "./appointment-utils.mjs";
 import { reportBookingConversion } from "./booking-analytics.mjs";
 import { slotCalendar, slotPicker } from "./slot-picker.mjs";
+import { tipPicker } from "./tip-picker.mjs";
 
 const byId = id => document.getElementById(id);
 const status = byId("appointment-status");
@@ -57,6 +58,7 @@ const errors = {
   calendar_unavailable: "We couldn't verify your appointment time right now. Try again in a few minutes.",
   time_unavailable: "This time needs to be reconfirmed. Please text Nieman before paying a deposit.",
   check_pending: "A check is pending clearance. Text Nieman for help with your balance.",
+  invalid_tip: "That tip amount doesn't work. Pick another amount, up to the balance.",
   status_changed: "The appointment status changed. Reopen your link for the latest details.",
   cancellation_terms_changed: "The cancellation terms changed. Reopen the appointment to review the latest terms.",
 };
@@ -66,6 +68,9 @@ const statusLabels = {
 };
 let appointment;
 let busy = false;
+// The tip chooser for a balance payment, rebuilt when the balance changes.
+let tips = null;
+let tipsFor = null;
 
 function render() {
   const { service, vehicle, address, estimateCents, finalCents, balanceCents, depositCents, paidDeposit, refundState } = appointment;
@@ -119,6 +124,20 @@ function render() {
   if (appointment.paymentUnderReview) status.textContent += " A payment is under review. Contact Nieman before paying again.";
   else if (appointment.paymentPending) status.textContent += " A check is pending clearance.";
   byId("payment-heading").textContent = dueDeposit ? `Pay ${appointmentMoney(depositCents)} deposit` : `Pay ${appointmentMoney(balanceCents)} balance`;
+  byId("tip-options").hidden = !dueBalance;
+  if (!dueBalance) { tips = null; tipsFor = null; byId("tip-total").hidden = true; }
+  else if (tipsFor !== balanceCents) {
+    tipsFor = balanceCents;
+    // Percentages are of the service before tax, the way tips usually work.
+    tips = tipPicker(byId("tip-picker"), {
+      baseCents: finalCents ?? balanceCents, maxCents: balanceCents,
+      onChange: tip => {
+        byId("tip-total").hidden = !tip;
+        byId("tip-total").textContent = `Total today: ${appointmentMoney(balanceCents + tip)} (${appointmentMoney(balanceCents)} balance + ${appointmentMoney(tip)} tip)`;
+        byId("pay-appointment").textContent = tip ? `Pay ${appointmentMoney(balanceCents + tip)}` : "Continue to Payment";
+      },
+    });
+  }
   byId("payment-policy").textContent = dueDeposit
     ? `${appointment.preapproved ? "Paying confirms this preapproved appointment. " : "Payment sends this appointment to Nieman for approval. "}${appointment.depositPolicy}`
     : "The final total and the amount already paid are shown above.";
@@ -231,7 +250,8 @@ async function openAppointment() {
     if (!byId("accept-payment").checked) { message.textContent = "Accept the terms to continue."; return; }
     try { sessionStorage.setItem("appointmentCheckoutReturn", fragment); }
     catch { message.textContent = "Enable site storage so you can return from checkout."; return; }
-    const { url } = await command("checkout", { accepted: true });
+    if (tips?.overMax) { message.textContent = "A tip can be up to the balance amount."; return; }
+    const { url } = await command("checkout", { accepted: true, ...(tips?.tipCents ? { tipCents: tips.tipCents } : {}) });
     location.assign(url);
   }, pay);
   setupMove(command);

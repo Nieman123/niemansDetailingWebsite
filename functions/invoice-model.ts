@@ -4,7 +4,13 @@
 export type InvoiceTerms = "due_on_receipt" | "net_15" | "net_30" | "net_45" | "net_60" | "custom";
 export type InvoiceLine = { description: string; quantity: number; unitCents: number };
 export type InvoiceCredit = { description: string; cents: number };
-export type InvoicePayment = { id: string; method: string; reference: string; date: string; cents: number; recordedAt: number; by: string };
+// Online payments use method "stripe". A tip rides along with the payment but never counts toward the invoice balance.
+export type InvoicePayment = {
+  id: string; method: string; reference: string; date: string; cents: number; recordedAt: number; by: string;
+  tipCents?: number; stripe?: { session: string; intent: string };
+};
+// A Stripe Checkout session the customer opened from the pay page. Amount is the balance it pays, without the tip.
+export type InvoiceCheckout = { attempt: string; amount: number; tipCents: number; expiresAt: number; id?: string };
 export type InvoiceStatus = "open" | "paid" | "void";
 
 export type InvoiceDraft = {
@@ -30,6 +36,13 @@ export type InvoiceRecord = InvoiceDraft & {
   createdAt: number; createdBy: string; updatedAt: number;
   paidAt?: number | null; voidedAt?: number | null;
   emails?: Array<{ to: string; kind: string; at: number }>;
+  // Hashes of the customer pay links handed out for this invoice. The links themselves are never stored.
+  payLinks?: Array<{ hash: string; at: number }>;
+  checkout?: InvoiceCheckout | null;
+  checkoutReconcileAt?: number | null;
+  // Automatic reminder emails already sent, keyed by step and due date, so each goes out once.
+  reminders?: Array<{ key: string; at: number; to: string }>;
+  remindersPaused?: boolean;
 };
 
 export type InvoiceSettings = {
@@ -43,13 +56,20 @@ export type InvoiceSettings = {
   defaultTerms: InvoiceTerms;
   invoiceNote: string;
   receiptNote: string;
+  // Show a Pay online button on emailed invoices and the customer pay page (needs Stripe).
+  onlinePayments: boolean;
+  // Offer an optional tip when a customer pays an invoice online.
+  invoiceTips: boolean;
+  // Email unpaid invoices automatically before the due date and while overdue.
+  autoReminders: boolean;
   revision: string;
 };
 
 export const defaultInvoiceSettings: InvoiceSettings = {
   businessName: "Nieman's Detailing", payableTo: "Nieman's Detailing", mailingAddress: "",
   phone: "(828) 273-3894", email: "nieman@niemansdetailing.com", website: "niemansdetailing.com", taxId: "",
-  defaultTerms: "net_30", invoiceNote: "", receiptNote: "", revision: "",
+  defaultTerms: "net_30", invoiceNote: "", receiptNote: "",
+  onlinePayments: true, invoiceTips: false, autoReminders: true, revision: "",
 };
 
 const TERMS: Record<InvoiceTerms, { label: string; days: number | null }> = {
@@ -139,6 +159,7 @@ export function parseInvoiceSettings(input: Record<string, unknown>): Omit<Invoi
     website: clean(input.website, 100), taxId: clean(input.taxId, 40),
     defaultTerms: (Object.prototype.hasOwnProperty.call(TERMS, input.defaultTerms as string) ? input.defaultTerms : "net_30") as InvoiceTerms,
     invoiceNote: clean(input.invoiceNote, 1200), receiptNote: clean(input.receiptNote, 600),
+    onlinePayments: input.onlinePayments !== false, invoiceTips: input.invoiceTips === true, autoReminders: input.autoReminders !== false,
   };
   if (!settings.businessName) throw new InvoiceError(400, "business_name_required");
   return settings;
@@ -155,4 +176,21 @@ export function invoiceTotals(invoice: Pick<InvoiceRecord, "lines" | "taxRateBas
   const balanceCents = Math.max(0, amountDueCents - paidCents);
   const lastPaymentDate = invoice.payments.map(payment => payment.date).sort().pop() ?? null;
   return { lineCents, subtotalCents, taxCents, totalCents, creditCents, amountDueCents, paidCents, balanceCents, lastPaymentDate };
+}
+
+// Automatic reminder schedule for an unpaid invoice: a heads-up 3 days before a due date that is at least
+// a week after the invoice date, then 1, 7, 14 and 30 days after it is due. Returns the latest step that has
+// arrived, so turning reminders on late sends one email, not a backlog.
+export const REMINDER_STEPS: Array<{ id: string; offset: number }> = [
+  { id: "upcoming", offset: -3 }, { id: "overdue-1", offset: 1 }, { id: "overdue-7", offset: 7 },
+  { id: "overdue-14", offset: 14 }, { id: "overdue-30", offset: 30 },
+];
+export function reminderStep(invoice: Pick<InvoiceRecord, "issueDate" | "dueDate" | "reminders">, today: string) {
+  if (!validDate(invoice.dueDate)) return null;
+  const steps = REMINDER_STEPS.filter(step => step.offset > 0 || addDays(invoice.issueDate, 7) <= invoice.dueDate);
+  const arrived = steps.filter(step => addDays(invoice.dueDate, step.offset) <= today).pop();
+  if (!arrived) return null;
+  const key = `${arrived.id}:${invoice.dueDate}`;
+  if ((invoice.reminders ?? []).some(entry => entry.key === key)) return null;
+  return { key, overdue: arrived.offset > 0, daysLate: Math.max(0, arrived.offset) };
 }

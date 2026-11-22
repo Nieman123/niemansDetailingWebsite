@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="referrer" content="no-referrer">
+  <title>Pay your invoice | Nieman's Detailing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/brand.css?v=20261120">
+  <link rel="stylesheet" href="/quote.css">
+  <link rel="stylesheet" href="/styles/appointments.css">
+  <link rel="stylesheet" href="/styles/booking.css">
+  <link rel="stylesheet" href="/styles/invoice-pay.css">
+  <script defer src="/scripts/error-report.js"></script>
+</head>
+<body class="quote-page appointment-app appointment-customer invoice-pay">
+<header class="customer-bar"><a href="/" aria-label="Nieman’s Detailing home"><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing" width="300" height="30"></a>
+<nav aria-label="Help"><a href="sms:+18282733894"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>Text Nieman</a></nav></header>
+  <main class="wrap">
+    <p class="booking-eyebrow">Invoice</p>
+    <p id="pay-status" class="appointment-notice" role="status">Opening invoice…</p>
+    <article id="invoice" class="panel" hidden>
+      <div class="pay-head">
+        <div>
+          <span id="invoice-badge" class="status-pill"></span>
+          <h1 id="invoice-title"></h1>
+          <p id="invoice-for" class="pay-sub"></p>
+        </div>
+        <div class="pay-due">
+          <span id="due-label">Amount due</span>
+          <strong id="due-amount"></strong>
+          <span id="due-date"></span>
+        </div>
+      </div>
+
+      <section id="pay-online" class="pay-box" hidden aria-labelledby="pay-heading">
+        <h2 id="pay-heading">Pay by card</h2>
+        <fieldset id="tip-options" class="tip-picker" hidden>
+          <legend>Add a tip? <small>Optional, and always appreciated</small></legend>
+          <div id="tip-picker"></div>
+        </fieldset>
+        <p id="tip-total" class="tip-total" hidden></p>
+        <button class="btn primary pay-button" id="pay-button" type="button">Pay</button>
+        <p class="pay-fine">Secure checkout by Stripe. Card, Apple Pay and Google Pay accepted.</p>
+      </section>
+      <p id="pay-message" role="status"></p>
+
+      <h2 class="pay-section">Details</h2>
+      <dl class="appointment-summary" id="invoice-facts"></dl>
+      <table class="pay-lines" id="invoice-lines"><thead><tr><th scope="col">Description</th><th scope="col">Amount</th></tr></thead><tbody></tbody></table>
+      <dl class="pay-totals" id="invoice-totals"></dl>
+      <div class="appointment-actions">
+        <button class="btn secondary" id="download-invoice" type="button">Download invoice PDF</button>
+        <button class="btn secondary" id="download-receipt" type="button" hidden>Download receipt PDF</button>
+      </div>
+    </article>
+    <p class="appointment-help"><a href="sms:+18282733894">Text Nieman</a><a href="tel:+18282733894">Call (828) 273-3894</a></p>
+  </main>
+  <script type="module" src="/scripts/invoice-pay.mjs"></script>
+</body>
+</html>

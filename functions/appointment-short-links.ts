@@ -1,18 +1,18 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomInt } from "node:crypto";
 import type { Firestore, Transaction } from "firebase-admin/firestore";
 
-// Short customer links: /a/<code> for appointments and /m/<code> for maintenance invitations.
+// Short customer links: /a/<code> for appointments, /m/<code> for maintenance invitations and /i/<code> for invoices.
 // The code is the secret. Firestore keys the row by a hash of the code and keeps the long link's
 // token sealed with a key derived from the code, so stored data alone can't open an appointment.
 // Revoking or replacing the long link also kills its short link, because the token stops working.
 
-export type ShortLinkKind = "appointment" | "maintenance";
+export type ShortLinkKind = "appointment" | "maintenance" | "invoice";
 
 const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 // 10 base62 characters is about 59 bits, far beyond online guessing.
 const LENGTH = 10;
 export const SHORT_CODE = /^[A-Za-z0-9]{10}$/;
-const PREFIX: Record<ShortLinkKind, string> = { appointment: "a", maintenance: "m" };
+const PREFIX: Record<ShortLinkKind, string> = { appointment: "a", maintenance: "m", invoice: "i" };
 const HASH = /^[a-f0-9]{64}$/;
 
 const sha = (value: string) => createHash("sha256").update(value).digest();

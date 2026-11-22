@@ -289,6 +289,45 @@ await paymentLifecycle.reconcileAppointments(db);
 assert(!(await db.collection('appointmentEmails').doc(`reminder-${upcoming.id}-${reminderStart}`).get()).exists, 'reminders go out once');
 console.log('PASS: Day-before reminders and review requests go out once.');
 
+// Unpaid balance reminders and a tip on a balance paid online.
+{
+  process.env.HOSTING_ORIGIN ??= 'https://' + projectId + '.web.app';
+  process.env.APPOINTMENT_INTEGRATIONS_PROJECT ??= projectId;
+  const owing = (await asOwner('create', { ...appointment, requestId: randomUUID(), start: start + 30 * 86_400_000, saveClientDefault: false })).result;
+  assert.equal((await asOwner('finish-job', { id: owing.id, finalCents: 20_000, scopeAccepted: true })).result.balanceCents, 20_000);
+  const owingRef = db.collection('appointments').doc(owing.id);
+  // 3 PM Eastern on a fixed day, so the daytime window always applies.
+  const afternoon = Date.parse('2026-12-02T20:00:00Z');
+  await owingRef.update({ completedAt: afternoon - 2 * 86_400_000 });
+  await paymentLifecycle.sendBalanceReminders(db, afternoon - 2 * 86_400_000 + 3_600_000);
+  assert.equal((await owingRef.get()).get('balanceRemindersSent') ?? 0, 0, 'no reminder before a day has passed');
+  await paymentLifecycle.sendBalanceReminders(db, afternoon);
+  const balanceEmail = await db.collection('appointmentEmails').doc(`balance-${owing.id}-1`).get();
+  assert(balanceEmail.exists, 'a finished job with a balance gets a reminder');
+  assert.match(balanceEmail.get('subject'), /^Balance due for your /);
+  assert.match(balanceEmail.get('text'), /\$200\.00/);
+  const payCode = /\/a\/([A-Za-z0-9]{10})/.exec(balanceEmail.get('text'))?.[1];
+  assert(payCode, 'the reminder carries a short pay link');
+  const payLink = (await post('resolve-short-link', { code: payCode, kind: 'appointment' })).result;
+  assert.equal((await post('details', payLink)).result.balanceCents, 20_000, 'the pay link opens the appointment');
+  await paymentLifecycle.sendBalanceReminders(db, afternoon + 3_600_000);
+  assert.equal((await owingRef.get()).get('balanceRemindersSent'), 1, 'one reminder per step');
+  await paymentLifecycle.sendBalanceReminders(db, afternoon - 14 * 3_600_000 + 4 * 86_400_000);
+  assert.equal((await owingRef.get()).get('balanceRemindersSent'), 1, 'no reminders at night');
+
+  await owingRef.update({ checkout: { attempt: 'tip-attempt', kind: 'balance', amount: 20_000, tipCents: 3_000, expiresAt: Date.now() + 35 * 60_000 } });
+  const tipped = { id: 'cs_test_tipped', livemode: false, status: 'complete', payment_status: 'paid', amount_total: 23_000, currency: 'usd',
+    payment_intent: 'pi_tipped', metadata: { appointmentId: owing.id, attemptId: 'tip-attempt', kind: 'balance' } };
+  await assert.rejects(paymentLifecycle.applyStripeSession(db, { ...tipped, amount_total: 20_000 }), /stripe_amount_mismatch/);
+  await paymentLifecycle.applyStripeSession(db, tipped);
+  const afterTip = (await asOwner('owner-detail', { id: owing.id })).result;
+  assert.equal(afterTip.balanceCents, 0, 'the tip does not count toward the balance');
+  assert.equal(afterTip.payments.find(entry => entry.id === 'cs_test_tipped').tipCents, 3_000);
+  assert.match((await db.collection('appointmentEmails').doc('receipt-cs_test_tipped').get()).get('text'), /Tip/);
+  assert.match((await asOwner('payment-export')).result.csv, /tip_cents[\s\S]*,20000,0,3000/);
+  console.log('PASS: Unpaid balance reminders with a pay link, and tips on balance payments.');
+}
+
 await db.collection('adminUsers').doc(stranger.localId).set({ role: 'editor' });
 assert.equal((await post('list', {}, stranger.idToken)).status, 403);
 assert.equal((await post('cms-read', {}, stranger.idToken)).status, 200);

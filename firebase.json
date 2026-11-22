@@ -155,7 +155,7 @@
         ]
       },
       {
-        "source": "/{a,m}/**",
+        "source": "/{a,m,i}/**",
         "headers": [
           { "key": "Cache-Control", "value": "no-store" },
           { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
@@ -163,7 +163,7 @@
         ]
       },
       {
-        "source": "/appointment{,.html}",
+        "source": "/{appointment,pay}{,.html}",
         "headers": [
           { "key": "Cache-Control", "value": "no-store" },
           { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
@@ -227,6 +227,10 @@
       {
         "source": "/m/*",
         "destination": "/maintenance.html"
+      },
+      {
+        "source": "/i/*",
+        "destination": "/pay.html"
       },
       {
         "source": "**",
