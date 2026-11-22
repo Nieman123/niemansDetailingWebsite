@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.stripeConfig = stripeConfig;
 exports.checkoutBranding = checkoutBranding;
 exports.createStripeSession = createStripeSession;
+exports.createInvoiceSession = createInvoiceSession;
 exports.isSessionId = isSessionId;
 exports.releaseStripeSession = releaseStripeSession;
 exports.stripeSession = stripeSession;
@@ -75,6 +76,8 @@ function checkoutSessionBody(input) {
     const lines = [
         [kind === "deposit" ? "Detailing appointment deposit" : "Detailing appointment balance", amount - tax],
         [input.taxLabel || "Sales tax", tax],
+        // A tip on a balance is extra: the session total is the amount plus the tip.
+        ["Tip", kind === "balance" ? input.tipCents ?? 0 : 0],
     ].filter(([, cents]) => cents > 0);
     const items = {};
     lines.forEach(([name, cents], index) => {
@@ -89,6 +92,7 @@ function checkoutSessionBody(input) {
         "metadata[appointmentId]": id,
         "metadata[attemptId]": attempt,
         "metadata[kind]": kind,
+        ...(kind === "balance" && input.tipCents ? { "metadata[tipCents]": String(input.tipCents) } : {}),
         "payment_intent_data[metadata][appointmentId]": id,
         "payment_intent_data[metadata][kind]": kind,
         "custom_text[submit][message]": disclosure,
@@ -96,6 +100,37 @@ function checkoutSessionBody(input) {
         success_url: `${origin}/appointment?checkout=complete`,
         cancel_url: `${origin}/appointment?checkout=back`,
     };
+}
+// Hosted Checkout for an invoice balance, plus an optional tip as its own line. Metadata carries the split so a
+// completed session can always be recorded on the invoice, even if its local reservation was lost.
+async function createInvoiceSession(config, input) {
+    const { invoiceId, attempt, origin, number, amount, tipCents, expiresAt } = input;
+    const lines = [[`Invoice ${number}`, amount], ["Tip", tipCents]];
+    const body = {
+        mode: "payment",
+        "metadata[invoiceId]": invoiceId, "metadata[attemptId]": attempt, "metadata[kind]": "invoice",
+        "metadata[amountCents]": String(amount), "metadata[tipCents]": String(tipCents),
+        "payment_intent_data[metadata][invoiceId]": invoiceId, "payment_intent_data[metadata][kind]": "invoice",
+        "payment_intent_data[description]": `Nieman's Detailing invoice ${number}`,
+        expires_at: String(Math.floor(expiresAt / 1000)),
+        success_url: `${origin}/pay?checkout=complete`,
+        cancel_url: `${origin}/pay?checkout=back`,
+        ...(input.email ? { customer_email: input.email } : {}),
+    };
+    lines.filter(([, cents]) => cents > 0).forEach(([name, cents], index) => {
+        body[`line_items[${index}][quantity]`] = "1";
+        body[`line_items[${index}][price_data][currency]`] = "usd";
+        body[`line_items[${index}][price_data][unit_amount]`] = String(cents);
+        body[`line_items[${index}][price_data][product_data][name]`] = name;
+    });
+    try {
+        return await stripeRequest(config, "checkout/sessions", { ...body, ...checkoutBranding(origin) }, `invoice-${invoiceId}-${attempt}-branded`);
+    }
+    catch (error) {
+        if (!(error instanceof Error) || !error.message.startsWith("stripe_request_400"))
+            throw error;
+        return stripeRequest(config, "checkout/sessions", body, `invoice-${invoiceId}-${attempt}`);
+    }
 }
 function isSessionId(id) {
     return ((0, appointment_secrets_1.liveMode)() ? /^cs_live_\w+$/ : /^cs_test_\w+$/).test(id);

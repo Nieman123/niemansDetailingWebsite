@@ -1,7 +1,41 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.depositWaived = depositWaived;
 exports.applyStripeSession = applyStripeSession;
+exports.sendBalanceReminders = sendBalanceReminders;
 exports.reconcileAppointments = reconcileAppointments;
 exports.handleAppointments = handleAppointments;
 exports.handleStripeWebhook = handleStripeWebhook;
@@ -774,7 +808,8 @@ function assertLink(id, token, appointment) {
         throw new AppointmentError(404, "link_unavailable");
     const hash = Buffer.from(digest(token), "hex");
     const now = Date.now();
-    const candidates = [[appointment?.linkHash, appointment?.linkExpiresAt], [appointment?.accountLinkHash, appointment?.accountLinkExpiresAt]];
+    const candidates = [[appointment?.linkHash, appointment?.linkExpiresAt], [appointment?.accountLinkHash, appointment?.accountLinkExpiresAt],
+        [appointment?.payLinkHash, appointment?.payLinkExpiresAt]];
     if (!appointment || !candidates.some(([stored, expires]) => stored && HASH.test(stored) && (expires ?? 0) > now &&
         (0, node_crypto_1.timingSafeEqual)(Buffer.from(stored, "hex"), hash))) {
         throw new AppointmentError(404, "link_unavailable");
@@ -806,7 +841,7 @@ async function readAppointment(db, id) {
 const settingsDoc = (db) => db.collection("appointmentSettings").doc("booking");
 const taxDoc = (db) => db.collection("appointmentSettings").doc("salesTax");
 const followUpDoc = (db) => db.collection("appointmentSettings").doc("followUps");
-const defaultFollowUps = { reminders: true, reviewRequests: false, reviewUrl: "", revision: "" };
+const defaultFollowUps = { reminders: true, reviewRequests: false, reviewUrl: "", balanceReminders: true, revision: "" };
 async function getFollowUpSettings(db) {
     return { ...defaultFollowUps, ...(await followUpDoc(db).get()).data() };
 }
@@ -828,7 +863,8 @@ function parseFollowUpSettings(body) {
     }
     if (reviewRequests && !reviewUrl)
         return null;
-    return { reminders, reviewRequests, reviewUrl };
+    // Older admin pages don't send this field yet; keep reminders on unless it's explicitly turned off.
+    return { reminders, reviewRequests, reviewUrl, balanceReminders: body.balanceReminders !== false };
 }
 async function getTaxSettings(db) {
     return { ...appointment_tax_1.defaultTaxSettings, ...(await taxDoc(db).get()).data() };
@@ -1171,7 +1207,7 @@ async function cancelAppointment(db, tx, id, appointment, actor, override, reaso
 const emailWhenFormat = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
 });
-const emailMoney = (cents) => `${(cents / 100).toFixed(2)}`;
+const emailMoney = (cents) => `$${(cents / 100).toFixed(2)}`;
 const LINK_HINT = "Use the appointment link from your booking email to see everything, add it to your calendar, or request a change.";
 const preparationNote = (appointment) => appointment.preparation ? { note: `Before I arrive: ${appointment.preparation}` } : {};
 // The appointment at a glance, for the details card in customer emails.
@@ -1216,8 +1252,17 @@ async function openCheckout(db, id, body) {
     const ref = db.collection("appointments").doc(id);
     const current = await readAppointment(db, id);
     assertLink(id, body.token, current);
+    // An optional tip on a balance, in cents. Deposits never take one.
+    const requestedTip = body.tipCents ?? 0;
+    if (typeof requestedTip !== "number" || !Number.isSafeInteger(requestedTip) || requestedTip < 0 || requestedTip > 100000) {
+        throw new AppointmentError(400, "invalid_tip");
+    }
     if (current.checkout?.id) {
-        const session = await (0, appointment_stripe_1.stripeSession)(config, current.checkout.id);
+        let session = await (0, appointment_stripe_1.stripeSession)(config, current.checkout.id);
+        // The customer changed the tip after opening Stripe: end that session so a new one can carry the new total.
+        if (session.status === "open" && current.checkout.kind === "balance" && (current.checkout.tipCents ?? 0) !== requestedTip) {
+            session = await (0, appointment_stripe_1.releaseStripeSession)(config, current.checkout.id);
+        }
         await applyStripeSession(db, session);
         if (session.status === "complete")
             throw new AppointmentError(409, "checkout_finished");
@@ -1238,9 +1283,14 @@ async function openCheckout(db, id, body) {
             throw new AppointmentError(409, "nothing_due");
         if (body.accepted !== true)
             throw new AppointmentError(400, "policy_acceptance_required");
+        const tipCents = deposit ? 0 : requestedTip;
+        if (tipCents > amount)
+            throw new AppointmentError(400, "invalid_tip");
         if (appointment.checkout) {
             if (!appointment.checkout.id && appointment.checkout.expiresAt <= now)
                 throw new AppointmentError(409, "checkout_too_close");
+            if ((appointment.checkout.tipCents ?? 0) !== tipCents)
+                throw new AppointmentError(409, "checkout_active");
             return appointment.checkout;
         }
         const expiresAt = Math.min(deposit ? appointment.depositDeadline ?? 0 : Infinity, now + CHECKOUT_WINDOW);
@@ -1253,6 +1303,7 @@ async function openCheckout(db, id, body) {
             attempt: (0, node_crypto_1.randomBytes)(16).toString("hex"), kind, expiresAt, amount, origin, holdUntil: now + CHECKOUT_HOLD,
             disclosure: deposit ? DEPOSIT_POLICY : "Pay the outstanding balance for your completed detail.",
             ...(taxCents > 0 ? { taxCents, taxLabel: (0, appointment_tax_1.taxLineLabel)(appointment.taxRateBasisPoints ?? 0) } : {}),
+            ...(tipCents > 0 ? { tipCents } : {}),
         };
         tx.update(ref, { checkout, reconcileAt: checkout.holdUntil,
             ...(deposit ? { policyVersion: POLICY_VERSION, acceptedPolicy: DEPOSIT_POLICY, acceptedAt: now } : {}),
@@ -1263,7 +1314,7 @@ async function openCheckout(db, id, body) {
         ? await (0, appointment_stripe_1.stripeSession)(config, reservation.id)
         : await (0, appointment_stripe_1.createStripeSession)(config, { id, ...reservation });
     if (session.livemode !== (0, appointment_secrets_1.liveMode)() || session.metadata.appointmentId !== id || session.metadata.attemptId !== reservation.attempt ||
-        session.amount_total !== reservation.amount || session.currency !== "usd")
+        session.amount_total !== reservation.amount + (reservation.tipCents ?? 0) || session.currency !== "usd")
         throw new Error("stripe_checkout_mismatch");
     await db.runTransaction(async (tx) => {
         const latest = (await tx.get(ref)).data();
@@ -1286,8 +1337,9 @@ async function applyStripeSession(db, session) {
         const checkout = appointment?.checkout;
         if (!appointment || !checkout || checkout.attempt !== session.metadata.attemptId || (checkout.id && checkout.id !== session.id))
             return;
-        if (session.currency !== "usd" || session.amount_total !== checkout.amount || session.metadata.kind !== checkout.kind)
+        if (session.currency !== "usd" || session.amount_total !== checkout.amount + (checkout.tipCents ?? 0) || session.metadata.kind !== checkout.kind) {
             throw new Error("stripe_amount_mismatch");
+        }
         const now = Date.now();
         if (session.status === "expired") {
             tx.update(ref, { checkout: null, reconcileAt: checkout.kind === "deposit" ? appointment.depositDeadline : null });
@@ -1297,17 +1349,19 @@ async function applyStripeSession(db, session) {
             return;
         const ledger = ref.collection("ledger").doc(session.id);
         tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: (0, appointment_secrets_1.liveMode)(),
-            ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}) });
+            ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}), ...(checkout.tipCents ? { tipCents: checkout.tipCents } : {}) });
         if (checkout.kind === "balance") {
             const entry = { id: session.id, amount: checkout.amount, method: "stripe", at: now, by: "stripe", reference: session.payment_intent,
-                ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}) };
+                ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}), ...(checkout.tipCents ? { tipCents: checkout.tipCents } : {}) };
             const paid = { ...appointment, payments: [...(appointment.payments ?? []), entry] };
             tx.update(ref, { checkout: null, reconcileAt: null, payments: paid.payments });
             queueOptedInMaintenance(db, tx, id, paid);
             (0, appointment_email_1.queueAppointmentEmail)(db, tx, `receipt-${session.id}`, appointment.email, "Detailing payment received", {
                 eyebrow: "Receipt", heading: "Payment received. Thank you!",
-                paragraphs: [`I received your payment of ${emailMoney(checkout.amount)}. It was a pleasure taking care of your ${appointment.vehicle || "vehicle"}.`],
-                details: [...invoiceFacts(appointment), ["Paid", emailMoney(checkout.amount)], ...emailFacts(appointment)],
+                paragraphs: [`I received your payment of ${emailMoney(checkout.amount + (checkout.tipCents ?? 0))}. ${checkout.tipCents ? "Thank you so much for the tip! " : ""}It was a pleasure taking care of your ${appointment.vehicle || "vehicle"}.`],
+                details: [...invoiceFacts(appointment), ["Paid", emailMoney(checkout.amount)],
+                    ...(checkout.tipCents ? [["Tip", emailMoney(checkout.tipCents)], ["Total charged", emailMoney(checkout.amount + checkout.tipCents)]] : []),
+                    ...emailFacts(appointment)],
                 action: { label: "Book your next detail", url: `${(0, appointment_email_template_1.emailSiteOrigin)()}/quote` },
             });
         }
@@ -1408,6 +1462,51 @@ async function sendFollowUps(db, now) {
         }
     }
 }
+// Days after a finished job that an unpaid balance gets a reminder email, and the daytime window they go out in.
+const BALANCE_REMINDER_DAYS = [1, 4, 10];
+const easternHour = (time) => Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(time));
+async function sendBalanceReminders(db, now) {
+    const hour = easternHour(now);
+    if (hour < 9 || hour >= 19)
+        return;
+    const collection = db.collection("appointments");
+    const finished = await collection.where("completedAt", ">=", now - 30 * DAY).where("completedAt", "<=", now - DAY).orderBy("completedAt").limit(60).get();
+    for (const doc of finished.docs) {
+        const appointment = doc.data();
+        const sent = appointment.balanceRemindersSent ?? 0;
+        const step = BALANCE_REMINDER_DAYS[sent];
+        const balance = remainingBalance(appointment) ?? 0;
+        if (step === undefined || appointment.status !== "completed" || !appointment.email || !appointment.completedAt || balance < 50 ||
+            appointment.paymentReview || hasPendingCheck(appointment) || appointment.checkout || now < appointment.completedAt + step * DAY)
+            continue;
+        // An open invoice for this job sends its own reminders.
+        const invoiced = await db.collection("invoices").where("source.appointmentId", "==", doc.id).where("status", "==", "open").limit(1).get();
+        if (!invoiced.empty)
+            continue;
+        await db.runTransaction(async (tx) => {
+            const latest = (await tx.get(doc.ref)).data();
+            const owed = latest ? remainingBalance(latest) ?? 0 : 0;
+            if (!latest || latest.status !== "completed" || (latest.balanceRemindersSent ?? 0) !== sent || owed < 50 || latest.checkout ||
+                latest.paymentReview || hasPendingCheck(latest))
+                return;
+            // A fresh link that opens the appointment, so the email works even if the booking link has expired.
+            const token = (0, node_crypto_1.randomBytes)(32).toString("hex");
+            const url = checkoutOrigin() + (0, appointment_short_links_1.shortLinkPath)("appointment", (0, appointment_short_links_1.createShortLink)(db, tx, "appointment", doc.id, token));
+            tx.update(doc.ref, { payLinkHash: digest(token), payLinkExpiresAt: now + 30 * DAY, balanceRemindersSent: sent + 1, balanceReminderAt: now });
+            const first = latest.name.split(" ")[0] || "there";
+            const when = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "long", day: "numeric" }).format(latest.start);
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `balance-${doc.id}-${sent + 1}`, latest.email, `Balance due for your ${when} detail`, {
+                eyebrow: "Balance reminder", heading: `${emailMoney(owed)} balance due`,
+                paragraphs: [sent === 0
+                        ? `Hi ${first}, thanks again for having me detail your ${latest.vehicle || "vehicle"} on ${when}. There's a balance of ${emailMoney(owed)} left on the job.`
+                        : `Hi ${first}, a friendly reminder that ${emailMoney(owed)} is still due for your ${when} detail.`,
+                    "You can pay securely online by card in about a minute. If you've already paid another way, text me and I'll update it."],
+                details: [...invoiceFacts(latest), ["Balance due", emailMoney(owed)], ["Service", latest.service]],
+                action: { label: "Pay balance", url },
+            });
+        });
+    }
+}
 async function reconcileAppointments(db) {
     const config = await (0, appointment_stripe_1.stripeConfig)();
     const now = Date.now();
@@ -1496,6 +1595,8 @@ async function reconcileAppointments(db) {
         }
     }
     await sendFollowUps(db, now).catch(error => (0, ops_health_1.recordOpsEvent)(db, { source: "email", code: "follow_ups_failed", detail: error instanceof Error ? error.message : String(error) }));
+    if ((await getFollowUpSettings(db)).balanceReminders)
+        await sendBalanceReminders(db, now).catch(error => (0, ops_health_1.recordOpsEvent)(db, { source: "email", code: "balance_reminders_failed", detail: error instanceof Error ? error.message : String(error) }));
     await (0, ops_health_1.pruneOpsEvents)(db, now).catch(() => undefined);
     if (!config)
         return;
@@ -1878,11 +1979,11 @@ async function handleAppointments(db, auth, req, res, action) {
                     throw new AppointmentError(400, "export_range_too_large");
                 const cell = (value) => `"${String(value ?? "").replace(/^[=+@\-\s]/, match => "'" + match).replace(/"/g, '""')}"`;
                 const rows = records.docs.map(row => {
-                    const { at, kind, method, amount, by, reference, status, clearance, taxCents } = row.data();
+                    const { at, kind, method, amount, by, reference, status, clearance, taxCents, tipCents } = row.data();
                     return [row.ref.parent.parent?.id, row.id, new Date(at).toISOString(), kind ?? "manual_payment", method, status ?? clearance ?? "recorded",
-                        by, reference].map(cell).join(",") + `,${Number.isSafeInteger(amount) ? amount : ""},${Number.isSafeInteger(taxCents) ? taxCents : 0}`;
+                        by, reference].map(cell).join(",") + `,${Number.isSafeInteger(amount) ? amount : ""},${Number.isSafeInteger(taxCents) ? taxCents : 0},${Number.isSafeInteger(tipCents) ? tipCents : 0}`;
                 });
-                result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents,tax_cents", ...rows].join("\r\n") };
+                result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents,tax_cents,tip_cents", ...rows].join("\r\n") };
             }
             else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "save-notes", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite", "update-services"].includes(action)) {
                 result = await changeAppointment(db, uid, identifier(body.id), action, body);
@@ -1942,8 +2043,14 @@ async function handleStripeWebhook(db, req, res) {
         }
         const sessionId = event.data.object.id;
         await receipt.set({ sessionId, type: event.type, receivedAt: Date.now() }, { merge: true });
-        if (checkoutEvent)
-            await applyStripeSession(db, await (0, appointment_stripe_1.stripeSession)(config, sessionId));
+        if (checkoutEvent) {
+            const session = await (0, appointment_stripe_1.stripeSession)(config, sessionId);
+            // Invoice payments from the /pay page share this webhook endpoint.
+            if (session.metadata?.invoiceId)
+                await (await Promise.resolve().then(() => __importStar(require("./invoice-payments")))).applyInvoiceSession(db, session);
+            else
+                await applyStripeSession(db, session);
+        }
         else {
             const change = await (0, appointment_stripe_1.stripeMoneyChange)(config, event);
             if (change && HASH.test(change.appointmentId)) {

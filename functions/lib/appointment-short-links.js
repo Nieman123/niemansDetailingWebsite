@@ -8,7 +8,7 @@ const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 // 10 base62 characters is about 59 bits, far beyond online guessing.
 const LENGTH = 10;
 exports.SHORT_CODE = /^[A-Za-z0-9]{10}$/;
-const PREFIX = { appointment: "a", maintenance: "m" };
+const PREFIX = { appointment: "a", maintenance: "m", invoice: "i" };
 const HASH = /^[a-f0-9]{64}$/;
 const sha = (value) => (0, node_crypto_1.createHash)("sha256").update(value).digest();
 const rowId = (code) => sha(`short-link:${code}`).toString("hex");

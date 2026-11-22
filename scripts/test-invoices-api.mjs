@@ -116,4 +116,102 @@ const list = await as('list');
 assert.equal(list.result.invoices.length, 2);
 assert.equal(list.result.invoices.find(row => row.id === id).balanceCents, 100000);
 assert.equal((await as('get', { id: 'missing' })).error, 'invoice_not_found');
+// ---- Online payments: pay links, the customer pay page, Stripe sessions and reminders ----
+assert.equal((await as('settings')).result.settings.autoReminders, true, 'reminders default on');
+assert.equal((await as('pay-link', { id })).error, 'online_payments_unavailable', 'no Stripe in the emulator');
+// The rest drives the server code directly, with Stripe and email configured through the emulator env.
+process.env.FUNCTIONS_EMULATOR = 'true';
+process.env.HOSTING_ORIGIN = `https://${projectId}.web.app`;
+process.env.APPOINTMENT_INTEGRATIONS_PROJECT = projectId;
+process.env.APPOINTMENT_STRIPE_CONFIG = JSON.stringify({ secretKey: 'sk_test_fixture', webhookSecret: 'whsec_fixture' });
+process.env.APPOINTMENT_EMAIL_CONFIG = JSON.stringify({ apiKey: 're_fixture', from: 'Billing <billing@example.test>', testRecipients: ['late@example.test', 'ap@acme.test'] });
+const payments = (await import('../functions/lib/invoice-payments.js')).default;
+const sentMail = [];
+const originalFetch = globalThis.fetch;
+globalThis.fetch = (url, init) => {
+  if (String(url) === 'https://api.resend.com/emails') { sentMail.push(JSON.parse(init.body)); return Promise.resolve(Response.json({ id: 'email' })); }
+  return originalFetch(url, init);
+};
+async function pay(action, data) {
+  const response = await fetch(`${apiBase}/api/pay/${action}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: origin }, body: JSON.stringify(data), signal: AbortSignal.timeout(45_000) });
+  return { status: response.status, ...(await response.json()) };
+}
+try {
+  const invoiceDoc = db.collection('invoices').doc(id);
+  const link = await db.runTransaction(async tx => {
+    const minted = payments.mintPayLink(db, tx, id, (await tx.get(invoiceDoc)).data());
+    tx.update(invoiceDoc, { payLinks: minted.payLinks });
+    return minted;
+  });
+  const code = /\/i\/([A-Za-z0-9]{10})$/.exec(link.url)?.[1];
+  assert(code, `pay links are short: ${link.url}`);
+  assert(!JSON.stringify((await invoiceDoc.get()).data()).includes(code), 'the code is not stored');
+  const resolved = await pay('resolve', { code });
+  assert.equal(resolved.result.id, id);
+  const customer = await pay('details', resolved.result);
+  assert.equal(customer.status, 200, JSON.stringify(customer));
+  assert.equal(customer.result.number, '2026-0001');
+  assert.equal(customer.result.totals.balanceCents, 100000);
+  assert.equal(customer.result.payOnline, false, 'the emulator function process has no Stripe');
+  assert(!('payLinks' in customer.result) && !JSON.stringify(customer).includes('createdBy'), 'owner fields stay private');
+  assert.equal((await pay('details', { id, token: 'f'.repeat(64) })).error, 'link_unavailable');
+  assert.equal((await pay('details', { id: second_id, token: resolved.result.token })).error, 'link_unavailable', 'a link opens only its invoice');
+  assert.equal(Buffer.from((await pay('pdf', { ...resolved.result, kind: 'invoice' })).result.pdf, 'base64').subarray(0, 5).toString(), '%PDF-');
+  assert.equal((await pay('checkout', { ...resolved.result, tipCents: 0 })).error, 'stripe_unavailable');
+  assert.equal((await as('get', { id })).result.payLinks, undefined, 'admin views omit link hashes');
+
+  // A paid Checkout session is recorded once, with the tip kept off the balance.
+  const session = { id: 'cs_test_invoice_paid', livemode: false, status: 'complete', payment_status: 'paid', amount_total: 101500, currency: 'usd',
+    payment_intent: 'pi_invoice', url: null, metadata: { invoiceId: id, attemptId: 'lost-reservation', kind: 'invoice', amountCents: '100000', tipCents: '1500' } };
+  await assert.rejects(payments.applyInvoiceSession(db, { ...session, amount_total: 100000 }), /stripe_amount_mismatch/);
+  await Promise.all([payments.applyInvoiceSession(db, session), payments.applyInvoiceSession(db, session)]);
+  const paidOnline = (await as('get', { id })).result;
+  assert.equal(paidOnline.status, 'paid');
+  assert.equal(paidOnline.payments.filter(entry => entry.id === session.id).length, 1);
+  assert.equal(paidOnline.payments.at(-1).method, 'stripe');
+  assert.equal(paidOnline.payments.at(-1).tipCents, 1500);
+  assert.equal(paidOnline.totals.balanceCents, 0);
+  assert.equal(paidOnline.nextReminder, null, 'paid invoices get no reminders');
+  assert(sentMail.some(mail => mail.to[0] === 'ap@acme.test' && /^Receipt for invoice 2026-0001/.test(mail.subject) && mail.attachments?.length), 'a receipt is emailed');
+  assert.equal((await pay('details', resolved.result)).result.payments.at(-1).tipCents, 1500);
+  const receipt = await pay('pdf', { ...resolved.result, kind: 'receipt' });
+  assert.match(receipt.result.filename, /Receipt-2026-0001/);
+
+  // Reminders: an invoice 5 days past due gets one, with a fresh pay link and the PDF.
+  const day = ms => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms);
+  const issued = day(Date.now() - 20 * 86_400_000);
+  const late = await as('create', { requestId: randomUUID(), source: { kind: 'custom' }, draft: { ...draft, billTo: { ...draft.billTo, name: 'Late Payer LLC', email: 'late@example.test' }, issueDate: issued, terms: 'net_15' } });
+  assert.equal(late.result.nextReminder.overdue, true);
+  assert.equal(late.result.nextReminder.date, day(Date.now()), 'the first past-due reminder is due today');
+  const mailBefore = sentMail.length;
+  await payments.sendInvoiceReminders(db);
+  const reminderMail = sentMail.slice(mailBefore).find(mail => mail.to[0] === 'late@example.test');
+  assert(reminderMail, 'the past-due invoice got a reminder');
+  assert.match(reminderMail.subject, /^Past due: invoice /);
+  assert.match(reminderMail.html, new RegExp(`https://${projectId}\\.web\\.app/i/[A-Za-z0-9]{10}`));
+  assert.equal(reminderMail.attachments.length, 1);
+  const lateAfter = (await as('get', { id: late.result.id })).result;
+  assert.equal(lateAfter.reminders.length, 1);
+  assert.equal(lateAfter.emails.at(-1).kind, 'reminder');
+  assert.equal(lateAfter.nextReminder.date > day(Date.now()), true, 'the next one is later');
+  const mailAgain = sentMail.length;
+  await payments.sendInvoiceReminders(db);
+  assert.equal(sentMail.slice(mailAgain).filter(mail => mail.to[0] === 'late@example.test').length, 0, 'each reminder goes out once');
+  const paused = await as('pause-reminders', { id: late.result.id, paused: true });
+  assert.equal(paused.result.remindersPaused, true);
+  assert.equal(paused.result.nextReminder, null);
+
+  // An abandoned checkout is cleared by the reconcile job.
+  await db.collection('invoices').doc(late.result.id).update({ checkout: { attempt: 'abandoned', amount: 100, tipCents: 0, expiresAt: Date.now() - 60_000 }, checkoutReconcileAt: Date.now() - 1 });
+  await payments.reconcileInvoiceCheckouts(db);
+  assert.equal((await db.collection('invoices').doc(late.result.id).get()).get('checkout'), null);
+
+  // Settings keep the online toggles.
+  const current = (await as('settings')).result.settings;
+  const toggled = await as('save-settings', { ...current, invoiceTips: true, autoReminders: false, revision: current.revision });
+  assert.equal(toggled.result.settings.invoiceTips, true);
+  assert.equal(toggled.result.settings.autoReminders, false);
+  assert.equal(toggled.result.settings.onlinePayments, true);
+  console.log('Invoice online payment, pay link and reminder checks passed.');
+} finally { globalThis.fetch = originalFetch; }
 console.log('Invoice API checks passed.');
