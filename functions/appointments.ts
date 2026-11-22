@@ -13,12 +13,13 @@ import { liveMode } from "./appointment-secrets";
 import { emailSiteOrigin } from "./appointment-email-template";
 import { ContentError, manageSiteContent, publicSiteContent } from "./appointment-content";
 import { busyWindows, calendarConfig, mirrorAppointment } from "./appointment-calendar";
-import { bookingPrices, bookingSlots, bookingVehicle, businessHours, easternDate, emptyBookingSettings, parseBookingSettings, type BookingSettings } from "./appointment-booking";
+import { bookingPrices, bookingSlots, bookingVehicle, businessHours, easternDate, emptyBookingSettings, parseBookingSettings, type BookingService, type BookingSettings } from "./appointment-booking";
 import {
   createStripeSession, findCheckoutAttempt, isSessionId, releaseStripeSession, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
   type StripeSession,
 } from "./appointment-stripe";
 import { bookingIdFor, clientChanges, clientEmail, findClientForJob, saveJobToClient, type ClientJob } from "./appointment-clients";
+import { ItemError, catalogItems, itemInvoiceLines, itemSummary, itemsOf, parseOwnerItems, type AppointmentItem } from "./appointment-items";
 import { defaultTaxSettings, parseTaxSettings, taxLineLabel, taxOn, taxPortion, taxRateLabel, type TaxSettings } from "./appointment-tax";
 
 const DAY = 86_400_000;
@@ -56,6 +57,8 @@ type Appointment = {
   address: string;
   service: string;
   vehicle: string;
+  // The services on this booking, each for one vehicle. Older appointments have none: see itemsOf.
+  items?: AppointmentItem[];
   preparation: string;
   start: number;
   end: number;
@@ -138,6 +141,14 @@ class AppointmentError extends Error {
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
 const text = (value: unknown, max: number) => typeof value === "string" ? value.trim().slice(0, max) : "";
 
+// Item validation lives in its own module; report its failures the way every other input check does.
+function readItems<T>(parse: () => T): T {
+  try { return parse(); } catch (error) {
+    if (error instanceof ItemError) throw new AppointmentError(400, error.code);
+    throw error;
+  }
+}
+
 function identifier(value: unknown, optional = false): string | null {
   if (optional && (value == null || value === "")) return null;
   if (typeof value !== "string" || !ID.test(value)) throw new AppointmentError(400, "invalid_identifier");
@@ -169,9 +180,13 @@ function buildAppointment(body: Record<string, unknown>, uid: string, now: numbe
   const service = text(body.service, 150) || "Detailing appointment";
   if (body.deposit !== "required" && body.deposit !== "waived") throw new AppointmentError(400, "invalid_deposit");
   const waived = body.deposit === "waived";
+  // Several services or vehicles: the summary replaces the single service and vehicle fields.
+  const items = body.items === undefined ? undefined : readItems(() => parseOwnerItems(body.items));
+  const summary = items ? itemSummary(items) : null;
   return {
     clientId: identifier(body.clientId, true), leadId: identifier(body.leadId, true),
-    ...contact, service, preparation: text(body.preparation, 1500),
+    ...contact, service: summary?.service ?? service, ...(summary ? { vehicle: summary.vehicle || contact.vehicle, items } : {}),
+    preparation: text(body.preparation, 1500),
     start, end: start + minutes * 60_000, estimateCents: estimate,
     depositCents: waived ? 0 : DEPOSIT_CENTS, status: waived ? "confirmed" : "draft",
     createdAt: now, createdBy: uid,
@@ -221,6 +236,7 @@ function customerDetails(appointment: Appointment) {
   const { service, vehicle, address, preparation, start, end, estimateCents, depositCents, status } = appointment;
   const paidDeposit = appointment.refund?.state === "succeeded" ? 0 : appointment.paidDeposit ?? 0;
   return { service, vehicle, address, preparation, start, end, estimateCents, depositCents, status, paidDeposit, hasEmail: !!appointment.email,
+    items: itemsOf(appointment),
     refundState: appointment.refund?.state ?? null,
     paymentPending: hasPendingCheck(appointment),
     finalCents: appointment.finalCents ?? null, balanceCents: remainingBalance(appointment),
@@ -477,6 +493,20 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
   } else if ((action === "approve" || (action === "issue-link" && previous.status === "draft" && stripe)) && !previous.overlapApproved) {
     await assertCalendarOpen(previous, id);
   }
+  // Adding or removing services can change how long the appointment runs; a longer one is checked for conflicts.
+  let serviceChange: { items: AppointmentItem[]; end: number; estimateCents: number | null } | undefined;
+  if (action === "update-services") {
+    const items = readItems(() => parseOwnerItems(body.items));
+    const minutes = body.durationMinutes ?? itemSummary(items).minutes;
+    if (typeof minutes !== "number" || !Number.isInteger(minutes) || minutes < 15 || minutes > 7 * 1440) throw new AppointmentError(400, "invalid_time");
+    const estimate = body.estimateCents === undefined ? itemSummary(items).estimateCents : body.estimateCents;
+    if (estimate !== null && (typeof estimate !== "number" || !Number.isSafeInteger(estimate) || estimate < 0 || estimate > 10_000_000)) {
+      throw new AppointmentError(400, "invalid_price");
+    }
+    const end = previous.start + minutes * MINUTE;
+    if (end > previous.end && previous.status !== "draft" && !allowOverlap) await assertCalendarOpen({ ...previous, end }, id);
+    serviceChange = { items, end, estimateCents: estimate as number | null };
+  }
   return db.runTransaction(async tx => {
     const appointment = (await tx.get(ref)).data() as Appointment | undefined;
     if (!appointment) throw new AppointmentError(404, "record_not_found");
@@ -487,8 +517,28 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
       if (!expected || Object.keys(contact).some(key => expected[key] !== appointment[key as keyof typeof contact])) {
         throw new AppointmentError(409, "status_changed");
       }
-      tx.update(ref, { ...contact, ...calendarUpdate(now) });
-      return adminDetails(id, { ...appointment, ...contact });
+      // With one vehicle on the booking, its items follow the edited vehicle description.
+      const items = appointment.items && new Set(appointment.items.map(item => item.vehicleIndex)).size === 1 && contact.vehicle !== appointment.vehicle
+        ? appointment.items.map(item => ({ ...item, vehicle: contact.vehicle })) : undefined;
+      const change = { ...contact, ...(items ? { items, service: itemSummary(items).service } : {}) };
+      tx.update(ref, { ...change, ...calendarUpdate(now) });
+      return adminDetails(id, { ...appointment, ...change });
+    }
+    if (action === "update-services") {
+      if (!["draft", "awaiting_deposit", "pending_approval", "confirmed", "in_progress"].includes(appointment.status) ||
+          appointment.end !== previous.end || appointment.start !== previous.start) throw new AppointmentError(409, "status_changed");
+      const { items, end, estimateCents } = serviceChange!;
+      const summary = itemSummary(items);
+      const update = { items, service: summary.service, vehicle: summary.vehicle || appointment.vehicle, estimateCents, end,
+        ...(end !== appointment.end && appointment.linkHash ? { linkExpiresAt: end + 30 * DAY } : {}),
+        ...(end !== appointment.end && allowOverlap ? { overlapApproved: true } : {}),
+        ...calendarUpdate(now) };
+      if (end !== appointment.end && appointment.status !== "draft") {
+        await updateReservation(db, tx, reservationFor(id, { ...appointment, end }), false, now, reservationFor(id, appointment), allowOverlap);
+      }
+      tx.create(ref.collection("history").doc(), { kind: "services", from: appointment.service, to: summary.service, at: now, by: uid });
+      tx.update(ref, update);
+      return adminDetails(id, { ...appointment, ...update });
     }
     if (action === "offer-alternate") {
       if (!newStart || appointment.status !== "pending_approval" || appointment.start <= now || appointment.start !== previous.start) {
@@ -577,7 +627,10 @@ async function changeAppointment(db: Firestore, uid: string, id: string, action:
         if (appointment.estimateCents !== null && final > appointment.estimateCents && (!work.scopeChanges || body.scopeAccepted !== true)) {
           throw new AppointmentError(400, "scope_acceptance_required");
         }
-        const supplied = body.invoiceLines ?? [{ description: appointment.service, cents: final }];
+        // Without itemized lines, bill each booked service on its own line when they add up to the total.
+        const itemLines = appointment.items && appointment.items.length > 1 ? itemInvoiceLines(appointment.items) : null;
+        const supplied = body.invoiceLines ?? (itemLines && itemLines.reduce((total, line) => total + line.cents, 0) === final
+          ? itemLines : [{ description: appointment.service, cents: final }]);
         if (!Array.isArray(supplied) || !supplied.length || supplied.length > 30 ||
             !supplied.every(item => item && text(item.description, 140) && Number.isSafeInteger(item.cents) && Math.abs(item.cents) <= 10_000_000) ||
             supplied.reduce((total, item) => total + item.cents, 0) !== final) throw new AppointmentError(400, "invalid_line_items");
@@ -852,6 +905,13 @@ async function getAvailability(db: Firestore, body: Record<string, unknown>, own
   const configured = await getSettings(db);
   const settings = owner ? { ...configured, enabled: true, minimumHours: body.deposit === "required" ? 0.6 : 0 } : configured;
   let service = settings.services.find(item => item.id === body.serviceId);
+  // A booking with add-ons or more vehicles needs a slot long enough for all of them.
+  if (Array.isArray(body.serviceIds) && !moving && !owner) {
+    const ids = body.serviceIds;
+    const chosen = ids.map(id => settings.services.find(item => item.id === id));
+    if (!ids.length || ids.length > 8 || chosen.some(item => !item)) throw new AppointmentError(400, "invalid_items");
+    service = { id: "", name: "", cents: 0, duration: chosen.reduce((total, item) => total + item!.duration, 0) };
+  }
   if (moving) service = { id: "", name: "", cents: 0, duration: moving.minutes };
   else if (owner) {
     const duration = body.durationMinutes;
@@ -1008,20 +1068,26 @@ async function publicBooking(db: Firestore, auth: Auth, req: Request, body: Reco
   if (!email) throw new AppointmentError(400, "email_required");
   const quote = await bookingQuote(db, body.quoteReceipt);
   if (body.reuseQuoteContact === true && !quote?.phoneEnding) throw new AppointmentError(409, "quote_contact_expired");
-  const vehicleType = bookingVehicle(body.vehicleType);
-  const prices = bookingPrices(service);
-  if ((body.vehicleType && !vehicleType) || (!vehicleType && new Set(Object.values(prices)).size > 1)) {
-    throw new AppointmentError(400, "vehicle_required");
-  }
-  const quotedPrice = quote && quote.service === service.id && quote.vehicle === vehicleType ? quote.estimateCents : null;
+  // The first item is the main service; add-ons and other vehicles follow. Older pages send one service.
+  const rows = Array.isArray(body.items) ? body.items
+    : [{ serviceId: service.id, vehicleType: body.vehicleType, vehicle: body.vehicle, vehicleIndex: 0 }];
+  const { items: chosen, services: chosenServices } = readItems(() => catalogItems(rows, settings.services));
+  if (chosen[0].serviceId !== service.id || chosen[0].vehicleIndex !== 0) throw new AppointmentError(400, "invalid_items");
+  // A saved quote's price replaces the catalog price for the service and vehicle it was quoted for.
+  const items = chosen.map((item, index) => index === 0 && quote && quote.service === item.serviceId && quote.vehicle === item.vehicleType && quote.estimateCents !== null
+    ? { ...item, cents: quote.estimateCents } : item);
+  const summary = itemSummary(items);
+  const booked: BookingService = { ...service, duration: chosenServices.reduce((total, item) => total + item.duration, 0) };
   const waived = await depositWaived(db, customer);
   const appointment = buildAppointment({
     ...body, address: `${text(body.address, 390)} ${postalCode}`,
     ...(body.reuseQuoteContact === true ? { name: quote!.name, phone: quote!.phone } : {}),
-    clientId: null, leadId: quote?.id ?? null, email, service: service.name,
-    durationMinutes: service.duration, estimateCents: quotedPrice ?? prices[vehicleType ?? "sedan"], deposit: waived ? "waived" : "required",
+    // The customer's rows were checked against the catalog above; the priced items are attached below.
+    clientId: null, leadId: quote?.id ?? null, email, service: summary.service, vehicle: summary.vehicle, items: undefined,
+    durationMinutes: summary.minutes, estimateCents: summary.estimateCents, deposit: waived ? "waived" : "required",
   }, customer?.uid ?? "guest", Date.now(), true);
-  if (!bookingSlots(settings, easternDate(appointment.start), service, Date.now()).includes(appointment.start)) {
+  Object.assign(appointment, { service: summary.service, vehicle: summary.vehicle, items });
+  if (!bookingSlots(settings, easternDate(appointment.start), booked, Date.now()).includes(appointment.start)) {
     throw new AppointmentError(409, "time_unavailable");
   }
   appointment.bufferMinutes = settings.bufferMinutes;
@@ -1042,7 +1108,7 @@ async function publicBooking(db: Firestore, auth: Auth, req: Request, body: Reco
     }
     const latest = (await tx.get(settingsDoc(db))).data() as BookingSettings | undefined;
     if (!latest?.enabled || latest.revision !== settings.revision ||
-        !bookingSlots(latest, easternDate(appointment.start), service, Date.now()).includes(appointment.start)) {
+        !bookingSlots(latest, easternDate(appointment.start), booked, Date.now()).includes(appointment.start)) {
       throw new AppointmentError(409, "time_unavailable");
     }
     const now = Date.now();
@@ -1824,7 +1890,7 @@ export async function handleAppointments(db: Firestore, auth: Auth, req: Request
             by, reference].map(cell).join(",") + `,${Number.isSafeInteger(amount) ? amount : ""},${Number.isSafeInteger(taxCents) ? taxCents : 0},${Number.isSafeInteger(tipCents) ? tipCents : 0}`;
         });
         result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents,tax_cents,tip_cents", ...rows].join("\r\n") };
-      } else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "save-notes", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite"].includes(action)) {
+      } else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "save-notes", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite", "update-services"].includes(action)) {
         result = await changeAppointment(db, uid, identifier(body.id)!, action, body);
       } else throw new AppointmentError(404, "not_found");
     }

@@ -14,6 +14,16 @@ import { friendlyDate, invoicePdf, type PdfKind } from "./invoice-pdf";
 import { sendEmailNow } from "./appointment-email";
 import { recordOpsEvent } from "./ops-health";
 import { mintPayLink, nextReminder, onlinePaymentsReady } from "./invoice-payments";
+import { itemInvoiceLines, type AppointmentItem } from "./appointment-items";
+
+// A booking with several services starts its invoice with one line per service, when those add up to the amount owed.
+function bookedLines(appointment: { items?: AppointmentItem[]; finalCents?: number; estimateCents?: number | null }) {
+  if (!Array.isArray(appointment.items) || appointment.items.length < 2) return null;
+  const lines = itemInvoiceLines(appointment.items);
+  const owed = appointment.finalCents ?? appointment.estimateCents;
+  if (typeof owed === "number" && lines.reduce((total, line) => total + line.cents, 0) !== owed) return null;
+  return lines.map(line => ({ description: line.description, quantity: 1, unitCents: line.cents }));
+}
 
 const ID = /^[\w-]{1,128}$/;
 const settingsRef = (db: Firestore) => db.collection("invoiceSettings").doc("business");
@@ -98,7 +108,7 @@ async function invoiceContext(db: Firestore, body: Record<string, unknown>) {
     draft.serviceDetail = [[appointment.service, VEHICLES[appointment.vehicle] ?? appointment.vehicle].filter(Boolean).join(" · "), appointment.address].filter(Boolean).join("\n");
     const lines = Array.isArray(appointment.invoiceLines) && appointment.invoiceLines.length
       ? appointment.invoiceLines.map((line: { description: string; cents: number }) => ({ description: line.description, quantity: 1, unitCents: line.cents }))
-      : [{ description: appointment.service || "Detailing service", quantity: 1, unitCents: appointment.finalCents ?? appointment.estimateCents ?? 0 }];
+      : bookedLines(appointment) ?? [{ description: appointment.service || "Detailing service", quantity: 1, unitCents: appointment.finalCents ?? appointment.estimateCents ?? 0 }];
     draft.lines = lines;
     if (appointment.finalCents !== undefined) draft.taxRateBasisPoints = appointment.taxCents ? appointment.taxRateBasisPoints ?? tax.rateBasisPoints : 0;
     const deposit = appointment.refund?.state === "succeeded" ? 0 : appointment.paidDeposit ?? 0;

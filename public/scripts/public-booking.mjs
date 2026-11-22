@@ -3,13 +3,14 @@ import { slotPicker } from "./slot-picker.mjs";
 import { servicePicker } from "./service-picker.mjs";
 import { appointmentRequest, appointmentMoney, appointmentTime, durationLabel, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
 import { rememberBooking } from "./booking-analytics.mjs";
+import { bookingExtras, priceRange } from "./booking-extras.mjs";
 
 const el = id => document.getElementById(id);
 const form = el("public-booking");
 const fields = form.elements;
 const state = el("booking-state");
 const retry = el("booking-retry");
-let options, quote, quoteReceipt, service, start, calendar, picker;
+let options, quote, quoteReceipt, service, start, calendar, picker, extras;
 let saving = false;
 let reuseQuoteContact = false;
 // A signed-in returning customer books without a deposit; the server decides and enforces it.
@@ -25,8 +26,19 @@ const errors = {
   calendar_unavailable: "We couldn’t check the calendars. Try again or text Nieman.",
   vehicle_required: "Select your vehicle size to see your estimate and book.",
   quote_contact_expired: "This quote link expired. Enter your current contact details to continue.",
-  booking_unavailable: "Online booking is paused. Text Nieman for help."
+  booking_unavailable: "Online booking is paused. Text Nieman for help.",
+  invalid_items: "Check the services you added. Each vehicle needs at least one service.",
 };
+
+// Everything on this booking: the main service on the first vehicle, then any add-ons and other vehicles.
+function bookingItems() {
+  if (!service) return [];
+  const vehicleType = fields.vehicleType.value;
+  const main = { serviceId: service.id, vehicleIndex: 0, ...(vehicleType ? { vehicleType } : {}), vehicle: fields.vehicle.value.trim() };
+  const added = (extras?.read() ?? []).map(row => row.vehicleIndex === 0 ? { ...row, ...(vehicleType ? { vehicleType } : {}), vehicle: main.vehicle } : row);
+  return [main, ...added];
+}
+const serviceFor = item => options.services.find(entry => entry.id === item.serviceId);
 
 function showStep(current) {
   el("booking-steps").querySelectorAll("li").forEach((item, index) => {
@@ -49,14 +61,26 @@ el("use-quote-contact").onclick = () => { setQuoteContact(true); el("edit-quote-
 
 function showSummary() {
   const vehicle = fields.vehicleType.value;
-  const prices = service.vehiclePrices ?? { sedan: service.cents, suv_truck: service.cents, van_3row: service.cents };
-  const tiers = Object.values(prices);
-  const min = Math.min(...tiers), max = Math.max(...tiers);
+  const mainRange = priceRange(service);
   const quoted = quote?.service === service.id && quote.vehicle === vehicle && Number.isFinite(quote.estimateCents);
-  const estimate = quoted ? appointmentMoney(quote.estimateCents) : vehicle || min === max
-    ? appointmentMoney(prices[vehicle] ?? min) : appointmentMoney(min) + " to " + appointmentMoney(max);
-  fields.vehicleType.required = min !== max;
-  const duration = service.duration;
+  const items = bookingItems();
+  // Each service is priced for its vehicle's size; one without a size counts as its price range.
+  const ranges = items.map((item, index) => index === 0 && quoted ? { min: quote.estimateCents, max: quote.estimateCents } : priceRange(serviceFor(item), item.vehicleType));
+  const min = ranges.reduce((total, range) => total + range.min, 0), max = ranges.reduce((total, range) => total + range.max, 0);
+  const estimate = min === max ? appointmentMoney(min) : appointmentMoney(min) + " to " + appointmentMoney(max);
+  fields.vehicleType.required = mainRange.min !== mainRange.max || items.some(item => item.vehicleIndex === 0 && (() => { const range = priceRange(serviceFor(item)); return range.min !== range.max; })());
+  const duration = items.reduce((total, item) => total + serviceFor(item).duration, 0);
+  const several = new Set(items.map(item => item.vehicleIndex)).size > 1;
+  const lines = el("summary-lines");
+  lines.hidden = items.length < 2;
+  lines.replaceChildren(...(items.length < 2 ? [] : items.map((item, index) => {
+    const range = ranges[index];
+    const name = serviceFor(item).name + (several ? ` (vehicle ${item.vehicleIndex + 1})` : "");
+    const row = document.createElement("li");
+    row.append(Object.assign(document.createElement("span"), { textContent: name }),
+      Object.assign(document.createElement("span"), { textContent: range.min === range.max ? appointmentMoney(range.min) : "from " + appointmentMoney(range.min) }));
+    return row;
+  })));
   const length = durationLabel(duration);
   const deposit = depositWaived ? "No deposit" : appointmentMoney(options.depositCents);
   // Sales tax goes on the final invoice, so the estimate is shown before tax with the rate beside it.
@@ -64,13 +88,13 @@ function showSummary() {
   const plusTax = taxRate ? " + tax" : "";
   el("summary-tax-label").hidden = el("summary-tax").hidden = !taxRate;
   if (taxRate) el("summary-tax").textContent = taxRateLabel(taxRate) + " added to the final invoice";
-  el("summary-service").textContent = service.name;
+  el("summary-service").textContent = items.length > 1 ? `${service.name} + ${items.length - 1} more` : service.name;
   el("summary-duration").textContent = length;
   el("summary-price").textContent = estimate;
   el("summary-deposit").textContent = deposit;
   const depositFact = depositWaived ? "no deposit (returning customer)" : deposit + " deposit";
   el("service-facts").textContent = length + " · " + estimate + plusTax + " estimated · " + depositFact;
-  el("contact-cost").textContent = service.name + " · " + estimate + plusTax + " estimated · " + depositFact;
+  el("contact-cost").textContent = el("summary-service").textContent + " · " + estimate + plusTax + " estimated · " + depositFact;
   el("deposit-note").textContent = depositWaived
     ? "Welcome back! As a returning customer you don't need a deposit. Nieman reviews your request and texts to confirm."
     : "The deposit goes toward your total. Nieman reviews your request after payment and texts to confirm.";
@@ -83,6 +107,8 @@ vehicleChoices.forEach(input => input.addEventListener("change", () => {
   fields.vehicleType.dispatchEvent(new Event("change"));
 }));
 const vehicleStep = el("booking-vehicle");
+const extrasHint = Object.assign(document.createElement("p"), { id: "extras-hint", className: "picker-alert" });
+extrasHint.setAttribute("role", "alert");
 const vehicleHint = el("vehicle-selection-hint");
 const calmMotion = matchMedia("(prefers-reduced-motion: reduce)");
 vehicleChoices.forEach(input => input.setAttribute("aria-describedby", vehicleHint.id));
@@ -103,6 +129,7 @@ fields.vehicleType.onchange = () => {
   vehicleStep.classList.remove("is-missing");
   syncVehicle();
   picker?.refreshPrices();
+  extras?.refresh();
   if (service) showSummary();
 };
 
@@ -125,6 +152,8 @@ function loadMonth() {
   el("booking-vehicle").hidden = false;
   el("service-facts").hidden = !service;
   el("schedule-summary").hidden = !service;
+  el("booking-extras-field").hidden = !service || options.services.length < 2;
+  extras?.refresh();
   if (!service) {
     state.textContent = "Choose a service to see available times.";
     return;
@@ -167,6 +196,17 @@ async function begin() {
     const featured = options.services.find(item => item.featured) ?? options.services[0];
     if (!quote && featured) fields.serviceId.value = featured.id;
     picker = servicePicker(el("service-picker"), fields.serviceId, options.services, { vehicle: () => fields.vehicleType.value });
+    // Adding or removing a service changes the price and how long a slot has to be, so reload openings.
+    extras = bookingExtras(el("booking-extras"), {
+      services: options.services, mainService: () => service, mainSize: () => fields.vehicleType.value,
+      onChange() {
+        extrasHint.textContent = "";
+        if (!service) return;
+        showSummary();
+        calendar?.load();
+      },
+    });
+    el("booking-extras").after(extrasHint);
     await auth.authStateReady();
     if (auth.currentUser?.emailVerified) {
       fields.email.value = auth.currentUser.email || ""; fields.email.readOnly = true;
@@ -176,7 +216,7 @@ async function begin() {
     form.hidden = false;
     calendar = slotPicker(el("pick-time"), {
       status: state, retry,
-      getSlots: month => appointmentRequest("availability", { serviceId: service.id, month }),
+      getSlots: month => appointmentRequest("availability", { serviceId: service.id, serviceIds: bookingItems().map(item => item.serviceId), month }),
       empty: "No openings this month. Try another month or service, or text Nieman.",
       unavailable: error => errors[error.code] || "The calendar couldn't load. Try again.",
       onClear() {
@@ -190,6 +230,13 @@ async function begin() {
         if (fields.vehicleType.required && !fields.vehicleType.value) {
           calendar.clearSelection();
           flagMissingStep(vehicleStep, vehicleHint, "Pick your vehicle type first, then choose your time.", vehicleChoices[0]);
+          return;
+        }
+        const problem = extras?.problem();
+        if (problem) {
+          calendar.clearSelection();
+          el("booking-extras-field").open = true;
+          flagMissingStep(problem.node, extrasHint, problem.message, problem.focus);
           return;
         }
         start = value;
@@ -221,8 +268,9 @@ form.onsubmit = async event => {
     const bearer = auth.currentUser?.emailVerified ? await auth.currentUser.getIdToken() : undefined;
     const payload = Object.fromEntries(new FormData(form));
     payload.vehicle ||= vehicleLabels[payload.vehicleType] || "";
+    const items = bookingItems();
     const result = await appointmentRequest("book", {
-      ...payload, start, accepted: fields.accepted.checked, token, quoteReceipt, reuseQuoteContact,
+      ...payload, ...(items.length > 1 ? { items: items.map(item => item.vehicleIndex === 0 ? { ...item, vehicle: payload.vehicle } : item) } : {}), start, accepted: fields.accepted.checked, token, quoteReceipt, reuseQuoteContact,
     }, bearer);
     const fragment = "#" + result.id + "." + token;
     rememberBooking(result.id, result.estimateCents, result.service);
