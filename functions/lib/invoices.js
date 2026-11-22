@@ -9,6 +9,18 @@ const invoice_model_1 = require("./invoice-model");
 const invoice_pdf_1 = require("./invoice-pdf");
 const appointment_email_1 = require("./appointment-email");
 const ops_health_1 = require("./ops-health");
+const invoice_payments_1 = require("./invoice-payments");
+const appointment_items_1 = require("./appointment-items");
+// A booking with several services starts its invoice with one line per service, when those add up to the amount owed.
+function bookedLines(appointment) {
+    if (!Array.isArray(appointment.items) || appointment.items.length < 2)
+        return null;
+    const lines = (0, appointment_items_1.itemInvoiceLines)(appointment.items);
+    const owed = appointment.finalCents ?? appointment.estimateCents;
+    if (typeof owed === "number" && lines.reduce((total, line) => total + line.cents, 0) !== owed)
+        return null;
+    return lines.map(line => ({ description: line.description, quantity: 1, unitCents: line.cents }));
+}
 const ID = /^[\w-]{1,128}$/;
 const settingsRef = (db) => db.collection("invoiceSettings").doc("business");
 const counterRef = (db) => db.collection("invoiceSettings").doc("counter");
@@ -41,7 +53,25 @@ async function salesTax(db) {
     return { enabled: !!tax?.enabled, rateBasisPoints: Number.isSafeInteger(tax?.rateBasisPoints) ? tax.rateBasisPoints : 700, taxId: tax?.taxId ?? "" };
 }
 function view(id, invoice) {
-    return { id, ...invoice, totals: (0, invoice_model_1.invoiceTotals)(invoice), overdue: invoice.status === "open" && invoice.dueDate < easternDay(Date.now()) };
+    // Pay-link hashes stay on the server.
+    const { payLinks: _links, ...rest } = invoice;
+    return { id, ...rest, totals: (0, invoice_model_1.invoiceTotals)(invoice), overdue: invoice.status === "open" && invoice.dueDate < easternDay(Date.now()),
+        checkoutOpen: !!invoice.checkout && invoice.checkout.expiresAt > Date.now() };
+}
+// A pay link for an open invoice when online payments are set up, written onto the invoice.
+async function payLinkFor(db, id, settings) {
+    if (!(await (0, invoice_payments_1.onlinePaymentsReady)(settings)))
+        return null;
+    return db.runTransaction(async (tx) => {
+        const snapshot = await tx.get(invoiceRef(db, id));
+        const invoice = snapshot.data();
+        if (!invoice || invoice.status !== "open" || (0, invoice_model_1.invoiceTotals)(invoice).balanceCents < 50)
+            return null;
+        const link = (0, invoice_payments_1.mintPayLink)(db, tx, id, invoice);
+        if (link)
+            tx.update(invoiceRef(db, id), { payLinks: link.payLinks });
+        return link?.url ?? null;
+    });
 }
 async function readInvoice(db, id) {
     const snapshot = await invoiceRef(db, id).get();
@@ -75,7 +105,7 @@ async function invoiceContext(db, body) {
         draft.serviceDetail = [[appointment.service, VEHICLES[appointment.vehicle] ?? appointment.vehicle].filter(Boolean).join(" · "), appointment.address].filter(Boolean).join("\n");
         const lines = Array.isArray(appointment.invoiceLines) && appointment.invoiceLines.length
             ? appointment.invoiceLines.map((line) => ({ description: line.description, quantity: 1, unitCents: line.cents }))
-            : [{ description: appointment.service || "Detailing service", quantity: 1, unitCents: appointment.finalCents ?? appointment.estimateCents ?? 0 }];
+            : bookedLines(appointment) ?? [{ description: appointment.service || "Detailing service", quantity: 1, unitCents: appointment.finalCents ?? appointment.estimateCents ?? 0 }];
         draft.lines = lines;
         if (appointment.finalCents !== undefined)
             draft.taxRateBasisPoints = appointment.taxCents ? appointment.taxRateBasisPoints ?? tax.rateBasisPoints : 0;
@@ -147,7 +177,8 @@ async function emailInvoice(db, uid, id, body) {
         ...(invoice.reference ? [["PO / reference", invoice.reference]] : []),
         ...(settings.mailingAddress ? [["Mail checks to", [payable, ...settings.mailingAddress.split("\n")].join(", ")]] : []),
     ];
-    const pdf = await (0, invoice_pdf_1.invoicePdf)(invoice, settings, kind);
+    const payUrl = kind === "invoice" ? await payLinkFor(db, id, settings) : null;
+    const pdf = await (0, invoice_pdf_1.invoicePdf)(invoice, settings, kind, payUrl ?? undefined);
     const sent = await (0, appointment_email_1.sendEmailNow)({
         to, subject, attachment: { filename: filename(invoice, kind), content: pdf },
         idempotencyKey: `invoice/${id}/${kind}/${body.requestId ? identifier(body.requestId) : (0, node_crypto_1.randomBytes)(8).toString("hex")}`,
@@ -157,9 +188,10 @@ async function emailInvoice(db, uid, id, body) {
             paragraphs: [
                 ...(message ? [message] : []),
                 kind === "receipt" ? `Your receipt for invoice ${invoice.number} is attached as a PDF.`
-                    : `Your invoice is attached as a PDF.${settings.mailingAddress ? ` Please make checks payable to ${payable} and write ${invoice.number} on the memo line.` : ""}`,
+                    : `Your invoice is attached as a PDF.${payUrl ? " You can pay securely online by card with the button below." : ""}${settings.mailingAddress ? ` ${payUrl ? "Or make" : "Please make"} checks payable to ${payable} and write ${invoice.number} on the memo line.` : ""}`,
             ],
             details,
+            ...(payUrl ? { action: { label: `Pay ${money(totals.balanceCents)} online`, url: payUrl } } : {}),
         },
     });
     if (!sent.ok) {
@@ -186,7 +218,8 @@ async function handleInvoices(db, auth, req, res, action) {
         const uid = await ownerUid(db, auth, req);
         let result;
         if (action === "settings") {
-            result = { settings: await getInvoiceSettings(db), salesTax: await salesTax(db) };
+            const settings = await getInvoiceSettings(db);
+            result = { settings, salesTax: await salesTax(db), onlineReady: await (0, invoice_payments_1.onlinePaymentsReady)({ ...settings, onlinePayments: true }) };
         }
         else if (action === "save-settings") {
             const settings = (0, invoice_model_1.parseInvoiceSettings)(body);
@@ -293,6 +326,8 @@ async function handleInvoices(db, auth, req, res, action) {
                 else if (action === "void") {
                     if (invoice.payments.length)
                         throw new invoice_model_1.InvoiceError(409, "remove_payments_first");
+                    if (invoice.checkout && invoice.checkout.expiresAt > now)
+                        throw new invoice_model_1.InvoiceError(409, "checkout_active");
                     revised = { ...invoice, status: "void", voidedAt: now };
                 }
                 else {
@@ -317,8 +352,32 @@ async function handleInvoices(db, auth, req, res, action) {
         else if (action === "email") {
             result = await emailInvoice(db, uid, identifier(body.id), body);
         }
+        else if (action === "pay-link") {
+            // A link the owner can text or paste. Each call mints a new one; older links keep working.
+            const url = await payLinkFor(db, identifier(body.id), await getInvoiceSettings(db));
+            if (!url)
+                throw new invoice_model_1.InvoiceError(409, "online_payments_unavailable");
+            result = { url };
+        }
+        else if (action === "pause-reminders") {
+            const id = identifier(body.id);
+            if (typeof body.paused !== "boolean")
+                throw new invoice_model_1.InvoiceError(400, "invalid_request");
+            result = await db.runTransaction(async (tx) => {
+                const snapshot = await tx.get(invoiceRef(db, id));
+                if (!snapshot.exists)
+                    throw new invoice_model_1.InvoiceError(404, "invoice_not_found");
+                const revised = { ...snapshot.data(), remindersPaused: body.paused, updatedAt: Date.now() };
+                tx.set(invoiceRef(db, id), revised);
+                return view(id, revised);
+            });
+        }
         else
             throw new invoice_model_1.InvoiceError(404, "not_found");
+        // Invoice views also say when the next automatic reminder goes out.
+        if (result && typeof result === "object" && "number" in result && "payments" in result && "billTo" in result) {
+            result = { ...result, nextReminder: (0, invoice_payments_1.nextReminder)(result, await getInvoiceSettings(db)) };
+        }
         res.json({ ok: true, result });
     }
     catch (error) {

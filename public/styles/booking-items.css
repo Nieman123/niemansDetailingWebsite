@@ -1,0 +1,35 @@
+/* Services and vehicles on one booking: the owner's item editor and the customer's add-on picker. */
+.items-editor { display: grid; gap: 10px; }
+.items-editor__rows { display: grid; gap: 10px; }
+.items-editor__row { display: grid; grid-template-columns: minmax(0, 1fr) 130px 110px 96px 44px; gap: 8px; align-items: center; }
+.items-editor__what { display: grid; gap: 6px; min-width: 0; }
+.items-editor__row select, .items-editor__row input, .items-editor__vehicle select, .items-editor__vehicle input { width: 100%; min-height: 48px; margin: 0; }
+.items-editor__money, .items-editor__time { display: flex; align-items: center; gap: 4px; margin: 0; color: var(--nd-text-2); }
+.items-editor__remove { min-height: 48px; border: 1px solid var(--nd-line-strong); border-radius: 12px; background: transparent; color: var(--nd-danger); font-size: 22px; cursor: pointer; }
+.items-editor__vehicles { display: grid; gap: 10px; }
+.items-editor__vehicle { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--nd-line); border-radius: 12px; }
+.items-editor__vehicle legend { padding: 0 4px; color: var(--nd-text-2); font-weight: 600; }
+.items-editor__add { justify-self: start; }
+@media (max-width: 640px) {
+  .items-editor__row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; padding-bottom: 10px; border-bottom: 1px solid var(--nd-line); }
+  .items-editor__what { grid-column: 1 / -1; }
+  .items-editor__row > select { grid-column: 1 / -1; }
+  .items-editor__vehicle { grid-template-columns: 1fr; }
+}
+.owner-record .record-facts dd { white-space: pre-line; }
+
+/* Customer booking: add-ons for each vehicle, and extra vehicles. */
+.booking-extras { display: grid; gap: 14px; }
+.booking-extras__vehicle { display: grid; gap: 10px; margin: 0; padding: 14px; border: 1px solid var(--nd-line); border-radius: 16px; }
+.booking-extras__vehicle legend { padding: 0 6px; font-weight: 700; }
+.booking-extras__head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.booking-extras__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.booking-extras__chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--nd-line-strong); border-radius: 999px; cursor: pointer; }
+.booking-extras__chip:has(input:checked) { border-color: var(--nd-gold); background: var(--nd-gold-tint); }
+.booking-extras__chip:has(input:focus-visible) { outline: 2px solid var(--nd-gold); outline-offset: 2px; }
+.booking-extras__chip small { color: var(--nd-text-2); }
+.booking-extras__vehicle input[type=text], .booking-extras__vehicle select { width: 100%; }
+.booking-extras__remove { justify-self: start; }
+.booking-extras__add { justify-self: start; }
+.booking-lines { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; color: var(--nd-text-2); }
+.booking-lines li { display: flex; justify-content: space-between; gap: 12px; }

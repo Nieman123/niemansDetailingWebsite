@@ -80,7 +80,7 @@ export function jobWorkspace(record, request, refresh, report) {
     if (record.maintenanceInviteQueued) area.append(elm("p", "Maintenance invitation prepared for this customer."));
     for (const entry of record.payments) {
       const line = elm("div", "", "appointment-actions");
-      line.append(elm("span", `${readDay(entry.at)} · ${methodNames[entry.method] || entry.method} · ${appointmentMoney(entry.amount)}${entry.taxCents ? ` (incl. ${appointmentMoney(entry.taxCents)} tax)` : ""}${entry.clearance ? ` · ${entry.clearance}` : ""}`));
+      line.append(elm("span", `${readDay(entry.at)} · ${methodNames[entry.method] || entry.method} · ${appointmentMoney(entry.amount)}${entry.taxCents ? ` (incl. ${appointmentMoney(entry.taxCents)} tax)` : ""}${entry.tipCents ? ` + ${appointmentMoney(entry.tipCents)} tip` : ""}${entry.clearance ? ` · ${entry.clearance}` : ""}`));
       const recordedManually = ["cash", "check", "venmo", "cash_app", "other"].includes(entry.method);
       const reversed = record.payments.some(other => other.method === "reversal" && other.reference === entry.id);
       if (entry.clearance === "pending") {
@@ -261,6 +261,20 @@ const elapsed = ms => {
 
 // The on-site job screen for confirmed and in-progress appointments: big targets, autosaving notes,
 // one-tap photos, and a closeout builder that adds up line items instead of free-typed text.
+// Closeout starts with one line per booked service. When the estimate was set by hand, the difference is its own line.
+function bookedLines(record) {
+  const items = record.items ?? [];
+  if (items.length < 2) return [{ description: record.service, cents: record.estimateCents ?? 0 }];
+  const several = new Set(items.map(item => item.vehicleIndex)).size > 1;
+  const lines = items.map(item => ({
+    description: several ? `${item.name} (${item.vehicle || vehicleLabels[item.vehicleType] || "Vehicle " + (item.vehicleIndex + 1)})` : item.name,
+    cents: item.cents ?? 0,
+  }));
+  const sum = lines.reduce((total, line) => total + line.cents, 0);
+  if (record.estimateCents != null && record.estimateCents !== sum) lines.push({ description: "Adjustment", cents: record.estimateCents - sum });
+  return lines;
+}
+
 export function jobScreen(record, request, refresh, report) {
   const screen = elm("div", "", "job-screen");
   const started = record.status === "in_progress";
@@ -415,7 +429,7 @@ export function jobScreen(record, request, refresh, report) {
     return total;
   }
 
-  const saved = record.invoiceLines?.length ? record.invoiceLines : [{ description: record.service, cents: record.estimateCents ?? 0 }];
+  const saved = record.invoiceLines?.length ? record.invoiceLines : bookedLines(record);
   saved.forEach(line => lineRow(line.description, line.cents ? (line.cents / 100).toFixed(2) : ""));
   const addOns = elm("div", "", "job-chips");
   for (const [label, prices] of Object.entries(addOnPrices)) {
@@ -635,7 +649,7 @@ export function setupTaxSettings(form, request, report) {
   void refresh();
 }
 
-// Day-before reminders and review requests, sent by the 5-minute maintenance job.
+// Day-before reminders, review requests and unpaid-balance reminders, sent by the 5-minute maintenance job.
 export function setupFollowUpSettings(form, request, report) {
   if (!form) return;
   if (form.dataset.bound) { form.dispatchEvent(new Event("reload-settings")); return; }
@@ -651,9 +665,11 @@ export function setupFollowUpSettings(form, request, report) {
     fields.reminders.checked = settings.reminders;
     fields.reviewRequests.checked = settings.reviewRequests;
     fields.reviewUrl.value = settings.reviewUrl ?? "";
+    if (fields.balanceReminders) fields.balanceReminders.checked = settings.balanceReminders !== false;
     sync();
     status.textContent = [settings.reminders ? "Reminders on." : "Reminders off.",
-      settings.reviewRequests ? "Review requests on." : "Review requests off."].join(" ");
+      settings.reviewRequests ? "Review requests on." : "Review requests off.",
+      settings.balanceReminders === false ? "Balance reminders off." : "Balance reminders on."].join(" ");
   }
   const refresh = async () => {
     button.disabled = true;
@@ -666,7 +682,8 @@ export function setupFollowUpSettings(form, request, report) {
     button.disabled = true;
     try {
       load(await request("save-follow-up-settings", { revision, reminders: fields.reminders.checked,
-        reviewRequests: fields.reviewRequests.checked, reviewUrl: fields.reviewUrl.value.trim() }));
+        reviewRequests: fields.reviewRequests.checked, reviewUrl: fields.reviewUrl.value.trim(),
+        balanceReminders: fields.balanceReminders ? fields.balanceReminders.checked : true }));
       status.textContent = "Saved. " + status.textContent;
     } catch (error) { status.textContent = report(error); }
     finally { button.disabled = false; }

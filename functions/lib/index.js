@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.api = exports.notifyLeadAddonUpdate = exports.notifyAppointmentBooked = exports.appointmentMaintenance = void 0;
+exports.api = exports.notifyLeadAddonUpdate = exports.notifyAppointmentBooked = exports.invoiceReminders = exports.salesTaxReminders = exports.appointmentMaintenance = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const firestore_1 = require("firebase-functions/v2/firestore");
 const scheduler_1 = require("firebase-functions/v2/scheduler");
@@ -53,6 +53,8 @@ exports.appointmentMaintenance = (0, scheduler_1.onSchedule)({
     try {
         const { reconcileAppointments } = await Promise.resolve().then(() => __importStar(require("./appointments")));
         await reconcileAppointments(db);
+        const { reconcileInvoiceCheckouts } = await Promise.resolve().then(() => __importStar(require("./invoice-payments")));
+        await reconcileInvoiceCheckouts(db);
     }
     catch (error) {
         const { recordSchedulerRun } = await Promise.resolve().then(() => __importStar(require("./ops-health")));
@@ -61,6 +63,22 @@ exports.appointmentMaintenance = (0, scheduler_1.onSchedule)({
     }
     const { recordSchedulerRun } = await Promise.resolve().then(() => __importStar(require("./ops-health")));
     await recordSchedulerRun(db, startedAt);
+});
+// Sales tax filing reminders on Telegram, once a day at 9 AM Eastern, for the frequency chosen on the Dashboard.
+exports.salesTaxReminders = (0, scheduler_1.onSchedule)({
+    schedule: "0 9 * * *", timeZone: "America/New_York", region: "us-east1", timeoutSeconds: 120, maxInstances: 1, concurrency: 1,
+}, async () => {
+    const { remindSalesTax } = await Promise.resolve().then(() => __importStar(require("./business-report")));
+    await remindSalesTax(db);
+});
+// Automatic reminder emails for unpaid invoices, once a day at 10 AM Eastern. Invoices work before online
+// booking launches, so this runs whether or not appointments are on.
+exports.invoiceReminders = (0, scheduler_1.onSchedule)({
+    schedule: "0 10 * * *", timeZone: "America/New_York", region: "us-east1", timeoutSeconds: 300, maxInstances: 1, concurrency: 1,
+}, async () => {
+    const { sendInvoiceReminders } = await Promise.resolve().then(() => __importStar(require("./invoice-payments")));
+    const { sent } = await sendInvoiceReminders(db);
+    firebase_functions_1.logger.info("Invoice reminders finished", { sent });
 });
 const COATING_LABELS = {
     single_step: "Single-step correction + coating", two_step: "Two-step correction + coating", recommend: "Help me choose",
@@ -380,6 +398,16 @@ exports.api = (0, https_1.onRequest)({ region: "us-east1" }, async (req, res) =>
         }
         const { handleInvoices } = await Promise.resolve().then(() => __importStar(require("./invoices")));
         await handleInvoices(db, admin.auth(), req, res, path.slice("/api/invoices/".length));
+        return;
+    }
+    // The customer invoice pay page. Links carry their own token, so no sign-in.
+    if (path.startsWith("/api/pay/")) {
+        if (origin && !allowOrigin) {
+            res.status(403).json({ ok: false, error: "access_denied" });
+            return;
+        }
+        const { handleInvoicePay } = await Promise.resolve().then(() => __importStar(require("./invoice-payments")));
+        await handleInvoicePay(db, req, res, path.slice("/api/pay/".length));
         return;
     }
     // Anonymous JavaScript error reports from the site's own pages, for the admin Health page.

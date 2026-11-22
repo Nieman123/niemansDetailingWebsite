@@ -1,0 +1,79 @@
+/* Money and jobs report on the admin Dashboard. Uses the brand tokens from brand.css. */
+.reports { display: grid; gap: 1.25rem; }
+.reports[hidden] { display: none; }
+.reports h2, .dashboard-section { margin: 0; }
+.dashboard-section { margin-top: .75rem; font: 700 1.35rem/1.2 var(--nd-font-display); }
+.reports-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; }
+.reports-head h2 { font: 700 1.35rem/1.2 var(--nd-font-display); }
+.reports > .sub { margin: -.75rem 0 0; }
+.chip-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: 0 -2px; }
+.chip-row::-webkit-scrollbar { display: none; }
+.report-chip {
+  flex: none; min-height: 40px; padding: 0 16px; border: 1.5px solid var(--nd-line-strong); border-radius: 999px;
+  background: transparent; color: var(--nd-text-2); font: 600 14px/1 var(--nd-font-sans); cursor: pointer;
+}
+.report-chip:hover { border-color: var(--nd-gold-line); color: var(--nd-text); }
+.report-chip[aria-pressed="true"] { border-color: var(--nd-purple); background: var(--nd-purple); color: #fff; }
+.report-tiles .health-tile strong { color: var(--nd-text); font-size: 1.7rem; overflow-wrap: anywhere; }
+.report-tiles .health-tile small { color: var(--nd-muted); font-size: .8rem; }
+
+.revenue-chart { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; align-items: end; height: 200px; padding-top: 1.5rem; border-bottom: 1px solid var(--nd-line-strong); }
+.revenue-bar { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; padding: 0 3px; border: 0; background: none; cursor: default; }
+.revenue-bar > i { display: block; width: 100%; max-width: 44px; min-height: 2px; border-radius: 4px 4px 0 0; background: var(--nd-purple); }
+.revenue-bar[data-current="true"] > i { background: var(--nd-purple-text); }
+.revenue-bar:hover > i, .revenue-bar:focus-visible > i { background: var(--nd-purple-hover); }
+.revenue-bar[data-current="true"]:hover > i { background: #cbb8ff; }
+.revenue-bar:focus-visible { outline: 2px solid var(--nd-gold); outline-offset: 2px; border-radius: 4px; }
+.revenue-bar > b { position: absolute; left: 50%; transform: translateX(-50%); font: 600 .72rem/1 var(--nd-font-sans); color: var(--nd-text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.revenue-labels { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; margin-top: .4rem; }
+.revenue-labels span { text-align: center; color: var(--nd-muted); font-size: .75rem; }
+.revenue-tip { position: absolute; z-index: 2; pointer-events: none; min-width: 9rem; padding: .55rem .7rem; border-radius: 10px; background: var(--nd-surface-3); border: 1px solid var(--nd-line-strong); box-shadow: var(--nd-shadow-sm); font-size: .82rem; color: var(--nd-text-2); display: grid; gap: .15rem; transform: translate(-50%, -100%); }
+.revenue-tip strong { color: var(--nd-text); }
+.revenue-tip[hidden] { display: none; }
+
+.report-table-wrap { margin-top: .9rem; }
+.report-table-wrap summary { cursor: pointer; color: var(--nd-purple-text); font-weight: 600; }
+.report-table-scroll { overflow-x: auto; margin-top: .6rem; }
+.report-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: .9rem; }
+.report-table th, .report-table td { padding: .5rem .6rem; text-align: right; border-bottom: 1px solid var(--nd-line); white-space: nowrap; }
+.report-table th:first-child, .report-table td:first-child { text-align: left; }
+.report-table th { color: var(--nd-muted); font-weight: 600; }
+
+.service-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; }
+.service-bars li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .3rem .75rem; align-items: baseline; }
+.service-bars strong { color: var(--nd-text); overflow-wrap: anywhere; }
+.service-bars span { color: var(--nd-text-2); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: .9rem; }
+.service-bars .meter { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--nd-surface-2); overflow: hidden; }
+.service-bars .meter i { display: block; height: 100%; border-radius: 4px; background: var(--nd-purple); }
+.service-bars .health-empty { display: block; }
+
+@media (max-width: 700px) {
+  .report-tiles .health-tile strong { font-size: 1.35rem; }
+  .revenue-chart { height: 160px; }
+  .revenue-bar > b { display: none; }
+  .revenue-bar { padding: 0 1px; }
+}
+
+/* Sales tax filing */
+.tax-panel { display: grid; gap: 1rem; scroll-margin-top: 1rem; }
+.tax-panel .reports-head h2 { font-size: 1.25rem; }
+.tax-frequency { display: flex; align-items: center; gap: .6rem; margin: 0; }
+.tax-frequency span { white-space: nowrap; }
+.tax-frequency select { width: auto; }
+.tax-callout { display: grid; gap: .2rem; padding: .85rem 1rem; border-radius: 12px; border: 1px solid var(--nd-line-strong); background: var(--nd-surface-2); }
+.tax-callout strong { color: var(--nd-text); }
+.tax-callout span { color: var(--nd-text-2); }
+.tax-callout[data-tone="warning"] { border-color: rgba(242, 180, 90, .5); background: var(--nd-warning-tint); }
+.tax-callout[data-tone="error"] { border-color: rgba(255, 138, 128, .5); background: var(--nd-danger-tint); }
+.tax-callout[data-tone="ok"] { border-color: rgba(95, 211, 162, .45); background: var(--nd-success-tint); }
+.tax-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; margin: 0; }
+.tax-summary div { padding: .75rem .85rem; border-radius: 12px; background: var(--nd-surface-2); border: 1px solid var(--nd-line); display: grid; gap: .25rem; min-width: 0; }
+.tax-summary dt { color: var(--nd-muted); font-size: .82rem; }
+.tax-summary dd { margin: 0; color: var(--nd-text); font: 700 1.15rem/1.2 var(--nd-font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tax-summary .tax-key dd { color: var(--nd-gold-hover); }
+.tax-actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+.tax-panel #tax-status:empty, .tax-panel #tax-note:empty { display: none; }
+@media (max-width: 700px) {
+  .tax-actions .btn { flex: 1 1 100%; }
+  .tax-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

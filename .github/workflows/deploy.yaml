@@ -76,6 +76,7 @@ jobs:
           node scripts/test-appointment-integrations.mjs
           node scripts/test-deposit-waiver.mjs
           node scripts/test-invoices.mjs
+          node scripts/test-business-report.mjs
 
       - name: Install Firebase CLI
         run: npm install --global "firebase-tools@$FIREBASE_CLI_VERSION"

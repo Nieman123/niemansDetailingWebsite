@@ -173,6 +173,12 @@ const finished = await asOwner('finish-job', {
   id: job.id, finalCents: 31_000, scopeAccepted: true, scopeChanges: 'Approved extra work', maintenanceInviteAfterPayment: true,
 });
 assert.equal(finished.result.balanceCents, 31_000);
+assert.equal(finished.result.clientId, client.id);
+const historyEntry = (await client.get()).get('bookings').find(entry => entry.appointment_id === job.id);
+assert.equal(historyEntry?.amount, 310);
+assert.equal(historyEntry.source, 'appointment');
+assert.equal((await client.get()).get('last_service_date'), historyEntry.date);
+assert.equal((await client.get()).get('status'), 'active');
 assert.equal(finished.result.workNotes, 'Owner-only note: side gate sticks.');
 const invitations = () => db.collection('appointmentEmails').where('maintenance.appointmentId', '==', job.id).get();
 assert.equal((await invitations()).size, 0);
@@ -210,6 +216,54 @@ assert.equal(taxedDone.taxCents, 2100);
 assert.equal(taxedDone.totalCents, 32_100);
 assert.equal(taxedDone.balanceCents, 32_100);
 assert.equal(taxedDone.taxId, '600-1234567');
+assert.equal((await client.get()).get('bookings').find(entry => entry.appointment_id === taxed.id)?.amount, 321);
+// A customer with no client record gets one when the job is finished, and a repeat sync adds nothing.
+const walkIn = (await asOwner('create', { ...appointment, requestId: randomUUID(), clientId: null, leadId: null, saveClientDefault: false,
+  name: 'Walk In Customer', email: 'walk.in@example.test', phone: '828-555-0177', address: '9 Elm Road, Weaverville, NC 28787',
+  start: paidLater + 3 * 86_400_000 })).result;
+assert.equal(walkIn.clientId, null);
+const walkInDone = (await asOwner('finish-job', { id: walkIn.id, finalCents: 20_000, taxRateBasisPoints: 700 })).result;
+const walkInClients = await db.collection('clients').where('email', '==', 'walk.in@example.test').get();
+assert.equal(walkInClients.size, 1);
+const walkInClient = walkInClients.docs[0];
+assert.equal(walkInDone.clientId, walkInClient.id);
+assert.equal(walkInClient.get('phone_e164'), '+18285550177');
+assert.equal(walkInClient.get('city'), 'Weaverville');
+assert.equal(walkInClient.get('zip'), '28787');
+assert.equal(walkInClient.get('bookings').length, 1);
+assert.equal(walkInClient.get('bookings')[0].amount, 214);
+// The Dashboard report counts finished jobs this month, with their pre-tax revenue and sales tax.
+assert.equal((await post('business-report', {}, stranger.idToken)).status, 403);
+const businessReport = (await asOwner('business-report')).result;
+assert.equal(businessReport.months.length, 24);
+const thisMonth = businessReport.months.at(-1);
+assert.equal(thisMonth.month, businessReport.currentMonth);
+assert(thisMonth.jobs >= 2 && thisMonth.revenueCents >= 50_000 && thisMonth.taxCents >= 3_500, JSON.stringify(thisMonth));
+assert(thisMonth.services.some(service => service.name === 'Full Detail'));
+assert.equal(businessReport.salesTax.frequencyChosen, false);
+assert.equal((await asOwner('save-tax-filing', { frequency: 'weekly' })).error, 'invalid_frequency');
+const monthlyFiling = (await asOwner('save-tax-filing', { frequency: 'monthly' })).result.salesTax;
+assert.equal(monthlyFiling.frequency, 'monthly');
+assert(monthlyFiling.periods[0].taxCents >= 3_500 && monthlyFiling.periods[0].taxableCents >= 50_000, JSON.stringify(monthlyFiling.periods[0]));
+const lastPeriod = monthlyFiling.periods[1].key;
+assert.equal((await asOwner('save-tax-filing', { period: '2026-13' })).error, 'invalid_period');
+assert((await asOwner('save-tax-filing', { period: lastPeriod })).result.salesTax.periods[1].filedAt > 0);
+assert.equal((await asOwner('save-tax-filing', { period: lastPeriod, filed: false })).result.salesTax.periods[1].filedAt, null);
+// Client history lists linked and same-email appointments, links them, and backfills older finished jobs once.
+const older = db.collection('appointments').doc('f'.repeat(64));
+await older.set({ ...(await db.collection('appointments').doc(walkIn.id).get()).data(), clientId: null, clientBookingSyncedAt: null,
+  start: paidLater - 40 * 86_400_000, end: paidLater - 40 * 86_400_000 + 3_600_000, finalCents: 15_000, taxCents: 0, service: 'Interior Only' });
+const walkInUpcoming = (await asOwner('create', { ...appointment, requestId: randomUUID(), clientId: null, leadId: null, saveClientDefault: false,
+  name: 'Walk In Customer', email: 'walk.in@example.test', phone: '828-555-0177', start: paidLater + 30 * 86_400_000 })).result;
+assert.equal((await post('client-history', { clientId: walkInClient.id })).status, 401);
+const walkInHistory = (await asOwner('client-history', { clientId: walkInClient.id })).result;
+assert.deepEqual(walkInHistory.appointments.map(item => item.id).sort(), [walkIn.id, older.id, walkInUpcoming.id].sort());
+assert.equal(walkInHistory.client.bookings.length, 2);
+assert.equal(walkInHistory.client.last_service_date, walkInClient.get('last_service_date'));
+assert.equal((await db.collection('appointments').doc(walkInUpcoming.id).get()).get('clientId'), walkInClient.id);
+assert.equal((await asOwner('client-history', { clientId: walkInClient.id })).result.client.bookings.length, 2);
+assert.equal((await asOwner('client-history', { clientId: 'missing-client' })).error, 'record_not_found');
+console.log('PASS: Finished jobs save to the client record, new customers get one, and client history links and backfills appointments.');
 const servicePart = { id: taxed.id, amountCents: 30_000, method: 'cash', requestId: randomUUID() };
 assert.equal((await asOwner('record-payment', servicePart)).result.balanceCents, 2100);
 const taxPart = { id: taxed.id, amountCents: 2100, method: 'venmo', requestId: randomUUID() };
@@ -243,6 +297,45 @@ await db.collection('appointmentEmails').doc(`reminder-${upcoming.id}-${reminder
 await paymentLifecycle.reconcileAppointments(db);
 assert(!(await db.collection('appointmentEmails').doc(`reminder-${upcoming.id}-${reminderStart}`).get()).exists, 'reminders go out once');
 console.log('PASS: Day-before reminders and review requests go out once.');
+
+// Unpaid balance reminders and a tip on a balance paid online.
+{
+  process.env.HOSTING_ORIGIN ??= 'https://' + projectId + '.web.app';
+  process.env.APPOINTMENT_INTEGRATIONS_PROJECT ??= projectId;
+  const owing = (await asOwner('create', { ...appointment, requestId: randomUUID(), start: start + 30 * 86_400_000, saveClientDefault: false })).result;
+  assert.equal((await asOwner('finish-job', { id: owing.id, finalCents: 20_000, scopeAccepted: true })).result.balanceCents, 20_000);
+  const owingRef = db.collection('appointments').doc(owing.id);
+  // 3 PM Eastern on a fixed day, so the daytime window always applies.
+  const afternoon = Date.parse('2026-12-02T20:00:00Z');
+  await owingRef.update({ completedAt: afternoon - 2 * 86_400_000 });
+  await paymentLifecycle.sendBalanceReminders(db, afternoon - 2 * 86_400_000 + 3_600_000);
+  assert.equal((await owingRef.get()).get('balanceRemindersSent') ?? 0, 0, 'no reminder before a day has passed');
+  await paymentLifecycle.sendBalanceReminders(db, afternoon);
+  const balanceEmail = await db.collection('appointmentEmails').doc(`balance-${owing.id}-1`).get();
+  assert(balanceEmail.exists, 'a finished job with a balance gets a reminder');
+  assert.match(balanceEmail.get('subject'), /^Balance due for your /);
+  assert.match(balanceEmail.get('text'), /\$200\.00/);
+  const payCode = /\/a\/([A-Za-z0-9]{10})/.exec(balanceEmail.get('text'))?.[1];
+  assert(payCode, 'the reminder carries a short pay link');
+  const payLink = (await post('resolve-short-link', { code: payCode, kind: 'appointment' })).result;
+  assert.equal((await post('details', payLink)).result.balanceCents, 20_000, 'the pay link opens the appointment');
+  await paymentLifecycle.sendBalanceReminders(db, afternoon + 3_600_000);
+  assert.equal((await owingRef.get()).get('balanceRemindersSent'), 1, 'one reminder per step');
+  await paymentLifecycle.sendBalanceReminders(db, afternoon - 14 * 3_600_000 + 4 * 86_400_000);
+  assert.equal((await owingRef.get()).get('balanceRemindersSent'), 1, 'no reminders at night');
+
+  await owingRef.update({ checkout: { attempt: 'tip-attempt', kind: 'balance', amount: 20_000, tipCents: 3_000, expiresAt: Date.now() + 35 * 60_000 } });
+  const tipped = { id: 'cs_test_tipped', livemode: false, status: 'complete', payment_status: 'paid', amount_total: 23_000, currency: 'usd',
+    payment_intent: 'pi_tipped', metadata: { appointmentId: owing.id, attemptId: 'tip-attempt', kind: 'balance' } };
+  await assert.rejects(paymentLifecycle.applyStripeSession(db, { ...tipped, amount_total: 20_000 }), /stripe_amount_mismatch/);
+  await paymentLifecycle.applyStripeSession(db, tipped);
+  const afterTip = (await asOwner('owner-detail', { id: owing.id })).result;
+  assert.equal(afterTip.balanceCents, 0, 'the tip does not count toward the balance');
+  assert.equal(afterTip.payments.find(entry => entry.id === 'cs_test_tipped').tipCents, 3_000);
+  assert.match((await db.collection('appointmentEmails').doc('receipt-cs_test_tipped').get()).get('text'), /Tip/);
+  assert.match((await asOwner('payment-export')).result.csv, /tip_cents[\s\S]*,20000,0,3000/);
+  console.log('PASS: Unpaid balance reminders with a pay link, and tips on balance payments.');
+}
 
 await db.collection('adminUsers').doc(stranger.localId).set({ role: 'editor' });
 assert.equal((await post('list', {}, stranger.idToken)).status, 403);
@@ -409,6 +502,60 @@ try {
   assert.equal((await asOwner('create',{...appointment, requestId:randomUUID(), deposit:'required', service:'', saveClientDefault:false})).result.service,
     'Detailing appointment');
   console.log('PASS: Vehicle pricing, masked quote preview, contact reuse, expired receipt fallback and optional admin service.');
+
+  // Several services and vehicles on one booking.
+  const multiSettings = { ...publicSettings, enabled: true, revision: 'multi', services: [
+    { id: 'full', name: 'Full Detail', duration: 60, cents: 30000, vehiclePrices: { sedan: 30000, suv_truck: 35000, van_3row: 40000 } },
+    { id: 'monthly_mini', name: 'Monthly Mini', duration: 30, cents: 10000, vehiclePrices: { sedan: 10000, suv_truck: 14000, van_3row: 14000 } },
+  ] };
+  await db.collection('appointmentSettings').doc('booking').set(multiSettings);
+  const longer = await callWithCalendar('availability', { serviceId: 'full', serviceIds: ['full', 'monthly_mini', 'monthly_mini'], month });
+  assert(longer.result.slots.length);
+  assert.equal((await callWithCalendar('availability', { serviceId: 'full', serviceIds: ['nope'], month })).error, 'invalid_items');
+  const multiBooking = { name: 'Two Car Customer', phone: '828-555-0177', email: 'two.cars@example.test', start: longer.result.slots[0],
+    serviceId: 'full', vehicleType: 'suv_truck', vehicle: 'Ford Explorer', accepted: true, token: '9'.repeat(64),
+    items: [
+      { serviceId: 'full', vehicleIndex: 0, vehicleType: 'suv_truck', vehicle: 'Ford Explorer' },
+      { serviceId: 'monthly_mini', vehicleIndex: 1, vehicleType: 'sedan', vehicle: 'Honda Civic' },
+    ] };
+  assert.equal((await callWithCalendar('book', { ...multiBooking, items: [multiBooking.items[0], { serviceId: 'monthly_mini', vehicleIndex: 1 }] })).error, 'vehicle_required');
+  assert.equal((await callWithCalendar('book', { ...multiBooking, items: [multiBooking.items[0], { ...multiBooking.items[1], vehicleIndex: 2 }] })).error, 'invalid_items');
+  assert.equal((await callWithCalendar('book', { ...multiBooking, items: [multiBooking.items[1], multiBooking.items[0]] })).error, 'invalid_items');
+  const multi = await callWithCalendar('book', multiBooking);
+  assert(multi.ok, JSON.stringify(multi));
+  assert.equal(multi.result.estimateCents, 45000, JSON.stringify(multi));
+  assert.equal(multi.result.end - multi.result.start, 90 * 60_000);
+  assert.equal(multi.result.service, 'Full Detail (Ford Explorer); Monthly Mini (Honda Civic)');
+  assert.equal(multi.result.vehicle, 'Ford Explorer + Honda Civic');
+  assert.equal(multi.result.items.length, 2);
+
+  // The owner books a main service plus an add-on, then adds a second vehicle to the existing booking.
+  const ownerStart = longer.result.slots[longer.result.slots.length - 1] - 3 * 60 * 60_000;
+  const ownerMulti = await asOwner('create', { ...appointment, clientId: null, leadId: null, requestId: randomUUID(), start: ownerStart, durationMinutes: 90,
+    estimateCents: 40_000, saveClientDefault: false, allowOverlap: true, items: [
+      { serviceId: 'full', name: 'Full Detail', vehicleIndex: 0, vehicleType: 'sedan', vehicle: 'Chad sedan', cents: 30_000, minutes: 60 },
+      { serviceId: 'monthly_mini', name: 'Monthly Mini', vehicleIndex: 0, cents: 10_000, minutes: 30 },
+    ] });
+  assert.equal(ownerMulti.result.service, 'Full Detail + Monthly Mini', JSON.stringify(ownerMulti));
+  assert.equal(ownerMulti.result.items[1].vehicle, 'Chad sedan');
+  assert.equal((await asOwner('create', { ...appointment, requestId: randomUUID(), items: [{ name: 'X', vehicleIndex: 1, minutes: 30 }] })).error, 'invalid_items');
+  const added = await asOwner('update-services', { id: ownerMulti.result.id, allowOverlap: true, items: [
+    ...ownerMulti.result.items, { name: 'Monthly Mini', serviceId: 'monthly_mini', vehicleIndex: 1, vehicleType: 'suv_truck', vehicle: 'Second truck', cents: 14_000, minutes: 30 },
+  ] });
+  assert.equal(added.result.estimateCents, 54_000, JSON.stringify(added));
+  assert.equal(added.result.end - added.result.start, 120 * 60_000);
+  assert.equal(added.result.service, 'Full Detail + Monthly Mini (Chad sedan); Monthly Mini (Second truck)');
+  const reserved = (await db.collection('appointmentDays').doc(String(Math.floor(ownerStart / 86_400_000))).get()).get('slots')
+    .find(slot => slot.id === ownerMulti.result.id);
+  assert.equal(reserved.end - reserved.start, 120 * 60_000);
+  assert.equal((await asOwner('update-services', { id: ownerMulti.result.id, items: [] })).error, 'invalid_items');
+  const taxNow = (await asOwner('tax-settings')).result;
+  await asOwner('start-job', { id: ownerMulti.result.id });
+  const multiDone = await asOwner('finish-job', { id: ownerMulti.result.id, finalCents: 54_000, taxRateBasisPoints: taxNow.enabled ? taxNow.rateBasisPoints : 0 });
+  assert.deepEqual(multiDone.result.invoiceLines.map(line => line.cents), [30_000, 10_000, 14_000], JSON.stringify(multiDone));
+  assert.equal(multiDone.result.invoiceLines[2].description, 'Monthly Mini (Second truck)');
+  assert.equal((await asOwner('update-services', { id: ownerMulti.result.id, items: added.result.items })).error, 'status_changed');
+  console.log('PASS: Add-ons and extra vehicles on public and owner bookings, adding to an existing booking, and itemized closeout.');
   console.log('PASS: Month availability, email-required booking with notes, retry, hold protection and owner contact updates.');
 } finally { globalThis.fetch = originalFetch; }
 await admin.app().delete();

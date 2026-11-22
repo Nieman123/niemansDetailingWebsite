@@ -47,3 +47,21 @@
 .time-check[data-state="warn"] { border-inline-start-color: #e0a526; }
 .time-check[data-state="conflict"] { border-inline-start-color: #e0565b; }
 .time-check[data-state="checking"] { opacity: .75; }
+
+/* Optional tip chooser on card payments (appointment balances and invoices). */
+.tip-picker { margin: 8px 0 14px; padding: 0; border: 0; }
+.tip-picker legend { padding: 0; margin-bottom: 8px; font-weight: 600; }
+.tip-picker legend small { font-weight: 400; color: var(--nd-muted); }
+.tip-picker__chips { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 359px) { .tip-picker__chips { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.tip-picker .tip-picker__chip {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 56px; padding: 6px 8px;
+  border: 1.5px solid var(--nd-line-strong); border-radius: var(--nd-radius-sm); background: transparent; color: var(--nd-text);
+  font: 600 14px/1.1 var(--nd-font-sans); cursor: pointer; box-shadow: none;
+}
+.tip-picker .tip-picker__chip span { font-size: 12.5px; font-weight: 500; color: var(--nd-muted); }
+.tip-picker .tip-picker__chip:hover { border-color: var(--nd-gold-line); }
+.tip-picker .tip-picker__chip[aria-pressed="true"] { border-color: var(--nd-purple); background: var(--nd-purple); color: #fff; box-shadow: 0 6px 16px rgba(107, 63, 216, .35); }
+.tip-picker .tip-picker__chip[aria-pressed="true"] span { color: rgba(255, 255, 255, .85); }
+.tip-picker__custom { margin-top: 10px; max-width: 220px; }
+.tip-total { margin: 4px 0 10px; font-weight: 600; }

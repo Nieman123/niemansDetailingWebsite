@@ -5,7 +5,7 @@ exports.describeOpsEvent = describeOpsEvent;
 exports.recordSchedulerRun = recordSchedulerRun;
 exports.recordBrowserError = recordBrowserError;
 exports.pruneOpsEvents = pruneOpsEvents;
-// Site health log for the admin Health page. Problems the backend runs into (failed emails, Stripe webhook
+// Site health log for the admin Dashboard. Problems the backend runs into (failed emails, Stripe webhook
 // errors, calendar sync failures, scheduler crashes, browser errors) land in the opsEvents collection.
 // The same problem within an hour folds into one row with a count, so a broken integration can't flood
 // Firestore. The first time an error shows up in a six-hour window, the owner also gets a Telegram alert.
@@ -65,7 +65,7 @@ async function alertOwner(db, event, now) {
         `Site problem: ${describeOpsEvent(event.source, event.code)}`,
         event.detail ? `Detail: ${event.detail}` : null,
         event.ref ? `Ref: ${event.ref}` : null,
-        origin ? `Health page: ${origin}/admin/health` : null,
+        origin ? `Dashboard: ${origin}/admin/dashboard` : null,
     ].filter(Boolean).join("\n");
     await (0, telegram_1.sendTelegramMessage)(text).catch(error => firebase_functions_1.logger.error("Health alert not sent", { reason: error instanceof Error ? error.message : String(error) }));
 }
@@ -91,7 +91,7 @@ const descriptions = {
 function describeOpsEvent(source, code) {
     return descriptions[`${source}:${code}`] ?? `${source}: ${code.replace(/_/g, " ")}`;
 }
-// Heartbeat for the scheduled maintenance job, shown on the Health page.
+// Heartbeat for the scheduled maintenance job, shown on the Dashboard.
 async function recordSchedulerRun(db, startedAt, error) {
     const finishedAt = Date.now();
     const update = { lastRunAt: startedAt, lastFinishedAt: finishedAt, lastDurationMs: finishedAt - startedAt };

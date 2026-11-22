@@ -84,3 +84,10 @@
 @media (max-width: 420px) {
   .owner-app .work-nav a { font-size: .72rem; }
 }
+
+/* Online payments and reminders. */
+.invoice-online { margin: 18px 0 6px; padding: 0; border: 0; }
+.invoice-online legend { font-weight: 700; margin-bottom: 4px; }
+.invoice-online-status { margin: 14px 0; padding: 12px 14px; border: 1px solid var(--nd-line-strong); border-radius: 12px; }
+.invoice-online-status .sub { margin: 0 0 6px; }
+.invoice-online-status .appointment-actions { margin-top: 8px; }

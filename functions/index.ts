@@ -18,6 +18,8 @@ export const appointmentMaintenance = onSchedule({
   try {
     const { reconcileAppointments } = await import("./appointments");
     await reconcileAppointments(db);
+    const { reconcileInvoiceCheckouts } = await import("./invoice-payments");
+    await reconcileInvoiceCheckouts(db);
   } catch (error) {
     const { recordSchedulerRun } = await import("./ops-health");
     await recordSchedulerRun(db, startedAt, error);
@@ -25,6 +27,24 @@ export const appointmentMaintenance = onSchedule({
   }
   const { recordSchedulerRun } = await import("./ops-health");
   await recordSchedulerRun(db, startedAt);
+});
+
+// Sales tax filing reminders on Telegram, once a day at 9 AM Eastern, for the frequency chosen on the Dashboard.
+export const salesTaxReminders = onSchedule({
+  schedule: "0 9 * * *", timeZone: "America/New_York", region: "us-east1", timeoutSeconds: 120, maxInstances: 1, concurrency: 1,
+}, async () => {
+  const { remindSalesTax } = await import("./business-report");
+  await remindSalesTax(db);
+});
+
+// Automatic reminder emails for unpaid invoices, once a day at 10 AM Eastern. Invoices work before online
+// booking launches, so this runs whether or not appointments are on.
+export const invoiceReminders = onSchedule({
+  schedule: "0 10 * * *", timeZone: "America/New_York", region: "us-east1", timeoutSeconds: 300, maxInstances: 1, concurrency: 1,
+}, async () => {
+  const { sendInvoiceReminders } = await import("./invoice-payments");
+  const { sent } = await sendInvoiceReminders(db);
+  logger.info("Invoice reminders finished", { sent });
 });
 
 type Vehicle = "sedan" | "suv_truck" | "van_3row";
@@ -343,6 +363,13 @@ export const api = onRequest({ region: "us-east1" }, async (req, res) => {
     if (origin && !allowOrigin) { res.status(403).json({ ok: false, error: "access_denied" }); return; }
     const { handleInvoices } = await import("./invoices");
     await handleInvoices(db, admin.auth(), req, res, path.slice("/api/invoices/".length));
+    return;
+  }
+  // The customer invoice pay page. Links carry their own token, so no sign-in.
+  if (path.startsWith("/api/pay/")) {
+    if (origin && !allowOrigin) { res.status(403).json({ ok: false, error: "access_denied" }); return; }
+    const { handleInvoicePay } = await import("./invoice-payments");
+    await handleInvoicePay(db, req, res, path.slice("/api/pay/".length));
     return;
   }
   // Anonymous JavaScript error reports from the site's own pages, for the admin Health page.

@@ -4,6 +4,7 @@ import { easternInput, slotPicker } from "./slot-picker.mjs";
 import { showTimeCheck } from "./owner-time-check.mjs";
 import { appointmentMoney, appointmentRequest, appointmentTime, easternStart, fillDurationSelect, taxRateLabel, vehicleLabels } from "./appointment-utils.mjs";
 import { servicePicker } from "./service-picker.mjs";
+import { itemLines, itemTotals, itemsEditor } from "./booking-items.mjs";
 import { clearJobNotes, hasUnsavedJobNotes, jobScreen, jobWorkspace, privateNotesCard, rescheduleWorkspace, setupBookingSettings, setupFollowUpSettings, setupTaxSettings, statusLabels } from "./appointment-admin-tools.mjs";
 
 const byId = id => document.getElementById(id);
@@ -160,22 +161,42 @@ function checkStart() {
     }
   }, 350);
 }
-function syncEstimate() {
+// The main service on the New booking form, as the first item of the booking.
+function primaryItem() {
   const service = services.find(item => item.name === fields.service.value);
   const vehicleType = fields.vehicleType.value;
   const prices = service?.vehiclePrices;
   const price = vehicleType ? prices?.[vehicleType] : prices && new Set(Object.values(prices)).size === 1 ? prices.sedan : undefined;
+  return {
+    ...(service?.id ? { serviceId: service.id } : {}), name: fields.service.value, vehicleIndex: 0,
+    ...(vehicleType ? { vehicleType } : {}), vehicle: fields.vehicle.value.trim() || vehicleLabels[vehicleType] || "",
+    cents: price ?? null, minutes: service?.duration ?? 0,
+  };
+}
+function syncEstimate() {
+  const primary = primaryItem();
+  const added = itemTotals(extras.read());
+  const price = primary.cents == null && added.cents == null ? null : (primary.cents ?? 0) + (added.cents ?? 0);
   if (fields.estimate.value && fields.estimate.value !== autoEstimate) return;
   autoEstimate = price == null ? "" : (price / 100).toFixed(2);
   fields.estimate.value = autoEstimate;
 }
+// Length follows the services: the main service's time plus every add-on's.
+function syncLength() {
+  const total = primaryItem().minutes + itemTotals(extras.read()).minutes;
+  if (total >= 15) fillDurationSelect(fields.durationMinutes, total);
+}
+const extras = itemsEditor(byId("owner-extra-items"), {
+  firstVehicle: "external",
+  vehicleOne: () => ({ vehicleType: fields.vehicleType.value, vehicle: fields.vehicle.value.trim() }),
+  onChange() { syncEstimate(); syncLength(); refreshCalendar(); },
+});
 fields.service.onchange = () => {
-  const service = services.find(item => item.name === fields.service.value);
-  if (service) fillDurationSelect(fields.durationMinutes, service.duration);
+  syncLength();
   syncEstimate();
   refreshCalendar();
 };
-fields.vehicleType.onchange = () => { syncEstimate(); servicePickerView?.refreshPrices(); };
+fields.vehicleType.onchange = () => { extras.refresh(); syncEstimate(); servicePickerView?.refreshPrices(); };
 fields.durationMinutes.addEventListener("change", refreshCalendar);
 fields.start.addEventListener("input", () => {
   selectedSlot = null;
@@ -201,6 +222,7 @@ function fillForm(prefill) {
   servicePickerView?.sync();
   fields.vehicleType.value = prefill.vehicleType || "";
   autoEstimate = null;
+  extras.clear();
   fillDurationSelect(fields.durationMinutes, 60);
   fields.estimate.value = prefill.estimateCents == null ? "" : (prefill.estimateCents / 100).toFixed(2);
   fields.deposit.value = prefill.deposit || "required";
@@ -279,6 +301,68 @@ function contactEditor(record) {
   };
   panel.append(title,editor);
   return panel;
+}
+
+// Add, change or remove services and vehicles on a booking that isn't finished. The length and estimate
+// move by the same amount the services do, so a custom length or price set earlier is kept.
+const editableStatuses = ["draft", "awaiting_deposit", "pending_approval", "confirmed", "in_progress"];
+function servicesEditor(record) {
+  const wrap = document.createElement("div");
+  const original = itemTotals(record.items);
+  const length = Object.assign(document.createElement("select"), { name: "durationMinutes" });
+  const estimate = Object.assign(document.createElement("input"), { type: "number", min: 0, max: 100000, step: "0.01", inputMode: "decimal", placeholder: "Optional" });
+  const currentLength = Math.round((record.end - record.start) / 60000);
+  fillDurationSelect(length, currentLength);
+  estimate.value = record.estimateCents == null ? "" : (record.estimateCents / 100).toFixed(2);
+  let lengthTouched = false, estimateTouched = false;
+  length.addEventListener("change", () => { lengthTouched = true; });
+  estimate.addEventListener("input", () => { estimateTouched = true; });
+  const host = document.createElement("div");
+  const editor = itemsEditor(host, {
+    services, items: record.items,
+    onChange(items) {
+      const now = itemTotals(items);
+      if (!lengthTouched) fillDurationSelect(length, Math.max(15, currentLength + now.minutes - original.minutes));
+      if (!estimateTouched) {
+        const cents = record.estimateCents == null ? now.cents : record.estimateCents + (now.cents ?? 0) - (original.cents ?? 0);
+        estimate.value = cents == null ? "" : (Math.max(0, cents) / 100).toFixed(2);
+      }
+    },
+  });
+  const field = (label, input) => {
+    const node = Object.assign(document.createElement("label"), { className: "field" });
+    node.append(Object.assign(document.createElement("span"), { textContent: label }), input);
+    return node;
+  };
+  const overlap = Object.assign(document.createElement("label"), { className: "appointment-checkbox", hidden: true });
+  const overlapBox = Object.assign(document.createElement("input"), { type: "checkbox" });
+  overlap.append(overlapBox, " Keep the longer time even though it overlaps");
+  const save = Object.assign(document.createElement("button"), { type: "button", className: "btn primary", textContent: "Save services" });
+  const status = document.createElement("p");
+  status.setAttribute("role", "status");
+  const fields = Object.assign(document.createElement("div"), { className: "appointment-fields" });
+  fields.append(field("Appointment length", length), field("Estimated total ($)", estimate));
+  wrap.append(
+    Object.assign(document.createElement("p"), { className: "sub", textContent: "One row per service. Pick a vehicle for each row to book more than one car. The customer's appointment page, calendar event and invoice follow these services." }),
+    host, fields, overlap, save, status);
+  save.onclick = async () => {
+    save.disabled = true;
+    status.textContent = "Saving…";
+    try {
+      const items = editor.validate();
+      if (!items.length) throw new Error("Keep at least one service.");
+      await ownerRequest("update-services", {
+        id: record.id, items, durationMinutes: Number(length.value),
+        estimateCents: estimate.value === "" ? null : Math.round(Number(estimate.value) * 100), allowOverlap: overlapBox.checked,
+      });
+      await refreshList();
+      detailStatus.textContent = "Services saved.";
+    } catch (error) {
+      if (error.code === "time_unavailable") overlap.hidden = false;
+      status.textContent = error.code ? explain(error) : error.message;
+    } finally { save.disabled = false; }
+  };
+  return wrap;
 }
 
 function showView(name) {
@@ -417,6 +501,7 @@ function renderDetail(record) {
   }
   if (record.phone) quick.append(quickLink("Call", "tel:" + record.phone, "phone"), quickLink("Text", "sms:" + record.phone, "chat"));
   if (record.email) quick.append(quickLink("Email", "mailto:" + record.email, "mail"));
+  if (record.clientId) quick.append(quickLink("Client", "/admin/clients?id=" + encodeURIComponent(record.clientId), "user"));
   if (record.status !== "cancelled") quick.append(quickLink("Invoice", "/admin/invoices?appointment=" + encodeURIComponent(record.id), "invoice"));
   if (quick.childElementCount) hub.append(quick);
 
@@ -434,6 +519,7 @@ function renderDetail(record) {
     facts.append(Object.assign(document.createElement("dt"), { textContent: "Address" }), dd);
   }
   fact("Customer notes", record.customerNotes);
+  if (record.items?.length > 1) fact("Services", itemLines(record.items).join("\n"));
   fact("Vehicle", record.vehicle);
   fact("Phone", record.phone);
   fact("Email", record.email);
@@ -521,6 +607,9 @@ function renderDetail(record) {
     const view = () => detailsAsView(rescheduleWorkspace(record, ownerRequest, refreshList, explain)).body;
     tiles.append(addView("reschedule", record.rescheduleRequest ? "Review time request" : record.status === "pending_approval" ? "Offer another time" : "Reschedule",
       "clock", view, { hint: record.rescheduleRequest ? "Customer asked to move" : "Move to a new time" }));
+  }
+  if (editableStatuses.includes(record.status)) {
+    tiles.append(addView("services", "Services and vehicles", "wrench", () => servicesEditor(record), { hint: "Add a service or another vehicle" }));
   }
   tiles.append(addView("customer", "Customer details", "user", () => detailsAsView(contactEditor(record)).body, { hint: "Name, phone, address" }));
 
@@ -619,6 +708,14 @@ form.addEventListener("submit", async event => {
     let start;
     try { start = easternStart(payload.start); }
     catch (error) { formStatus.textContent = error.message; return; }
+    // Add-ons and other vehicles go with the main service as the booking's items.
+    let items;
+    if (extras.size) {
+      try {
+        if (!fields.service.value) throw new Error("Choose the main service before adding more.");
+        items = [primaryItem(), ...extras.validate()];
+      } catch (error) { formStatus.textContent = error.message; return; }
+    }
     const overlapping = !overlapOverride.hidden && lastCheck?.start === start;
     if (overlapping && !fields.allowOverlap.checked) {
       formStatus.textContent = "This time overlaps another booking. Tick “Book it anyway” to keep it, or choose another time.";
@@ -630,7 +727,7 @@ form.addEventListener("submit", async event => {
       allowOverlap: overlapping && fields.allowOverlap.checked,
       estimateCents: payload.estimate ? Math.round(Number(payload.estimate) * 100) : null,
       saveClientDefault: !!context.clientId && fields.saveClientDefault.checked,
-      clientId: context.clientId, leadId: context.leadId, requestId,
+      clientId: context.clientId, leadId: context.leadId, requestId, ...(items ? { items } : {}),
     });
     if (session !== scope) return;
     location.assign(appointmentUrl(record.id));
@@ -699,6 +796,7 @@ if (!appointmentsEnabled) {
       const settings = event.detail;
       const previous = fields.service.value;
       services = settings.services;
+      extras.setServices(services);
       const labels = [...new Set(services.map(service => service.name))];
       if (previous && !labels.includes(previous)) labels.push(previous);
       fields.service.replaceChildren(new Option("Choose later", ""), ...labels.map(name => new Option(name, name)));

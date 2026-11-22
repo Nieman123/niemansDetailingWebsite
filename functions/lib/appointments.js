@@ -1,15 +1,51 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.depositWaived = depositWaived;
 exports.applyStripeSession = applyStripeSession;
+exports.sendBalanceReminders = sendBalanceReminders;
 exports.reconcileAppointments = reconcileAppointments;
 exports.handleAppointments = handleAppointments;
 exports.handleStripeWebhook = handleStripeWebhook;
 const node_crypto_1 = require("node:crypto");
+const firestore_1 = require("firebase-admin/firestore");
 const firebase_functions_1 = require("firebase-functions");
 const appointment_email_1 = require("./appointment-email");
 const ops_health_1 = require("./ops-health");
 const telegram_1 = require("./telegram");
+const business_report_1 = require("./business-report");
 const appointment_short_links_1 = require("./appointment-short-links");
 const appointment_secrets_1 = require("./appointment-secrets");
 const appointment_email_template_1 = require("./appointment-email-template");
@@ -17,6 +53,8 @@ const appointment_content_1 = require("./appointment-content");
 const appointment_calendar_1 = require("./appointment-calendar");
 const appointment_booking_1 = require("./appointment-booking");
 const appointment_stripe_1 = require("./appointment-stripe");
+const appointment_clients_1 = require("./appointment-clients");
+const appointment_items_1 = require("./appointment-items");
 const appointment_tax_1 = require("./appointment-tax");
 const DAY = 86400000;
 const DEPOSIT_CENTS = 5000;
@@ -43,6 +81,17 @@ class AppointmentError extends Error {
 }
 const digest = (value) => (0, node_crypto_1.createHash)("sha256").update(value).digest("hex");
 const text = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
+// Item validation lives in its own module; report its failures the way every other input check does.
+function readItems(parse) {
+    try {
+        return parse();
+    }
+    catch (error) {
+        if (error instanceof appointment_items_1.ItemError)
+            throw new AppointmentError(400, error.code);
+        throw error;
+    }
+}
 function identifier(value, optional = false) {
     if (optional && (value == null || value === ""))
         return null;
@@ -76,9 +125,13 @@ function buildAppointment(body, uid, now, requirePhone = false) {
     if (body.deposit !== "required" && body.deposit !== "waived")
         throw new AppointmentError(400, "invalid_deposit");
     const waived = body.deposit === "waived";
+    // Several services or vehicles: the summary replaces the single service and vehicle fields.
+    const items = body.items === undefined ? undefined : readItems(() => (0, appointment_items_1.parseOwnerItems)(body.items));
+    const summary = items ? (0, appointment_items_1.itemSummary)(items) : null;
     return {
         clientId: identifier(body.clientId, true), leadId: identifier(body.leadId, true),
-        ...contact, service, preparation: text(body.preparation, 1500),
+        ...contact, service: summary?.service ?? service, ...(summary ? { vehicle: summary.vehicle || contact.vehicle, items } : {}),
+        preparation: text(body.preparation, 1500),
         start, end: start + minutes * 60000, estimateCents: estimate,
         depositCents: waived ? 0 : DEPOSIT_CENTS, status: waived ? "confirmed" : "draft",
         createdAt: now, createdBy: uid,
@@ -127,6 +180,7 @@ function customerDetails(appointment) {
     const { service, vehicle, address, preparation, start, end, estimateCents, depositCents, status } = appointment;
     const paidDeposit = appointment.refund?.state === "succeeded" ? 0 : appointment.paidDeposit ?? 0;
     return { service, vehicle, address, preparation, start, end, estimateCents, depositCents, status, paidDeposit, hasEmail: !!appointment.email,
+        items: (0, appointment_items_1.itemsOf)(appointment),
         refundState: appointment.refund?.state ?? null,
         paymentPending: hasPendingCheck(appointment),
         finalCents: appointment.finalCents ?? null, balanceCents: remainingBalance(appointment),
@@ -246,6 +300,80 @@ async function appointmentContext(db, body) {
         deposit: client?.appointment_deposit_default === "waived" ? "waived" : "required",
     };
 }
+function clientJob(id, appointment) {
+    const totalCents = typeof appointment.finalCents === "number" ? appointment.finalCents + (appointment.taxCents ?? 0) : null;
+    return {
+        id, date: (0, appointment_booking_1.easternDate)(appointment.start), service: appointment.service, totalCents, vehicle: appointment.vehicle ?? "",
+        name: appointment.name, email: appointment.email, phone: appointment.phone, address: appointment.address, leadId: appointment.leadId,
+    };
+}
+// A client's appointments for the Clients page: ones linked to the record, plus unlinked ones with
+// the same email, which get linked here. Finished jobs that predate the automatic sync are added to
+// the booking history once; a booking entry the owner removed afterwards stays removed.
+async function clientHistory(db, uid, body) {
+    const clientId = identifier(body.clientId);
+    const clientRef = db.collection("clients").doc(clientId);
+    const client = (await clientRef.get()).data();
+    if (!client)
+        throw new AppointmentError(404, "record_not_found");
+    const email = (0, appointment_clients_1.clientEmail)(client.email);
+    const appointments = db.collection("appointments");
+    const [linked, sameEmail] = await Promise.all([
+        appointments.where("clientId", "==", clientId).limit(200).get(),
+        email ? appointments.where("email", "==", email).limit(200).get() : Promise.resolve(null),
+    ]);
+    const rows = new Map();
+    for (const doc of [...linked.docs, ...(sameEmail?.docs ?? [])]) {
+        const appointment = doc.data();
+        if (!appointment.clientId || appointment.clientId === clientId)
+            rows.set(doc.id, appointment);
+    }
+    const needsLink = [...rows].filter(([, appointment]) => !appointment.clientId).map(([id]) => id);
+    const needsSync = [...rows].filter(([, appointment]) => appointment.status === "completed" && !appointment.clientBookingSyncedAt).map(([id]) => id);
+    let record = client;
+    if (needsLink.length || needsSync.length) {
+        record = await db.runTransaction(async (tx) => {
+            const fresh = (await tx.get(clientRef)).data();
+            if (!fresh)
+                throw new AppointmentError(404, "record_not_found");
+            const touched = [...new Set([...needsLink, ...needsSync])].slice(0, 200);
+            const current = await tx.getAll(...touched.map(id => appointments.doc(id)));
+            const now = Date.now();
+            const jobs = [];
+            for (const snapshot of current) {
+                const appointment = snapshot.data();
+                if (!appointment || (appointment.clientId && appointment.clientId !== clientId))
+                    continue;
+                const sync = appointment.status === "completed" && !appointment.clientBookingSyncedAt;
+                if (sync)
+                    jobs.push(clientJob(snapshot.id, appointment));
+                tx.update(snapshot.ref, { clientId, ...(sync ? { clientBookingSyncedAt: now } : {}) });
+                rows.set(snapshot.id, { ...appointment, clientId });
+            }
+            const changes = (0, appointment_clients_1.clientChanges)(fresh, jobs, now);
+            if (Object.keys(changes).length)
+                tx.update(clientRef, { ...changes, updated_at: firestore_1.FieldValue.serverTimestamp(), updated_by: uid });
+            return { ...fresh, ...changes };
+        });
+    }
+    const list = [...rows].map(([id, appointment]) => {
+        const details = adminDetails(id, appointment);
+        return {
+            id, start: appointment.start, end: appointment.end, status: appointment.status, service: appointment.service, vehicle: appointment.vehicle ?? "",
+            totalCents: details.totalCents ?? null, estimateCents: appointment.estimateCents, balanceCents: details.balanceCents ?? null,
+            inHistory: (Array.isArray(record.bookings) ? record.bookings : []).some((item) => item?.id === (0, appointment_clients_1.bookingIdFor)(id)),
+        };
+    }).sort((a, b) => b.start - a.start);
+    return {
+        appointments: list,
+        client: {
+            bookings: Array.isArray(record.bookings) ? record.bookings : [], last_service_date: record.last_service_date ?? null,
+            next_followup_date: record.next_followup_date ?? null, status: record.status ?? null,
+            email: record.email ?? null, phone: record.phone ?? null, phone_e164: record.phone_e164 ?? null,
+            address: record.address ?? null, city: record.city ?? null, state: record.state ?? null, zip: record.zip ?? null,
+        },
+    };
+}
 async function createAppointment(db, uid, body) {
     const requestId = identifier(body.requestId);
     const id = digest(`${uid}:${requestId}`);
@@ -318,6 +446,22 @@ async function changeAppointment(db, uid, id, action, body) {
     else if ((action === "approve" || (action === "issue-link" && previous.status === "draft" && stripe)) && !previous.overlapApproved) {
         await assertCalendarOpen(previous, id);
     }
+    // Adding or removing services can change how long the appointment runs; a longer one is checked for conflicts.
+    let serviceChange;
+    if (action === "update-services") {
+        const items = readItems(() => (0, appointment_items_1.parseOwnerItems)(body.items));
+        const minutes = body.durationMinutes ?? (0, appointment_items_1.itemSummary)(items).minutes;
+        if (typeof minutes !== "number" || !Number.isInteger(minutes) || minutes < 15 || minutes > 7 * 1440)
+            throw new AppointmentError(400, "invalid_time");
+        const estimate = body.estimateCents === undefined ? (0, appointment_items_1.itemSummary)(items).estimateCents : body.estimateCents;
+        if (estimate !== null && (typeof estimate !== "number" || !Number.isSafeInteger(estimate) || estimate < 0 || estimate > 10000000)) {
+            throw new AppointmentError(400, "invalid_price");
+        }
+        const end = previous.start + minutes * MINUTE;
+        if (end > previous.end && previous.status !== "draft" && !allowOverlap)
+            await assertCalendarOpen({ ...previous, end }, id);
+        serviceChange = { items, end, estimateCents: estimate };
+    }
     return db.runTransaction(async (tx) => {
         const appointment = (await tx.get(ref)).data();
         if (!appointment)
@@ -329,8 +473,29 @@ async function changeAppointment(db, uid, id, action, body) {
             if (!expected || Object.keys(contact).some(key => expected[key] !== appointment[key])) {
                 throw new AppointmentError(409, "status_changed");
             }
-            tx.update(ref, { ...contact, ...calendarUpdate(now) });
-            return adminDetails(id, { ...appointment, ...contact });
+            // With one vehicle on the booking, its items follow the edited vehicle description.
+            const items = appointment.items && new Set(appointment.items.map(item => item.vehicleIndex)).size === 1 && contact.vehicle !== appointment.vehicle
+                ? appointment.items.map(item => ({ ...item, vehicle: contact.vehicle })) : undefined;
+            const change = { ...contact, ...(items ? { items, service: (0, appointment_items_1.itemSummary)(items).service } : {}) };
+            tx.update(ref, { ...change, ...calendarUpdate(now) });
+            return adminDetails(id, { ...appointment, ...change });
+        }
+        if (action === "update-services") {
+            if (!["draft", "awaiting_deposit", "pending_approval", "confirmed", "in_progress"].includes(appointment.status) ||
+                appointment.end !== previous.end || appointment.start !== previous.start)
+                throw new AppointmentError(409, "status_changed");
+            const { items, end, estimateCents } = serviceChange;
+            const summary = (0, appointment_items_1.itemSummary)(items);
+            const update = { items, service: summary.service, vehicle: summary.vehicle || appointment.vehicle, estimateCents, end,
+                ...(end !== appointment.end && appointment.linkHash ? { linkExpiresAt: end + 30 * DAY } : {}),
+                ...(end !== appointment.end && allowOverlap ? { overlapApproved: true } : {}),
+                ...calendarUpdate(now) };
+            if (end !== appointment.end && appointment.status !== "draft") {
+                await updateReservation(db, tx, reservationFor(id, { ...appointment, end }), false, now, reservationFor(id, appointment), allowOverlap);
+            }
+            tx.create(ref.collection("history").doc(), { kind: "services", from: appointment.service, to: summary.service, at: now, by: uid });
+            tx.update(ref, update);
+            return adminDetails(id, { ...appointment, ...update });
         }
         if (action === "offer-alternate") {
             if (!newStart || appointment.status !== "pending_approval" || appointment.start <= now || appointment.start !== previous.start) {
@@ -426,7 +591,10 @@ async function changeAppointment(db, uid, id, action, body) {
                 if (appointment.estimateCents !== null && final > appointment.estimateCents && (!work.scopeChanges || body.scopeAccepted !== true)) {
                     throw new AppointmentError(400, "scope_acceptance_required");
                 }
-                const supplied = body.invoiceLines ?? [{ description: appointment.service, cents: final }];
+                // Without itemized lines, bill each booked service on its own line when they add up to the total.
+                const itemLines = appointment.items && appointment.items.length > 1 ? (0, appointment_items_1.itemInvoiceLines)(appointment.items) : null;
+                const supplied = body.invoiceLines ?? (itemLines && itemLines.reduce((total, line) => total + line.cents, 0) === final
+                    ? itemLines : [{ description: appointment.service, cents: final }]);
                 if (!Array.isArray(supplied) || !supplied.length || supplied.length > 30 ||
                     !supplied.every(item => item && text(item.description, 140) && Number.isSafeInteger(item.cents) && Math.abs(item.cents) <= 10000000) ||
                     supplied.reduce((total, item) => total + item.cents, 0) !== final)
@@ -440,8 +608,13 @@ async function changeAppointment(db, uid, id, action, body) {
                 const taxFields = tax.enabled
                     ? { taxCents: (0, appointment_tax_1.taxOn)(final, tax.rateBasisPoints), taxRateBasisPoints: tax.rateBasisPoints, taxId: tax.taxId }
                     : { taxCents: 0 };
+                // Transactions read before they write, so find the customer's client record first.
+                const clientRecord = await (0, appointment_clients_1.findClientForJob)(db, tx, appointment.clientId, appointment.email, appointment.phone);
+                const job = clientJob(id, { ...appointment, finalCents: final, taxCents: taxFields.taxCents });
+                const clientId = (0, appointment_clients_1.saveJobToClient)(db, tx, clientRecord, job, uid, now);
                 const update = { ...work, ...calendarUpdate(now), status: "completed", finalCents: final, ...taxFields, invoiceLines, completedAt: now, completedBy: uid,
-                    maintenanceInviteAfterPayment: body.maintenanceInviteAfterPayment === true && !!appointment.email && maintenanceService(appointment.service), };
+                    maintenanceInviteAfterPayment: body.maintenanceInviteAfterPayment === true && !!appointment.email && maintenanceService(appointment.service),
+                    clientId, clientBookingSyncedAt: now, };
                 const completed = { ...appointment, ...update };
                 tx.update(ref, update);
                 queueOptedInMaintenance(db, tx, id, completed);
@@ -635,7 +808,8 @@ function assertLink(id, token, appointment) {
         throw new AppointmentError(404, "link_unavailable");
     const hash = Buffer.from(digest(token), "hex");
     const now = Date.now();
-    const candidates = [[appointment?.linkHash, appointment?.linkExpiresAt], [appointment?.accountLinkHash, appointment?.accountLinkExpiresAt]];
+    const candidates = [[appointment?.linkHash, appointment?.linkExpiresAt], [appointment?.accountLinkHash, appointment?.accountLinkExpiresAt],
+        [appointment?.payLinkHash, appointment?.payLinkExpiresAt]];
     if (!appointment || !candidates.some(([stored, expires]) => stored && HASH.test(stored) && (expires ?? 0) > now &&
         (0, node_crypto_1.timingSafeEqual)(Buffer.from(stored, "hex"), hash))) {
         throw new AppointmentError(404, "link_unavailable");
@@ -667,7 +841,7 @@ async function readAppointment(db, id) {
 const settingsDoc = (db) => db.collection("appointmentSettings").doc("booking");
 const taxDoc = (db) => db.collection("appointmentSettings").doc("salesTax");
 const followUpDoc = (db) => db.collection("appointmentSettings").doc("followUps");
-const defaultFollowUps = { reminders: true, reviewRequests: false, reviewUrl: "", revision: "" };
+const defaultFollowUps = { reminders: true, reviewRequests: false, reviewUrl: "", balanceReminders: true, revision: "" };
 async function getFollowUpSettings(db) {
     return { ...defaultFollowUps, ...(await followUpDoc(db).get()).data() };
 }
@@ -689,7 +863,8 @@ function parseFollowUpSettings(body) {
     }
     if (reviewRequests && !reviewUrl)
         return null;
-    return { reminders, reviewRequests, reviewUrl };
+    // Older admin pages don't send this field yet; keep reminders on unless it's explicitly turned off.
+    return { reminders, reviewRequests, reviewUrl, balanceReminders: body.balanceReminders !== false };
 }
 async function getTaxSettings(db) {
     return { ...appointment_tax_1.defaultTaxSettings, ...(await taxDoc(db).get()).data() };
@@ -703,6 +878,14 @@ async function getAvailability(db, body, owner = false, moving) {
     const configured = await getSettings(db);
     const settings = owner ? { ...configured, enabled: true, minimumHours: body.deposit === "required" ? 0.6 : 0 } : configured;
     let service = settings.services.find(item => item.id === body.serviceId);
+    // A booking with add-ons or more vehicles needs a slot long enough for all of them.
+    if (Array.isArray(body.serviceIds) && !moving && !owner) {
+        const ids = body.serviceIds;
+        const chosen = ids.map(id => settings.services.find(item => item.id === id));
+        if (!ids.length || ids.length > 8 || chosen.some(item => !item))
+            throw new AppointmentError(400, "invalid_items");
+        service = { id: "", name: "", cents: 0, duration: chosen.reduce((total, item) => total + item.duration, 0) };
+    }
     if (moving)
         service = { id: "", name: "", cents: 0, duration: moving.minutes };
     else if (owner) {
@@ -886,20 +1069,27 @@ async function publicBooking(db, auth, req, body) {
     const quote = await bookingQuote(db, body.quoteReceipt);
     if (body.reuseQuoteContact === true && !quote?.phoneEnding)
         throw new AppointmentError(409, "quote_contact_expired");
-    const vehicleType = (0, appointment_booking_1.bookingVehicle)(body.vehicleType);
-    const prices = (0, appointment_booking_1.bookingPrices)(service);
-    if ((body.vehicleType && !vehicleType) || (!vehicleType && new Set(Object.values(prices)).size > 1)) {
-        throw new AppointmentError(400, "vehicle_required");
-    }
-    const quotedPrice = quote && quote.service === service.id && quote.vehicle === vehicleType ? quote.estimateCents : null;
+    // The first item is the main service; add-ons and other vehicles follow. Older pages send one service.
+    const rows = Array.isArray(body.items) ? body.items
+        : [{ serviceId: service.id, vehicleType: body.vehicleType, vehicle: body.vehicle, vehicleIndex: 0 }];
+    const { items: chosen, services: chosenServices } = readItems(() => (0, appointment_items_1.catalogItems)(rows, settings.services));
+    if (chosen[0].serviceId !== service.id || chosen[0].vehicleIndex !== 0)
+        throw new AppointmentError(400, "invalid_items");
+    // A saved quote's price replaces the catalog price for the service and vehicle it was quoted for.
+    const items = chosen.map((item, index) => index === 0 && quote && quote.service === item.serviceId && quote.vehicle === item.vehicleType && quote.estimateCents !== null
+        ? { ...item, cents: quote.estimateCents } : item);
+    const summary = (0, appointment_items_1.itemSummary)(items);
+    const booked = { ...service, duration: chosenServices.reduce((total, item) => total + item.duration, 0) };
     const waived = await depositWaived(db, customer);
     const appointment = buildAppointment({
         ...body, address: `${text(body.address, 390)} ${postalCode}`,
         ...(body.reuseQuoteContact === true ? { name: quote.name, phone: quote.phone } : {}),
-        clientId: null, leadId: quote?.id ?? null, email, service: service.name,
-        durationMinutes: service.duration, estimateCents: quotedPrice ?? prices[vehicleType ?? "sedan"], deposit: waived ? "waived" : "required",
+        // The customer's rows were checked against the catalog above; the priced items are attached below.
+        clientId: null, leadId: quote?.id ?? null, email, service: summary.service, vehicle: summary.vehicle, items: undefined,
+        durationMinutes: summary.minutes, estimateCents: summary.estimateCents, deposit: waived ? "waived" : "required",
     }, customer?.uid ?? "guest", Date.now(), true);
-    if (!(0, appointment_booking_1.bookingSlots)(settings, (0, appointment_booking_1.easternDate)(appointment.start), service, Date.now()).includes(appointment.start)) {
+    Object.assign(appointment, { service: summary.service, vehicle: summary.vehicle, items });
+    if (!(0, appointment_booking_1.bookingSlots)(settings, (0, appointment_booking_1.easternDate)(appointment.start), booked, Date.now()).includes(appointment.start)) {
         throw new AppointmentError(409, "time_unavailable");
     }
     appointment.bufferMinutes = settings.bufferMinutes;
@@ -923,7 +1113,7 @@ async function publicBooking(db, auth, req, body) {
         }
         const latest = (await tx.get(settingsDoc(db))).data();
         if (!latest?.enabled || latest.revision !== settings.revision ||
-            !(0, appointment_booking_1.bookingSlots)(latest, (0, appointment_booking_1.easternDate)(appointment.start), service, Date.now()).includes(appointment.start)) {
+            !(0, appointment_booking_1.bookingSlots)(latest, (0, appointment_booking_1.easternDate)(appointment.start), booked, Date.now()).includes(appointment.start)) {
             throw new AppointmentError(409, "time_unavailable");
         }
         const now = Date.now();
@@ -1017,7 +1207,7 @@ async function cancelAppointment(db, tx, id, appointment, actor, override, reaso
 const emailWhenFormat = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/New_York", weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
 });
-const emailMoney = (cents) => `${(cents / 100).toFixed(2)}`;
+const emailMoney = (cents) => `$${(cents / 100).toFixed(2)}`;
 const LINK_HINT = "Use the appointment link from your booking email to see everything, add it to your calendar, or request a change.";
 const preparationNote = (appointment) => appointment.preparation ? { note: `Before I arrive: ${appointment.preparation}` } : {};
 // The appointment at a glance, for the details card in customer emails.
@@ -1062,8 +1252,17 @@ async function openCheckout(db, id, body) {
     const ref = db.collection("appointments").doc(id);
     const current = await readAppointment(db, id);
     assertLink(id, body.token, current);
+    // An optional tip on a balance, in cents. Deposits never take one.
+    const requestedTip = body.tipCents ?? 0;
+    if (typeof requestedTip !== "number" || !Number.isSafeInteger(requestedTip) || requestedTip < 0 || requestedTip > 100000) {
+        throw new AppointmentError(400, "invalid_tip");
+    }
     if (current.checkout?.id) {
-        const session = await (0, appointment_stripe_1.stripeSession)(config, current.checkout.id);
+        let session = await (0, appointment_stripe_1.stripeSession)(config, current.checkout.id);
+        // The customer changed the tip after opening Stripe: end that session so a new one can carry the new total.
+        if (session.status === "open" && current.checkout.kind === "balance" && (current.checkout.tipCents ?? 0) !== requestedTip) {
+            session = await (0, appointment_stripe_1.releaseStripeSession)(config, current.checkout.id);
+        }
         await applyStripeSession(db, session);
         if (session.status === "complete")
             throw new AppointmentError(409, "checkout_finished");
@@ -1084,9 +1283,14 @@ async function openCheckout(db, id, body) {
             throw new AppointmentError(409, "nothing_due");
         if (body.accepted !== true)
             throw new AppointmentError(400, "policy_acceptance_required");
+        const tipCents = deposit ? 0 : requestedTip;
+        if (tipCents > amount)
+            throw new AppointmentError(400, "invalid_tip");
         if (appointment.checkout) {
             if (!appointment.checkout.id && appointment.checkout.expiresAt <= now)
                 throw new AppointmentError(409, "checkout_too_close");
+            if ((appointment.checkout.tipCents ?? 0) !== tipCents)
+                throw new AppointmentError(409, "checkout_active");
             return appointment.checkout;
         }
         const expiresAt = Math.min(deposit ? appointment.depositDeadline ?? 0 : Infinity, now + CHECKOUT_WINDOW);
@@ -1099,6 +1303,7 @@ async function openCheckout(db, id, body) {
             attempt: (0, node_crypto_1.randomBytes)(16).toString("hex"), kind, expiresAt, amount, origin, holdUntil: now + CHECKOUT_HOLD,
             disclosure: deposit ? DEPOSIT_POLICY : "Pay the outstanding balance for your completed detail.",
             ...(taxCents > 0 ? { taxCents, taxLabel: (0, appointment_tax_1.taxLineLabel)(appointment.taxRateBasisPoints ?? 0) } : {}),
+            ...(tipCents > 0 ? { tipCents } : {}),
         };
         tx.update(ref, { checkout, reconcileAt: checkout.holdUntil,
             ...(deposit ? { policyVersion: POLICY_VERSION, acceptedPolicy: DEPOSIT_POLICY, acceptedAt: now } : {}),
@@ -1109,7 +1314,7 @@ async function openCheckout(db, id, body) {
         ? await (0, appointment_stripe_1.stripeSession)(config, reservation.id)
         : await (0, appointment_stripe_1.createStripeSession)(config, { id, ...reservation });
     if (session.livemode !== (0, appointment_secrets_1.liveMode)() || session.metadata.appointmentId !== id || session.metadata.attemptId !== reservation.attempt ||
-        session.amount_total !== reservation.amount || session.currency !== "usd")
+        session.amount_total !== reservation.amount + (reservation.tipCents ?? 0) || session.currency !== "usd")
         throw new Error("stripe_checkout_mismatch");
     await db.runTransaction(async (tx) => {
         const latest = (await tx.get(ref)).data();
@@ -1132,8 +1337,9 @@ async function applyStripeSession(db, session) {
         const checkout = appointment?.checkout;
         if (!appointment || !checkout || checkout.attempt !== session.metadata.attemptId || (checkout.id && checkout.id !== session.id))
             return;
-        if (session.currency !== "usd" || session.amount_total !== checkout.amount || session.metadata.kind !== checkout.kind)
+        if (session.currency !== "usd" || session.amount_total !== checkout.amount + (checkout.tipCents ?? 0) || session.metadata.kind !== checkout.kind) {
             throw new Error("stripe_amount_mismatch");
+        }
         const now = Date.now();
         if (session.status === "expired") {
             tx.update(ref, { checkout: null, reconcileAt: checkout.kind === "deposit" ? appointment.depositDeadline : null });
@@ -1143,17 +1349,19 @@ async function applyStripeSession(db, session) {
             return;
         const ledger = ref.collection("ledger").doc(session.id);
         tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: (0, appointment_secrets_1.liveMode)(),
-            ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}) });
+            ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}), ...(checkout.tipCents ? { tipCents: checkout.tipCents } : {}) });
         if (checkout.kind === "balance") {
             const entry = { id: session.id, amount: checkout.amount, method: "stripe", at: now, by: "stripe", reference: session.payment_intent,
-                ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}) };
+                ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}), ...(checkout.tipCents ? { tipCents: checkout.tipCents } : {}) };
             const paid = { ...appointment, payments: [...(appointment.payments ?? []), entry] };
             tx.update(ref, { checkout: null, reconcileAt: null, payments: paid.payments });
             queueOptedInMaintenance(db, tx, id, paid);
             (0, appointment_email_1.queueAppointmentEmail)(db, tx, `receipt-${session.id}`, appointment.email, "Detailing payment received", {
                 eyebrow: "Receipt", heading: "Payment received. Thank you!",
-                paragraphs: [`I received your payment of ${emailMoney(checkout.amount)}. It was a pleasure taking care of your ${appointment.vehicle || "vehicle"}.`],
-                details: [...invoiceFacts(appointment), ["Paid", emailMoney(checkout.amount)], ...emailFacts(appointment)],
+                paragraphs: [`I received your payment of ${emailMoney(checkout.amount + (checkout.tipCents ?? 0))}. ${checkout.tipCents ? "Thank you so much for the tip! " : ""}It was a pleasure taking care of your ${appointment.vehicle || "vehicle"}.`],
+                details: [...invoiceFacts(appointment), ["Paid", emailMoney(checkout.amount)],
+                    ...(checkout.tipCents ? [["Tip", emailMoney(checkout.tipCents)], ["Total charged", emailMoney(checkout.amount + checkout.tipCents)]] : []),
+                    ...emailFacts(appointment)],
                 action: { label: "Book your next detail", url: `${(0, appointment_email_template_1.emailSiteOrigin)()}/quote` },
             });
         }
@@ -1254,6 +1462,51 @@ async function sendFollowUps(db, now) {
         }
     }
 }
+// Days after a finished job that an unpaid balance gets a reminder email, and the daytime window they go out in.
+const BALANCE_REMINDER_DAYS = [1, 4, 10];
+const easternHour = (time) => Number(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(time));
+async function sendBalanceReminders(db, now) {
+    const hour = easternHour(now);
+    if (hour < 9 || hour >= 19)
+        return;
+    const collection = db.collection("appointments");
+    const finished = await collection.where("completedAt", ">=", now - 30 * DAY).where("completedAt", "<=", now - DAY).orderBy("completedAt").limit(60).get();
+    for (const doc of finished.docs) {
+        const appointment = doc.data();
+        const sent = appointment.balanceRemindersSent ?? 0;
+        const step = BALANCE_REMINDER_DAYS[sent];
+        const balance = remainingBalance(appointment) ?? 0;
+        if (step === undefined || appointment.status !== "completed" || !appointment.email || !appointment.completedAt || balance < 50 ||
+            appointment.paymentReview || hasPendingCheck(appointment) || appointment.checkout || now < appointment.completedAt + step * DAY)
+            continue;
+        // An open invoice for this job sends its own reminders.
+        const invoiced = await db.collection("invoices").where("source.appointmentId", "==", doc.id).where("status", "==", "open").limit(1).get();
+        if (!invoiced.empty)
+            continue;
+        await db.runTransaction(async (tx) => {
+            const latest = (await tx.get(doc.ref)).data();
+            const owed = latest ? remainingBalance(latest) ?? 0 : 0;
+            if (!latest || latest.status !== "completed" || (latest.balanceRemindersSent ?? 0) !== sent || owed < 50 || latest.checkout ||
+                latest.paymentReview || hasPendingCheck(latest))
+                return;
+            // A fresh link that opens the appointment, so the email works even if the booking link has expired.
+            const token = (0, node_crypto_1.randomBytes)(32).toString("hex");
+            const url = checkoutOrigin() + (0, appointment_short_links_1.shortLinkPath)("appointment", (0, appointment_short_links_1.createShortLink)(db, tx, "appointment", doc.id, token));
+            tx.update(doc.ref, { payLinkHash: digest(token), payLinkExpiresAt: now + 30 * DAY, balanceRemindersSent: sent + 1, balanceReminderAt: now });
+            const first = latest.name.split(" ")[0] || "there";
+            const when = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", month: "long", day: "numeric" }).format(latest.start);
+            (0, appointment_email_1.queueAppointmentEmail)(db, tx, `balance-${doc.id}-${sent + 1}`, latest.email, `Balance due for your ${when} detail`, {
+                eyebrow: "Balance reminder", heading: `${emailMoney(owed)} balance due`,
+                paragraphs: [sent === 0
+                        ? `Hi ${first}, thanks again for having me detail your ${latest.vehicle || "vehicle"} on ${when}. There's a balance of ${emailMoney(owed)} left on the job.`
+                        : `Hi ${first}, a friendly reminder that ${emailMoney(owed)} is still due for your ${when} detail.`,
+                    "You can pay securely online by card in about a minute. If you've already paid another way, text me and I'll update it."],
+                details: [...invoiceFacts(latest), ["Balance due", emailMoney(owed)], ["Service", latest.service]],
+                action: { label: "Pay balance", url },
+            });
+        });
+    }
+}
 async function reconcileAppointments(db) {
     const config = await (0, appointment_stripe_1.stripeConfig)();
     const now = Date.now();
@@ -1342,6 +1595,8 @@ async function reconcileAppointments(db) {
         }
     }
     await sendFollowUps(db, now).catch(error => (0, ops_health_1.recordOpsEvent)(db, { source: "email", code: "follow_ups_failed", detail: error instanceof Error ? error.message : String(error) }));
+    if ((await getFollowUpSettings(db)).balanceReminders)
+        await sendBalanceReminders(db, now).catch(error => (0, ops_health_1.recordOpsEvent)(db, { source: "email", code: "balance_reminders_failed", detail: error instanceof Error ? error.message : String(error) }));
     await (0, ops_health_1.pruneOpsEvents)(db, now).catch(() => undefined);
     if (!config)
         return;
@@ -1696,8 +1951,17 @@ async function handleAppointments(db, auth, req, res, action) {
             }
             else if (action === "list")
                 result = await listAppointments(db, body);
+            else if (action === "client-history")
+                result = await clientHistory(db, uid, body);
             else if (action === "health")
                 result = await healthReport(db);
+            else if (action === "business-report")
+                result = await (0, business_report_1.businessReport)(db);
+            else if (action === "save-tax-filing") {
+                result = await (0, business_report_1.saveTaxFiling)(db, uid, body).catch(error => {
+                    throw error instanceof business_report_1.ReportError ? new AppointmentError(error.status, error.code) : error;
+                });
+            }
             else if (action === "follow-up-settings")
                 result = await getFollowUpSettings(db);
             else if (action === "save-follow-up-settings") {
@@ -1720,13 +1984,13 @@ async function handleAppointments(db, auth, req, res, action) {
                     throw new AppointmentError(400, "export_range_too_large");
                 const cell = (value) => `"${String(value ?? "").replace(/^[=+@\-\s]/, match => "'" + match).replace(/"/g, '""')}"`;
                 const rows = records.docs.map(row => {
-                    const { at, kind, method, amount, by, reference, status, clearance, taxCents } = row.data();
+                    const { at, kind, method, amount, by, reference, status, clearance, taxCents, tipCents } = row.data();
                     return [row.ref.parent.parent?.id, row.id, new Date(at).toISOString(), kind ?? "manual_payment", method, status ?? clearance ?? "recorded",
-                        by, reference].map(cell).join(",") + `,${Number.isSafeInteger(amount) ? amount : ""},${Number.isSafeInteger(taxCents) ? taxCents : 0}`;
+                        by, reference].map(cell).join(",") + `,${Number.isSafeInteger(amount) ? amount : ""},${Number.isSafeInteger(taxCents) ? taxCents : 0},${Number.isSafeInteger(tipCents) ? tipCents : 0}`;
                 });
-                result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents,tax_cents", ...rows].join("\r\n") };
+                result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents,tax_cents,tip_cents", ...rows].join("\r\n") };
             }
-            else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "save-notes", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite"].includes(action)) {
+            else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "save-notes", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite", "update-services"].includes(action)) {
                 result = await changeAppointment(db, uid, identifier(body.id), action, body);
             }
             else
@@ -1784,8 +2048,14 @@ async function handleStripeWebhook(db, req, res) {
         }
         const sessionId = event.data.object.id;
         await receipt.set({ sessionId, type: event.type, receivedAt: Date.now() }, { merge: true });
-        if (checkoutEvent)
-            await applyStripeSession(db, await (0, appointment_stripe_1.stripeSession)(config, sessionId));
+        if (checkoutEvent) {
+            const session = await (0, appointment_stripe_1.stripeSession)(config, sessionId);
+            // Invoice payments from the /pay page share this webhook endpoint.
+            if (session.metadata?.invoiceId)
+                await (await Promise.resolve().then(() => __importStar(require("./invoice-payments")))).applyInvoiceSession(db, session);
+            else
+                await applyStripeSession(db, session);
+        }
         else {
             const change = await (0, appointment_stripe_1.stripeMoneyChange)(config, event);
             if (change && HASH.test(change.appointmentId)) {

@@ -28,11 +28,12 @@ export function friendlyDate(value: string) {
   if (!match) return value;
   return new Date(Date.UTC(+match[1], +match[2] - 1, +match[3])).toLocaleDateString("en-US", { timeZone: "UTC", month: "long", day: "numeric", year: "numeric" });
 }
-const methodLabel = (method: string) => ({ check: "Check", cash: "Cash", ach: "Bank transfer (ACH)", card: "Card", other: "Other" } as Record<string, string>)[method] ?? method;
+const methodLabel = (method: string) => ({ check: "Check", cash: "Cash", ach: "Bank transfer (ACH)", card: "Card", stripe: "Paid online", other: "Other" } as Record<string, string>)[method] ?? method;
 
 export type PdfKind = "invoice" | "receipt";
 
-export function invoicePdf(invoice: InvoiceRecord, settings: InvoiceSettings, kind: PdfKind): Promise<Buffer> {
+// payUrl, when given, adds a clickable "Pay online" line under the payment box of an invoice.
+export function invoicePdf(invoice: InvoiceRecord, settings: InvoiceSettings, kind: PdfKind, payUrl?: string): Promise<Buffer> {
   const doc = new PDFDocument({ size: "LETTER", margin: PAGE.margin, bufferPages: true,
     info: { Title: `${kind === "receipt" ? "Receipt" : "Invoice"} ${invoice.number}`, Author: settings.businessName, Creator: settings.businessName } });
   const chunks: Buffer[] = [];
@@ -143,6 +144,8 @@ export function invoicePdf(invoice: InvoiceRecord, settings: InvoiceSettings, ki
   for (const credit of invoice.credits) rows.push([credit.description, -credit.cents]);
   for (const payment of invoice.payments) {
     rows.push([`${methodLabel(payment.method)}${payment.reference ? ` #${payment.reference}` : ""}, ${friendlyDate(payment.date)}`, -payment.cents]);
+    // A tip is shown for the record but doesn't change the balance.
+    if (payment.tipCents) rows.push([`Tip with that payment (thank you!)`, payment.tipCents]);
   }
   const blockHeight = Math.max(rows.length * 20 + 40, 124);
   if (y + blockHeight > PAGE.height - 90) newPage();
@@ -182,6 +185,13 @@ export function invoicePdf(invoice: InvoiceRecord, settings: InvoiceSettings, ki
     doc.restore();
   }
   y = Math.max(totalsBottom, boxTop + 124) + 24;
+  if (!receipt && payUrl && due > 0) {
+    if (y + 40 > PAGE.height - 70) newPage();
+    label("Pay online", PAGE.margin, y);
+    doc.font("Helvetica").fontSize(9.5).fillColor(C.text).text("Pay by card at ", PAGE.margin, y + 12, { continued: true })
+      .fillColor(C.purple).text(payUrl, { link: payUrl, underline: true });
+    y = doc.y + 18;
+  }
 
   // Notes and footer text.
   const note = receipt ? (invoice.receiptNote || settings.receiptNote) : (invoice.notes || settings.invoiceNote);

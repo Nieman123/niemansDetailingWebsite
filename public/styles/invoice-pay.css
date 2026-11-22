@@ -1,0 +1,28 @@
+/* Customer invoice pay page (/pay, reached from /i/<code> links). */
+.invoice-pay .pay-head { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: flex-start; justify-content: space-between; }
+.invoice-pay .pay-head h1 { margin: 8px 0 4px; font-size: clamp(1.5rem, 5vw, 2rem); }
+.invoice-pay .pay-sub { margin: 0; color: var(--nd-muted); overflow-wrap: anywhere; }
+.invoice-pay .pay-due { display: grid; gap: 2px; text-align: right; min-width: 140px; }
+.invoice-pay .pay-due span { color: var(--nd-muted); font-size: .9rem; }
+.invoice-pay .pay-due strong { font: 800 clamp(1.8rem, 7vw, 2.4rem)/1.05 var(--nd-font-display); color: var(--nd-gold); }
+.invoice-pay .pay-due[data-state="paid"] strong { color: var(--nd-success); }
+.invoice-pay .pay-due[data-state="overdue"] span:last-child { color: var(--nd-warning); font-weight: 600; }
+.invoice-pay .status-pill[data-status=open] { background: var(--nd-warning-tint); color: var(--nd-warning); }
+.invoice-pay .status-pill[data-status=overdue] { background: var(--nd-danger-tint); color: var(--nd-danger); }
+.invoice-pay .status-pill[data-status=paid] { background: var(--nd-success-tint); color: var(--nd-success); }
+.invoice-pay .status-pill[data-status=void] { background: var(--nd-surface-2, rgba(255,255,255,.06)); color: var(--nd-muted); }
+.invoice-pay .pay-box { margin: 20px 0 8px; padding: 18px; border: 1px solid var(--nd-gold-line); border-radius: var(--nd-radius); background: var(--nd-gold-tint); }
+.invoice-pay .pay-box h2 { margin: 0 0 10px; font-size: 1.15rem; }
+.invoice-pay .pay-button { width: 100%; min-height: 52px; font-size: 1.05rem; }
+.invoice-pay .pay-fine { margin: 10px 0 0; color: var(--nd-muted); font-size: .85rem; text-align: center; }
+.invoice-pay .pay-section { margin: 26px 0 10px; font-size: 1.1rem; }
+.invoice-pay .pay-lines { width: 100%; margin: 16px 0 8px; border-collapse: collapse; }
+.invoice-pay .pay-lines th { text-align: left; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; color: var(--nd-muted); padding: 8px 0; border-bottom: 1px solid var(--nd-line-strong); }
+.invoice-pay .pay-lines th:last-child, .invoice-pay .pay-lines td:last-child { text-align: right; white-space: nowrap; padding-left: 12px; }
+.invoice-pay .pay-lines td { padding: 10px 0; border-bottom: 1px solid var(--nd-line); vertical-align: top; overflow-wrap: anywhere; }
+.invoice-pay .pay-lines td small { display: block; color: var(--nd-muted); }
+.invoice-pay .pay-totals { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; margin: 8px 0 20px; }
+.invoice-pay .pay-totals dt { color: var(--nd-muted); }
+.invoice-pay .pay-totals dd { margin: 0; text-align: right; }
+.invoice-pay .pay-totals .strong { color: var(--nd-text); font-weight: 700; }
+@media (max-width: 520px) { .invoice-pay .pay-due { text-align: left; } }

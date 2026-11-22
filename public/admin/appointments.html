@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="/styles/appointments.css">
 <link rel="stylesheet" href="/styles/workspace.css">
 <link rel="stylesheet" href="/styles/booking.css">
+<link rel="stylesheet" href="/styles/booking-items.css">
 </head>
 <body class="quote-page appointment-app owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="appointments"></nav></header>
   <main class="wrap">
@@ -66,6 +67,7 @@
               <label class="field"><span>Vehicle details <small>Optional</small></span><input name="vehicle" maxlength="150" placeholder="Year, make and model"></label>
             </div>
             <fieldset class="picker-field"><legend>Service</legend><div id="owner-service-picker"></div><select name="service" hidden tabindex="-1"><option value="">Choose later</option></select></fieldset>
+            <fieldset class="picker-field"><legend>Add-ons and more vehicles <small>Optional</small></legend><p class="sub">Add another service for this vehicle, or services for a second vehicle. The length and estimate update to match.</p><div id="owner-extra-items"></div></fieldset>
             <label class="field"><span>Appointment length</span><select name="durationMinutes" required><option value="60">1 hour</option></select></label>
             <div id="owner-slot-calendar" class="owner-slot-calendar">
               <div class="month-nav">
@@ -134,6 +136,7 @@
         <h2 id="follow-up-heading" style="margin-top:2.5rem">Customer follow-up emails</h2>
         <form id="follow-up-settings" aria-labelledby="follow-up-heading">
           <label class="appointment-checkbox"><input name="reminders" type="checkbox"> Send a reminder email the day before each confirmed appointment</label>
+          <label class="appointment-checkbox"><input name="balanceReminders" type="checkbox"> Email a reminder with a pay link when a finished job still has a balance (1, 4 and 10 days after, between 9 AM and 7 PM)</label>
           <label class="appointment-checkbox"><input name="reviewRequests" type="checkbox"> Ask for a Google review 2 hours after a job is finished and paid</label>
           <label class="field"><span>Google review link</span><input name="reviewUrl" type="url" maxlength="500" placeholder="https://g.page/r/…/review" autocomplete="off"></label>
           <p class="sub">Find it in your Google Business Profile: Ask for reviews, then Copy link. Each customer is asked once, even if they book again.</p>

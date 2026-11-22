@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Dashboard | Nieman's Detailing</title>
+  <meta name="theme-color" content="#0a0912">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/styles/brand.css?v=20261120">
+  <link rel="stylesheet" href="/quote.css">
+  <link rel="stylesheet" href="/styles/appointments.css">
+<link rel="stylesheet" href="/styles/workspace.css">
+<link rel="stylesheet" href="/styles/admin-health.css">
+<link rel="stylesheet" href="/styles/admin-reports.css">
+</head>
+<body class="quote-page appointment-app owner-app"><header class="work-header"><a class="work-brand" href="/admin/appointments" data-work-home><img src="/images/ND-logo-white-transparentbg-horizontal-300.webp" alt="Nieman’s Detailing"><span>Workspace</span></a><nav class="work-nav" aria-label="Workspace" data-section="dashboard"></nav></header>
+  <main class="wrap health">
+    <div class="work-title"><h1>Dashboard</h1><nav class="appointment-actions" aria-label="Dashboard tools">
+      <button type="button" class="quiet" id="refresh-health" hidden>Refresh</button>
+      <button type="button" class="quiet" id="sign-out" hidden>Sign out</button>
+    </nav></div>
+    <p id="auth-status" role="status">Checking admin access…</p>
+    <button class="btn primary" type="button" id="sign-in" hidden>Sign in with Google</button>
+
+    <section id="reports" class="reports" aria-labelledby="reports-heading" hidden>
+      <div class="reports-head">
+        <h2 id="reports-heading">Money and jobs</h2>
+        <div class="chip-row" role="group" aria-label="Period" id="report-period">
+          <button type="button" class="report-chip" data-period="month" aria-pressed="true">This month</button>
+          <button type="button" class="report-chip" data-period="last" aria-pressed="false">Last month</button>
+          <button type="button" class="report-chip" data-period="year" aria-pressed="false">This year</button>
+          <button type="button" class="report-chip" data-period="12" aria-pressed="false">Last 12 months</button>
+        </div>
+      </div>
+      <p class="sub" id="report-range"></p>
+      <section class="health-tiles report-tiles" aria-label="Totals for this period">
+        <div class="health-tile" id="tile-revenue"><span>Revenue</span><strong></strong><small></small></div>
+        <div class="health-tile" id="tile-jobs"><span>Jobs finished</span><strong></strong><small></small></div>
+        <div class="health-tile" id="tile-ticket"><span>Average ticket</span><strong></strong><small></small></div>
+        <div class="health-tile" id="tile-tax"><span>Sales tax collected</span><strong></strong><small></small></div>
+      </section>
+      <section class="panel" aria-labelledby="chart-heading">
+        <h2 id="chart-heading">Revenue by month</h2>
+        <div class="revenue-chart" id="revenue-chart" role="img" aria-label="Revenue for each of the last 12 months"></div>
+        <details class="report-table-wrap">
+          <summary>Show as a table</summary>
+          <div class="report-table-scroll"><table class="report-table">
+            <thead><tr><th scope="col">Month</th><th scope="col">Revenue</th><th scope="col">Jobs</th><th scope="col">Avg ticket</th><th scope="col">Sales tax</th></tr></thead>
+            <tbody id="report-rows"></tbody>
+          </table></div>
+        </details>
+      </section>
+      <section class="panel" aria-labelledby="services-heading">
+        <h2 id="services-heading">Top services</h2>
+        <ul class="service-bars" id="top-services"></ul>
+      </section>
+      <section class="panel tax-panel" id="sales-tax" aria-labelledby="tax-heading">
+        <div class="reports-head">
+          <h2 id="tax-heading">Sales tax filing</h2>
+          <label class="field tax-frequency"><span>I file</span><select id="tax-frequency">
+            <option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annual">Yearly</option>
+          </select></label>
+        </div>
+        <div class="tax-callout" id="tax-callout" aria-live="polite"><strong></strong><span></span></div>
+        <label class="field"><span>Filing period</span><select id="tax-period"></select></label>
+        <dl class="tax-summary" id="tax-summary"></dl>
+        <div class="tax-actions">
+          <button type="button" class="btn primary" id="tax-copy">Copy summary</button>
+          <button type="button" class="btn" id="tax-csv">Download CSV</button>
+          <button type="button" class="btn" id="tax-filed">Mark as filed</button>
+        </div>
+        <p class="sub" id="tax-status" role="status"></p>
+        <p class="sub" id="tax-note"></p>
+      </section>
+      <p class="sub">Revenue is the pre-tax amount billed for finished jobs, counted in the month you finished the job or issued the invoice. It includes work that isn't paid yet. Invoices made from an appointment count once, with the appointment.</p>
+    </section>
+
+    <div id="health" hidden>
+      <h2 class="dashboard-section">Site health</h2>
+      <section class="health-banner" id="health-banner" aria-live="polite"><strong id="banner-title"></strong><span id="banner-detail"></span></section>
+
+      <section class="health-tiles" aria-label="Last 24 hours">
+        <div class="health-tile" id="tile-errors"><span>Errors, 24 h</span><strong></strong></div>
+        <div class="health-tile" id="tile-warnings"><span>Warnings, 24 h</span><strong></strong></div>
+        <div class="health-tile" id="tile-attention"><span>Bookings needing you</span><strong></strong></div>
+        <div class="health-tile" id="tile-emails"><span>Emails sent, 7 days</span><strong></strong></div>
+      </section>
+
+      <section class="panel" aria-labelledby="attention-heading" id="attention-panel">
+        <h2 id="attention-heading">Bookings that need you</h2>
+        <ul class="health-list" id="attention-list"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="systems-heading">
+        <h2 id="systems-heading">Systems</h2>
+        <ul class="health-checks" id="checks"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="emails-heading">
+        <h2 id="emails-heading">Customer emails, last 7 days</h2>
+        <p id="email-summary" class="sub"></p>
+        <ul class="health-list" id="email-problems"></ul>
+      </section>
+
+      <section class="panel" aria-labelledby="events-heading">
+        <h2 id="events-heading">Problems log, last 7 days</h2>
+        <label class="field"><span>Show</span><select id="event-filter">
+          <option value="all">Errors and warnings</option><option value="error">Errors only</option><option value="browser">Browser errors</option>
+        </select></label>
+        <ul class="health-list" id="events"></ul>
+        <p class="sub">The same problem within an hour is grouped with a count. Errors also send a Telegram alert, at most once every 6 hours for each kind. Entries clear after 30 days.</p>
+      </section>
+      <p class="sub" id="generated"></p>
+    </div>
+  </main>
+  <script type="module" src="/scripts/admin-health.mjs"></script>
+  <script type="module" src="/scripts/admin-reports.mjs"></script>
+<script type="module" src="/scripts/workspace.mjs"></script>
+</body>
+</html>
