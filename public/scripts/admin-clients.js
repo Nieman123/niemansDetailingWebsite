@@ -110,6 +110,7 @@ const state = {
   activeClientId: null,
   activeDraft: null,
   editingBookings: [],
+  autoFollowupDate: "",
   creatingNew: false,
   preferredClientId: preselectedClientId,
   fromLeadId: prefillFromLeadId,
@@ -793,6 +794,7 @@ function setQueryParams({ clientId = null, fromLeadId = null }) {
 }
 
 function showClientDetails(client) {
+  state.autoFollowupDate = "";
   if (!client) {
     state.activeClientId = null;
     state.activeDraft = null;
@@ -1058,6 +1060,31 @@ function autoFillNextFollowup() {
   if (computed && els.nextFollowupInput) {
     els.nextFollowupInput.value = computed;
   }
+}
+
+// Logging a contact pushes the next follow-up out by the client's repeat interval, so a client
+// you just messaged drops off the due list. A follow-up you set by hand further out than that
+// is kept. A date this function filled in earlier in the same edit is always recomputed, so
+// fixing a typo in the contacted date or changing the interval moves it again.
+function followupFromLastContacted() {
+  const contacted = normalizeDateInput(els.lastContactedInput?.value || "");
+  if (!contacted || !els.nextFollowupInput) return;
+  const months = normalizeNumber(els.repeatMonthsInput?.value, DEFAULT_REPEAT_MONTHS, 0, 36);
+  if (months <= 0) return;
+  const computed = addMonthsIsoDate(contacted, months);
+  if (!computed) return;
+
+  const current = normalizeDateInput(els.nextFollowupInput.value);
+  const setByUs = current && current === state.autoFollowupDate;
+  if (current && !setByUs && current > computed) {
+    setStatus(`Kept next follow-up on ${formatDateLabel(current)} since it's later than ${months} months after last contact.`);
+    return;
+  }
+
+  els.nextFollowupInput.value = computed;
+  state.autoFollowupDate = computed;
+  const unit = months === 1 ? "month" : "months";
+  setStatus(`Next follow-up moved to ${formatDateLabel(computed)} (${months} ${unit} after last contact). Save client to keep it.`);
 }
 
 function addBookingFromInputs() {
@@ -2083,7 +2110,20 @@ function bindEvents() {
   }
 
   if (els.repeatMonthsInput) {
-    els.repeatMonthsInput.addEventListener("change", autoFillNextFollowup);
+    els.repeatMonthsInput.addEventListener("change", () => {
+      const current = normalizeDateInput(els.nextFollowupInput?.value || "");
+      if (state.autoFollowupDate && current === state.autoFollowupDate) followupFromLastContacted();
+      else autoFillNextFollowup();
+    });
+  }
+
+  if (els.lastContactedInput) {
+    els.lastContactedInput.addEventListener("change", followupFromLastContacted);
+  }
+
+  if (els.nextFollowupInput) {
+    // A hand-picked date is the person's call: stop treating it as ours to recompute.
+    els.nextFollowupInput.addEventListener("change", () => { state.autoFollowupDate = ""; });
   }
 
   if (els.lastServiceInput) {
