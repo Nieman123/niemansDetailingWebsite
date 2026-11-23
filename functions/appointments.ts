@@ -18,7 +18,7 @@ import {
   createStripeSession, findCheckoutAttempt, isSessionId, releaseStripeSession, stripeConfig, stripeMoneyChange, stripeRefund, stripeSession, verifyStripeEvent,
   type StripeSession,
 } from "./appointment-stripe";
-import { bookingIdFor, clientChanges, clientEmail, findClientForJob, saveJobToClient, type ClientJob } from "./appointment-clients";
+import { bookingIdFor, clientChanges, clientEmail, findClientForJob, saveCustomerEmail, saveJobToClient, type ClientJob } from "./appointment-clients";
 import { ItemError, catalogItems, itemInvoiceLines, itemSummary, itemsOf, parseOwnerItems, type AppointmentItem } from "./appointment-items";
 import { defaultTaxSettings, parseTaxSettings, taxLineLabel, taxOn, taxPortion, taxRateLabel, type TaxSettings } from "./appointment-tax";
 
@@ -1164,10 +1164,14 @@ async function customerAccount(db: Firestore, auth: Auth, req: Request, body: Re
     if (!appointment) throw new AppointmentError(404, "link_unavailable");
     if (action === "claim-appointment") {
       assertLink(id, body.token, appointment);
-      if (appointment.email.toLowerCase() !== customer.email || (appointment.customerUid && appointment.customerUid !== customer.uid)) {
+      // An appointment booked with only a phone number takes the email the customer signs in with.
+      const onFile = (appointment.email || "").toLowerCase();
+      if ((onFile && onFile !== customer.email) || (appointment.customerUid && appointment.customerUid !== customer.uid)) {
         throw new AppointmentError(403, "appointment_email_mismatch");
       }
-      tx.update(ref, { customerUid: customer.uid });
+      const client = await findClientForJob(db, tx, appointment.clientId, customer.email, appointment.phone);
+      tx.update(ref, { customerUid: customer.uid, ...(onFile ? {} : { email: customer.email }) });
+      saveCustomerEmail(tx, client, customer.email, "sign-in", Date.now());
       return {};
     }
     if (appointment.customerUid !== customer.uid || appointment.status === "draft") throw new AppointmentError(404, "link_unavailable");
@@ -1325,6 +1329,14 @@ export async function applyStripeSession(db: Firestore, session: StripeSession) 
       return;
     }
     if (session.status !== "complete" || session.payment_status !== "paid" || !session.payment_intent || !/^pi_\w+$/.test(session.payment_intent)) return;
+    // The email typed at Checkout fills in a phone-only appointment and its client record. Reads come before writes.
+    const paidEmail = clientEmail(session.customer_details?.email);
+    const client = paidEmail ? await findClientForJob(db, tx, appointment.clientId, paidEmail, appointment.phone) : null;
+    if (paidEmail && !appointment.email) {
+      appointment.email = paidEmail;
+      tx.update(ref, { email: paidEmail });
+    }
+    saveCustomerEmail(tx, client, paidEmail, "payment", now);
     const ledger = ref.collection("ledger").doc(session.id);
     tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: liveMode(),
       ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}), ...(checkout.tipCents ? { tipCents: checkout.tipCents } : {}) });

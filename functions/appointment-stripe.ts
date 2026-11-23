@@ -12,6 +12,8 @@ export type StripeSession = {
   payment_intent: string | null;
   metadata: Record<string, string>;
   url: string | null;
+  // The email the customer typed at Checkout.
+  customer_details?: { email?: string | null } | null;
 };
 export type StripeRefund = { id: string; status: string; amount: number };
 export type StripeEvent = {

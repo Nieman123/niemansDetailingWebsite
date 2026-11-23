@@ -85,7 +85,6 @@ function render() {
   badge.hidden = !badge.textContent;
   byId("appointment-address").textContent = address || "Nieman will text you to confirm the address.";
   byId("save-link-hint").hidden = appointment.hasEmail;
-  byId("save-appointment-account").hidden = !appointment.hasEmail;
   byId("appointment-vehicle").textContent = vehicle;
   byId("vehicle-label").hidden = byId("appointment-vehicle").hidden = !vehicle;
   const price = finalCents ?? estimateCents;

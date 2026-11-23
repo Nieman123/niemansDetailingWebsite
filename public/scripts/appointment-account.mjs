@@ -33,7 +33,11 @@ async function renderUser(user) {
   list.replaceChildren();
   dashboard.hidden = !user;
   signInPanel.hidden = !!user;
-  if (!user) { status.textContent = "Sign in with the email used for your appointment."; return; }
+  if (!user) {
+    status.textContent = sessionStorage.getItem("appointmentAccountClaim") ? "Sign in with your email to save this appointment." :
+      "Sign in with the email used for your appointment.";
+    return;
+  }
   if (!user.emailVerified) {
     status.textContent = "Verify your email and sign in again to see your appointments.";
     const verify = Object.assign(document.createElement("button"), { type: "button", className: "btn secondary", textContent: "Send verification email" });

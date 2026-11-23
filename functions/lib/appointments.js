@@ -1173,10 +1173,14 @@ async function customerAccount(db, auth, req, body, action) {
             throw new AppointmentError(404, "link_unavailable");
         if (action === "claim-appointment") {
             assertLink(id, body.token, appointment);
-            if (appointment.email.toLowerCase() !== customer.email || (appointment.customerUid && appointment.customerUid !== customer.uid)) {
+            // An appointment booked with only a phone number takes the email the customer signs in with.
+            const onFile = (appointment.email || "").toLowerCase();
+            if ((onFile && onFile !== customer.email) || (appointment.customerUid && appointment.customerUid !== customer.uid)) {
                 throw new AppointmentError(403, "appointment_email_mismatch");
             }
-            tx.update(ref, { customerUid: customer.uid });
+            const client = await (0, appointment_clients_1.findClientForJob)(db, tx, appointment.clientId, customer.email, appointment.phone);
+            tx.update(ref, { customerUid: customer.uid, ...(onFile ? {} : { email: customer.email }) });
+            (0, appointment_clients_1.saveCustomerEmail)(tx, client, customer.email, "sign-in", Date.now());
             return {};
         }
         if (appointment.customerUid !== customer.uid || appointment.status === "draft")
@@ -1347,6 +1351,14 @@ async function applyStripeSession(db, session) {
         }
         if (session.status !== "complete" || session.payment_status !== "paid" || !session.payment_intent || !/^pi_\w+$/.test(session.payment_intent))
             return;
+        // The email typed at Checkout fills in a phone-only appointment and its client record. Reads come before writes.
+        const paidEmail = (0, appointment_clients_1.clientEmail)(session.customer_details?.email);
+        const client = paidEmail ? await (0, appointment_clients_1.findClientForJob)(db, tx, appointment.clientId, paidEmail, appointment.phone) : null;
+        if (paidEmail && !appointment.email) {
+            appointment.email = paidEmail;
+            tx.update(ref, { email: paidEmail });
+        }
+        (0, appointment_clients_1.saveCustomerEmail)(tx, client, paidEmail, "payment", now);
         const ledger = ref.collection("ledger").doc(session.id);
         tx.create(ledger, { kind: checkout.kind, id: session.id, amount: checkout.amount, method: "stripe", at: now, intent: session.payment_intent, livemode: (0, appointment_secrets_1.liveMode)(),
             ...(checkout.taxCents ? { taxCents: checkout.taxCents } : {}), ...(checkout.tipCents ? { tipCents: checkout.tipCents } : {}) });
