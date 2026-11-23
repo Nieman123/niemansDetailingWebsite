@@ -19,6 +19,7 @@ const invoice_model_1 = require("./invoice-model");
 const invoice_pdf_1 = require("./invoice-pdf");
 const appointment_email_1 = require("./appointment-email");
 const appointment_short_links_1 = require("./appointment-short-links");
+const appointment_clients_1 = require("./appointment-clients");
 const appointment_stripe_1 = require("./appointment-stripe");
 const appointment_secrets_1 = require("./appointment-secrets");
 const ops_health_1 = require("./ops-health");
@@ -128,6 +129,9 @@ async function applyInvoiceSession(db, session) {
         if (session.currency !== "usd" || !Number.isSafeInteger(amount) || !Number.isSafeInteger(tipCents) || amount <= 0 || tipCents < 0 ||
             amount + tipCents !== session.amount_total)
             throw new Error("stripe_amount_mismatch");
+        // The email typed at Checkout fills in a missing bill-to email and the client's email. Reads come before writes.
+        const paidEmail = (0, appointment_clients_1.clientEmail)(session.customer_details?.email);
+        const client = paidEmail && invoice.source?.clientId ? await (0, appointment_clients_1.findClientForJob)(db, tx, invoice.source.clientId, "", "") : null;
         const before = (0, invoice_model_1.invoiceTotals)(invoice);
         const payment = {
             id: session.id, method: "stripe", reference: "", date: easternDay(now), cents: amount, recordedAt: now, by: "stripe",
@@ -143,7 +147,10 @@ async function applyInvoiceSession(db, session) {
             revised.checkoutReconcileAt = null;
         }
         revised.updatedAt = now;
+        if (paidEmail && !revised.billTo.email)
+            revised.billTo = { ...revised.billTo, email: paidEmail };
         tx.set(ref, revised);
+        (0, appointment_clients_1.saveCustomerEmail)(tx, client, paidEmail, "payment", now);
         return { invoice: revised, amount, tipCents, overpaid: amount > before.balanceCents, voided: invoice.status === "void" };
     });
     if (!outcome)

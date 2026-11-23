@@ -73,6 +73,10 @@ const els = {
   nameInput: document.getElementById("client-name-input"),
   phoneInput: document.getElementById("client-phone-input"),
   emailInput: document.getElementById("client-email-input"),
+  emailSuggestion: document.getElementById("client-email-suggestion"),
+  emailSuggestionText: document.getElementById("client-email-suggestion-text"),
+  emailSuggestionUse: document.getElementById("client-email-suggestion-use"),
+  emailSuggestionDismiss: document.getElementById("client-email-suggestion-dismiss"),
   preferredContactInput: document.getElementById("client-preferred-contact-input"),
   statusInput: document.getElementById("client-status-input"),
   sourceInput: document.getElementById("client-source-input"),
@@ -835,6 +839,7 @@ function showClientDetails(client) {
   if (els.nameInput) els.nameInput.value = normalized.full_name || "";
   if (els.phoneInput) els.phoneInput.value = normalized.phone || "";
   if (els.emailInput) els.emailInput.value = normalized.email || "";
+  renderEmailSuggestion(normalized);
   if (els.preferredContactInput) els.preferredContactInput.value = normalized.preferred_contact || "";
   if (els.statusInput) els.statusInput.value = normalizeClientStatus(normalized.status);
   if (els.sourceInput) els.sourceInput.value = normalized.source || "";
@@ -861,6 +866,46 @@ function showClientDetails(client) {
   } else {
     setQueryParams({ clientId: null, fromLeadId: state.fromLeadId });
   }
+}
+
+// A customer signed in or paid online with an email that differs from the one on file. The server never
+// overwrites a saved email, so it waits here for the owner to use or dismiss.
+function pendingEmailSuggestion(client) {
+  const suggestion = client?.email_suggestion;
+  const email = normalizeEmail(suggestion?.email);
+  return email && email !== normalizeEmail(client.email) ? { ...suggestion, email } : null;
+}
+
+function renderEmailSuggestion(client) {
+  if (!els.emailSuggestion) return;
+  const suggestion = pendingEmailSuggestion(client);
+  els.emailSuggestion.hidden = !suggestion;
+  if (!suggestion) return;
+  const how = suggestion.source === "payment" ? "paid online" : "signed in";
+  const when = suggestion.at ? ` on ${formatDateTime(suggestion.at)}` : "";
+  els.emailSuggestionText.textContent = `The customer ${how} with ${suggestion.email}${when}.`;
+}
+
+async function dismissEmailSuggestion() {
+  const clientId = state.activeClientId;
+  if (!clientId) return;
+  try {
+    await updateDoc(doc(db, "clients", clientId), { email_suggestion: null });
+    updateClientInState(clientId, { email_suggestion: null });
+    if (els.emailSuggestion) els.emailSuggestion.hidden = true;
+  } catch (error) {
+    console.error("Failed to dismiss email suggestion", error);
+    setStatus("Could not dismiss the suggested email.", "error");
+  }
+}
+
+function useEmailSuggestion() {
+  const client = state.clients.find((item) => item.id === state.activeClientId);
+  const suggestion = pendingEmailSuggestion(client);
+  if (!suggestion || !els.emailInput) return;
+  els.emailInput.value = suggestion.email;
+  els.emailSuggestion.hidden = true;
+  setStatus("Save the client to keep the new email.");
 }
 
 function setClientActionLinks(client) {
@@ -1314,6 +1359,7 @@ async function saveClient() {
         if (arrived.length) payload.bookings = mergeBookings(payload.bookings, arrived);
         const freshLast = normalizeDateInput(fresh.data().last_service_date);
         if (freshLast && (!payload.last_service_date || freshLast > payload.last_service_date)) payload.last_service_date = freshLast;
+        if (payload.email && normalizeEmail(fresh.data().email_suggestion?.email) === payload.email) payload.email_suggestion = null;
       }
       await updateDoc(doc(db, "clients", state.activeClientId), {
         ...payload,
@@ -2072,6 +2118,9 @@ function bindEvents() {
   if (els.exportCsvBtn) {
     els.exportCsvBtn.addEventListener("click", exportGoogleAdsCsv);
   }
+
+  els.emailSuggestionUse?.addEventListener("click", useEmailSuggestion);
+  els.emailSuggestionDismiss?.addEventListener("click", dismissEmailSuggestion);
 
   const filterControls = [els.searchInput, els.statusFilter, els.followupFilter, els.sortFilter];
   filterControls.forEach((control) => {
