@@ -127,12 +127,36 @@ type Appointment = {
   balanceReminderAt?: number;
 };
 
-type Reservation = { id: string; start: number; end: number };
+// A reservation spans the job plus its travel buffer on each side. Older reservations don't record that buffer.
+type Reservation = { id: string; start: number; end: number; bufferMinutes?: number };
 const calendarUpdate = (now: number) => ({ calendarDueAt: now, calendarRevision: randomBytes(8).toString("hex") });
 const reservationFor = (id: string, appointment: Pick<Appointment, "start" | "end" | "bufferMinutes">): Reservation => ({
   id, start: appointment.start - (appointment.bufferMinutes ?? 0) * MINUTE,
-  end: appointment.end + (appointment.bufferMinutes ?? 0) * MINUTE,
+  end: appointment.end + (appointment.bufferMinutes ?? 0) * MINUTE, bufferMinutes: appointment.bufferMinutes ?? 0,
 });
+
+// A job's own start and end, and the travel time it needs between it and the next job.
+type Job = { start: number; end: number; bufferMinutes: number };
+const jobOf = (slot: Reservation, bufferMinutes: number): Job => ({
+  start: slot.start + bufferMinutes * MINUTE, end: slot.end - bufferMinutes * MINUTE, bufferMinutes,
+});
+// Driving from one job to the next is one trip, so two jobs need the larger of their two buffers between them,
+// not both buffers added together. Touching jobs with no buffer don't clash.
+function tooClose(a: Job, b: Job) {
+  const gap = Math.max(a.bufferMinutes, b.bufferMinutes) * MINUTE;
+  return a.start < b.end + gap && b.start < a.end + gap;
+}
+
+// The jobs behind stored reservations. A reservation saved before buffers were recorded takes its appointment's
+// buffer; one whose appointment is gone counts its whole reserved window as the job.
+async function reservedJobs(db: Firestore, slots: Reservation[], tx?: Transaction) {
+  const unknown = [...new Set(slots.filter(slot => slot.bufferMinutes === undefined && slot.id).map(slot => slot.id))];
+  const refs = unknown.map(id => db.collection("appointments").doc(id));
+  const records = !refs.length ? [] : tx ? await tx.getAll(...refs) : await db.getAll(...refs);
+  const buffers = new Map(records.map(record => [record.id, record.get("bufferMinutes") as number | undefined]));
+  return slots.map(slot => ({ slot, job: jobOf(slot, slot.bufferMinutes ?? buffers.get(slot.id) ?? 0) }));
+}
+const newJob = (reservation: Reservation): Job => jobOf(reservation, reservation.bufferMinutes ?? 0);
 
 class AppointmentError extends Error {
   constructor(readonly status: number, readonly code: string) { super(code); }
@@ -209,8 +233,10 @@ async function updateReservation(db: Firestore, tx: Transaction, reservation: Re
   const days = await tx.getAll(...next, ...oldOnly);
   const activeByDay = days.map(day => ((day.get("slots") ?? []) as Reservation[])
     .filter(slot => slot.end > now && slot.id !== reservation.id));
-  if (!remove && !allowOverlap && activeByDay.some(slots => slots.some(slot => slot.start < reservation.end && slot.end > reservation.start))) {
-    throw new AppointmentError(409, "time_unavailable");
+  if (!remove && !allowOverlap) {
+    const near = activeByDay.flat().filter(slot => slot.start < reservation.end && slot.end > reservation.start);
+    const wanted = newJob(reservation);
+    if ((await reservedJobs(db, near, tx)).some(({ job }) => tooClose(job, wanted))) throw new AppointmentError(409, "time_unavailable");
   }
   days.forEach((day, index) => tx.set(day.ref, { slots: remove || !newPaths.has(day.ref.path) ? activeByDay[index] : [...activeByDay[index], reservation] }));
 }
@@ -938,11 +964,13 @@ async function getAvailability(db: Firestore, body: Record<string, unknown>, own
   const [config, days] = await Promise.all([calendarConfig(), db.getAll(...reservationDays(db, { id: "", start: lower, end: upper }))]);
   if (!config) throw new AppointmentError(503, "calendar_unavailable");
   const google = await busyWindows(config, lower, upper, moving?.id).catch(() => { throw new AppointmentError(503, "calendar_unavailable"); });
-  const all = [...google, ...days.flatMap(day => ((day.get("slots") ?? []) as Reservation[]).filter(slot => slot.id !== moving?.id))];
+  const reserved = days.flatMap(day => ((day.get("slots") ?? []) as Reservation[]).filter(slot => slot.id !== moving?.id));
+  // Calendar busy time is blocked as is; booked jobs keep their own travel buffer.
+  const all = [...google.map(busy => ({ ...busy, bufferMinutes: 0 })), ...(await reservedJobs(db, reserved)).map(({ job }) => job)];
   return {
     slots: candidates.filter(start => {
-      const range = reservationFor("", { start, end: start + service.duration * MINUTE, bufferMinutes: settings.bufferMinutes });
-      return !all.some(block => block.start < range.end && block.end > range.start);
+      const job = { start, end: start + service.duration * MINUTE, bufferMinutes: settings.bufferMinutes };
+      return !all.some(block => tooClose(block, job));
     }),
   };
 }
@@ -979,15 +1007,19 @@ async function checkOwnerTime(db: Firestore, body: Record<string, unknown>) {
     if (slot.id !== except && slot.end > now && slot.start < upper && slot.end > lower) reservations.set(slot.id, slot);
   }
   const records = reservations.size ? await db.getAll(...[...reservations.keys()].map(id => db.collection("appointments").doc(id))) : [];
-  const conflicts = records.map(record => {
+  const wanted = { start, end, bufferMinutes: settings.bufferMinutes };
+  const conflicts = records.flatMap(record => {
     const slot = reservations.get(record.id)!;
     const appointment = record.data() as Appointment | undefined;
-    return {
+    const job = jobOf(slot, slot.bufferMinutes ?? appointment?.bufferMinutes ?? 0);
+    // Between two jobs, only the larger travel buffer counts.
+    if (!tooClose(job, wanted)) return [];
+    return [{
       kind: "appointment", name: appointment?.name ?? "", service: appointment?.service ?? "",
       start: appointment?.start ?? slot.start, end: appointment?.end ?? slot.end,
       // Overlapping the reservation itself (it already includes that booking's travel buffer) blocks a save.
       overlaps: slot.start < end && slot.end > start, reserved: slot,
-    };
+    }];
   });
   // Booked appointments are mirrored to the detailing calendar, so skip busy time they already explain.
   for (const busy of google) {
