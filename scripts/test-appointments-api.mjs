@@ -481,8 +481,29 @@ try {
   assert.deepEqual([clash.conflicts[0].name, clash.conflicts[0].kind, clash.conflicts[0].start], ['Phone customer', 'appointment', phoneBooking.start]);
   const free = (await checkTime({ start: ownerTimes.result.slots.at(-1), durationMinutes: 90 })).result;
   assert.deepEqual([free.open, free.issues, free.conflicts], [true, [], []]);
-  const near = (await checkTime({ start: phoneBooking.start + 90 * 60_000 })).result;
-  assert.deepEqual(near.issues, ['buffer'], JSON.stringify(near));
+  // Driving between two jobs is one trip: a 30-minute buffer on each job means 30 minutes between them, not 60.
+  const issuesAt = async minutes => (await checkTime({ start: phoneBooking.start + minutes * 60_000 })).result.issues.filter(issue => issue !== 'outside_hours');
+  const nextJob = phoneBooking.start + 90 * 60_000;
+  assert.deepEqual(await issuesAt(75), ['overlap']);
+  assert.deepEqual(await issuesAt(90), []);
+  // A reservation saved before reservations recorded their buffer takes it from its appointment.
+  const reservedDays = await db.collection('appointmentDays').get();
+  await Promise.all(reservedDays.docs.map(day => day.ref.set({ slots: (day.get('slots') ?? []).map(({ bufferMinutes: _b, ...slot }) => slot) })));
+  assert.deepEqual(await issuesAt(75), ['overlap']);
+  assert.deepEqual(await issuesAt(90), []);
+  // A longer buffer setting than the booking's own warns; a shorter one doesn't shrink the booking's buffer.
+  await db.collection('appointmentSettings').doc('booking').update({ bufferMinutes: 45 });
+  assert.deepEqual(await issuesAt(100), ['buffer']);
+  assert.deepEqual(await issuesAt(105), []);
+  await db.collection('appointmentSettings').doc('booking').update({ bufferMinutes: 1 });
+  assert.deepEqual(await issuesAt(75), ['overlap']);
+  assert.deepEqual(await issuesAt(90), []);
+  await db.collection('appointmentSettings').doc('booking').update({ bufferMinutes: 30 });
+  const back = await callWithCalendar('create', { name: 'Next job', phone: '828-555-0166', start: nextJob, durationMinutes: 60,
+    deposit: 'waived', useCalendarSlot: true, requestId: randomUUID() }, owner.idToken);
+  assert.equal(back.result?.status, 'confirmed', JSON.stringify(back));
+  assert.equal((await asOwner('cancel', { id: back.result.id })).result.status, 'cancelled');
+  console.log('PASS: Back-to-back jobs need one travel buffer between them, not two.');
   const late = new Date(ownerTimes.result.slots.at(-1)); late.setUTCHours(late.getUTCHours() + 6);
   assert((await checkTime({ start: late.getTime() })).result.issues.includes('outside_hours'));
   const lastSlot = ownerTimes.result.slots.at(-1);
