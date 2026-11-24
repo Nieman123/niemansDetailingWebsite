@@ -13,6 +13,7 @@ import {
 import { friendlyDate, invoicePdf } from "./invoice-pdf";
 import { sendEmailNow } from "./appointment-email";
 import { createShortLink, resolveShortLink, shortLinkPath } from "./appointment-short-links";
+import { clientEmail, findClientForJob, saveCustomerEmail } from "./appointment-clients";
 import { createInvoiceSession, isSessionId, releaseStripeSession, stripeConfig, stripeSession, type StripeSession } from "./appointment-stripe";
 import { liveMode } from "./appointment-secrets";
 import { recordOpsEvent } from "./ops-health";
@@ -125,6 +126,9 @@ export async function applyInvoiceSession(db: Firestore, session: StripeSession)
     const tipCents = Number(session.metadata.tipCents ?? 0);
     if (session.currency !== "usd" || !Number.isSafeInteger(amount) || !Number.isSafeInteger(tipCents) || amount <= 0 || tipCents < 0 ||
       amount + tipCents !== session.amount_total) throw new Error("stripe_amount_mismatch");
+    // The email typed at Checkout fills in a missing bill-to email and the client's email. Reads come before writes.
+    const paidEmail = clientEmail(session.customer_details?.email);
+    const client = paidEmail && invoice.source?.clientId ? await findClientForJob(db, tx, invoice.source.clientId, "", "") : null;
     const before = invoiceTotals(invoice);
     const payment: InvoicePayment = {
       id: session.id, method: "stripe", reference: "", date: easternDay(now), cents: amount, recordedAt: now, by: "stripe",
@@ -136,7 +140,9 @@ export async function applyInvoiceSession(db: Firestore, session: StripeSession)
     revised.paidAt = revised.status === "paid" ? invoice.paidAt ?? now : null;
     if (ours) { revised.checkout = null; revised.checkoutReconcileAt = null; }
     revised.updatedAt = now;
+    if (paidEmail && !revised.billTo.email) revised.billTo = { ...revised.billTo, email: paidEmail };
     tx.set(ref, revised);
+    saveCustomerEmail(tx, client, paidEmail, "payment", now);
     return { invoice: revised, amount, tipCents, overpaid: amount > before.balanceCents, voided: invoice.status === "void" };
   });
   if (!outcome) return;

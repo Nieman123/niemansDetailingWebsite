@@ -232,6 +232,67 @@ assert.equal(walkInClient.get('city'), 'Weaverville');
 assert.equal(walkInClient.get('zip'), '28787');
 assert.equal(walkInClient.get('bookings').length, 1);
 assert.equal(walkInClient.get('bookings')[0].amount, 214);
+// A phone-only appointment takes the email its customer signs in with, and so does a client with no
+// email. A client that already has a different email keeps it, with the new one waiting as a suggestion.
+async function verifiedCustomer() {
+  const account = await signUp();
+  await admin.auth().updateUser(account.localId, { emailVerified: true });
+  const response = await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake-key`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: account.email, password: 'emulator-test-password', returnSecureToken: true }),
+  });
+  return { ...(await response.json()), email: account.email.toLowerCase() };
+}
+const phoneOnlyClient = db.collection('clients').doc('phone-only-client');
+await phoneOnlyClient.set({ full_name: 'Phone Only', phone_e164: '+18285550188', phone: '(828) 555-0188', zip: '28801' });
+const phoneOnly = (await asOwner('create', { ...appointment, requestId: randomUUID(), clientId: phoneOnlyClient.id, leadId: null,
+  saveClientDefault: false, name: 'Phone Only', email: '', phone: '828-555-0188', start: paidLater + 4 * 86_400_000 })).result;
+assert.equal((await db.collection('appointments').doc(phoneOnly.id).get()).get('email'), '');
+const phoneOnlyLink = (await asOwner('issue-link', { id: phoneOnly.id })).result.token;
+assert.equal((await post('details', { id: phoneOnly.id, token: phoneOnlyLink })).result.hasEmail, false);
+const signedIn = await verifiedCustomer();
+assert.equal((await post('claim-appointment', { id: phoneOnly.id, token: phoneOnlyLink }, signedIn.idToken)).status, 200);
+const claimedRow = (await db.collection('appointments').doc(phoneOnly.id).get()).data();
+assert.equal(claimedRow.email, signedIn.email);
+assert.equal(claimedRow.customerUid, signedIn.localId);
+assert.equal((await phoneOnlyClient.get()).get('email'), signedIn.email);
+assert((await phoneOnlyClient.get()).get('lookup_keys').includes(`email:${signedIn.email}`));
+assert.equal((await phoneOnlyClient.get()).get('updated_by'), 'customer');
+assert.equal((await post('my-appointments', {}, signedIn.idToken)).result.some(row => row.id === phoneOnly.id), true);
+const otherCustomer = await verifiedCustomer();
+assert.equal((await post('claim-appointment', { id: phoneOnly.id, token: phoneOnlyLink }, otherCustomer.idToken)).error, 'appointment_email_mismatch');
+
+const emailedClient = db.collection('clients').doc('emailed-client');
+await emailedClient.set({ full_name: 'Has Email', email: 'old.address@example.test', phone_e164: '+18285550199' });
+const keepsEmail = (await asOwner('create', { ...appointment, requestId: randomUUID(), clientId: emailedClient.id, leadId: null,
+  saveClientDefault: false, name: 'Has Email', email: '', phone: '828-555-0199', start: paidLater + 5 * 86_400_000 })).result;
+const keepsEmailLink = (await asOwner('issue-link', { id: keepsEmail.id })).result.token;
+assert.equal((await post('claim-appointment', { id: keepsEmail.id, token: keepsEmailLink }, otherCustomer.idToken)).status, 200);
+assert.equal((await emailedClient.get()).get('email'), 'old.address@example.test');
+assert.equal((await emailedClient.get()).get('email_suggestion').email, otherCustomer.email);
+assert.equal((await emailedClient.get()).get('email_suggestion').source, 'sign-in');
+
+// Paying online fills in a phone-only appointment's email from Stripe Checkout, which then gets the receipt.
+const payClient = db.collection('clients').doc('pays-online-client');
+await payClient.set({ full_name: 'Pays Online', phone_e164: '+18285550166' });
+const paysOnline = (await asOwner('create', { ...appointment, requestId: randomUUID(), clientId: payClient.id, leadId: null,
+  saveClientDefault: false, name: 'Pays Online', email: '', phone: '828-555-0166', start: paidLater + 6 * 86_400_000, deposit: 'required' })).result;
+const paysRef = db.collection('appointments').doc(paysOnline.id);
+await paysRef.update({
+  status: 'awaiting_deposit', preapproved: true, depositDeadline: Date.now() + 40 * 60_000,
+  checkout: { attempt: 'attempt-email', kind: 'deposit', amount: 5000, expiresAt: Date.now() + 35 * 60_000 },
+});
+await paymentLifecycle.applyStripeSession(db, {
+  id: 'cs_test_email_capture', livemode: false, status: 'complete', payment_status: 'paid', amount_total: 5000, currency: 'usd',
+  payment_intent: 'pi_email_capture', metadata: { appointmentId: paysOnline.id, attemptId: 'attempt-email', kind: 'deposit' },
+  customer_details: { email: 'Paid.Online@Example.test' },
+});
+assert.equal((await paysRef.get()).get('email'), 'paid.online@example.test');
+assert.equal((await paysRef.get()).get('paidDeposit'), 5000);
+assert.equal((await payClient.get()).get('email'), 'paid.online@example.test');
+assert.equal((await db.collection('appointmentEmails').doc('receipt-cs_test_email_capture').get()).get('to'), 'paid.online@example.test');
+console.log('PASS: Signing in or paying online saves the customer email on phone-only appointments and their client records.');
+
 // The Dashboard report counts finished jobs this month, with their pre-tax revenue and sales tax.
 assert.equal((await post('business-report', {}, stranger.idToken)).status, 403);
 const businessReport = (await asOwner('business-report')).result;

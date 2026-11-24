@@ -568,6 +568,25 @@
       color: var(--muted);
     }
 
+    .email-suggestion {
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .email-suggestion p {
+      margin: 0;
+      flex-basis: 100%;
+      font-size: 0.8rem;
+    }
+
+    .email-suggestion .btn {
+      padding: 4px 10px;
+      font-size: 0.8rem;
+    }
+
     .mono {
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
@@ -817,6 +836,11 @@
               <div>
                 <label for="client-email-input">Email</label>
                 <input id="client-email-input" type="email" maxlength="180" placeholder="name@example.com" />
+                <div id="client-email-suggestion" class="email-suggestion" hidden>
+                  <p id="client-email-suggestion-text" class="muted"></p>
+                  <button id="client-email-suggestion-use" class="btn btn-ghost" type="button">Use this email</button>
+                  <button id="client-email-suggestion-dismiss" class="btn btn-ghost" type="button">Dismiss</button>
+                </div>
               </div>
               <div>
                 <label for="client-preferred-contact-input">Preferred Contact</label>

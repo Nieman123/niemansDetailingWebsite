@@ -162,7 +162,8 @@ try {
 
   // A paid Checkout session is recorded once, with the tip kept off the balance.
   const session = { id: 'cs_test_invoice_paid', livemode: false, status: 'complete', payment_status: 'paid', amount_total: 101500, currency: 'usd',
-    payment_intent: 'pi_invoice', url: null, metadata: { invoiceId: id, attemptId: 'lost-reservation', kind: 'invoice', amountCents: '100000', tipCents: '1500' } };
+    payment_intent: 'pi_invoice', url: null, metadata: { invoiceId: id, attemptId: 'lost-reservation', kind: 'invoice', amountCents: '100000', tipCents: '1500' },
+    customer_details: { email: 'pat.personal@example.test' } };
   await assert.rejects(payments.applyInvoiceSession(db, { ...session, amount_total: 100000 }), /stripe_amount_mismatch/);
   await Promise.all([payments.applyInvoiceSession(db, session), payments.applyInvoiceSession(db, session)]);
   const paidOnline = (await as('get', { id })).result;
@@ -172,6 +173,11 @@ try {
   assert.equal(paidOnline.payments.at(-1).tipCents, 1500);
   assert.equal(paidOnline.totals.balanceCents, 0);
   assert.equal(paidOnline.nextReminder, null, 'paid invoices get no reminders');
+  // A different Checkout email never replaces the one on file; it waits on the client as a suggestion.
+  assert.equal(paidOnline.billTo.email, 'ap@acme.test');
+  const acme = (await db.collection('clients').doc('acme').get()).data();
+  assert.equal(acme.email, 'ap@acme.test');
+  assert.deepEqual([acme.email_suggestion.email, acme.email_suggestion.source], ['pat.personal@example.test', 'payment']);
   assert(sentMail.some(mail => mail.to[0] === 'ap@acme.test' && /^Receipt for invoice 2026-0001/.test(mail.subject) && mail.attachments?.length), 'a receipt is emailed');
   assert.equal((await pay('details', resolved.result)).result.payments.at(-1).tipCents, 1500);
   const receipt = await pay('pdf', { ...resolved.result, kind: 'receipt' });

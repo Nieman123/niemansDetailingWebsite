@@ -100,6 +100,31 @@ export function clientChanges(existing: Record<string, unknown>, jobs: ClientJob
   return changes;
 }
 
+export type EmailSource = "sign-in" | "payment";
+
+// Fields to write when a customer hands over an email by signing in or paying online. A record with no
+// email takes it. A different email already on file is never replaced: the new one waits as
+// email_suggestion for the owner to accept or dismiss on the Clients page.
+export function customerEmailChanges(existing: Record<string, unknown>, emailValue: unknown, source: EmailSource, now: number) {
+  const email = clientEmail(emailValue);
+  if (!email) return {};
+  const current = clientEmail(existing.email);
+  if (current === email) return {};
+  if (!current) {
+    return { email, lookup_keys: lookupKeys(str(existing.full_name, 140), email, str(existing.phone_e164, 16), str(existing.zip, 5)) };
+  }
+  const pending = existing.email_suggestion as { email?: unknown } | null | undefined;
+  if (pending && clientEmail(pending.email) === email) return {};
+  return { email_suggestion: { email, source, at: new Date(now).toISOString() } };
+}
+
+// Applies customerEmailChanges to a client found inside a transaction (reads must already be done).
+export function saveCustomerEmail(tx: Transaction, found: DocumentSnapshot | null, email: unknown, source: EmailSource, now: number) {
+  if (!found?.exists) return;
+  const changes = customerEmailChanges(found.data() ?? {}, email, source, now);
+  if (Object.keys(changes).length) tx.update(found.ref, { ...changes, updated_at: new Date(now), updated_by: "customer" });
+}
+
 export function newClientRecord(job: ClientJob, uid: string, now: number) {
   const fullName = str(job.name, 140) || "Customer";
   const parts = fullName.split(/\s+/);
