@@ -600,6 +600,18 @@ async function changeAppointment(db, uid, id, action, body) {
             tx.update(ref, update);
             return adminDetails(id, { ...appointment, ...update });
         }
+        if (action === "set-start-time") {
+            // Fix the clock when "Start job" was pressed late (or early): any time in the last day, not in the future.
+            if (appointment.status !== "in_progress")
+                throw new AppointmentError(409, "status_changed");
+            const startedAt = body.startedAt;
+            if (typeof startedAt !== "number" || !Number.isSafeInteger(startedAt) || startedAt > now + MINUTE || startedAt < now - DAY) {
+                throw new AppointmentError(400, "invalid_start_time");
+            }
+            const update = { startedAt: Math.min(startedAt, now), startTimeEditedAt: now, startTimeEditedBy: uid };
+            tx.update(ref, update);
+            return adminDetails(id, { ...appointment, ...update });
+        }
         if (action === "start-job" || action === "save-job" || action === "finish-job") {
             if (!["confirmed", "in_progress"].includes(appointment.status))
                 throw new AppointmentError(409, "status_changed");
@@ -2031,7 +2043,7 @@ async function handleAppointments(db, auth, req, res, action) {
                 });
                 result = { csv: ["appointment,transaction,utc_time,kind,method,status,operator,reference,amount_cents,tax_cents,tip_cents", ...rows].join("\r\n") };
             }
-            else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "save-job", "save-notes", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite", "update-services"].includes(action)) {
+            else if (["update-contact", "cancel", "issue-link", "revoke-link", "approve", "no-show", "start-job", "set-start-time", "save-job", "save-notes", "finish-job", "record-payment", "reverse-payment", "clear-check", "return-check", "reschedule", "reject-reschedule", "offer-alternate", "maintenance-invite", "update-services"].includes(action)) {
                 result = await changeAppointment(db, uid, identifier(body.id), action, body);
             }
             else
