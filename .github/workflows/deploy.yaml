@@ -179,6 +179,11 @@ jobs:
           # without a prompt. With --only it never deletes functions outside the listed targets.
           firebase deploy --non-interactive --force --config "${FIREBASE_DEPLOY_CONFIG:-firebase.json}" --project "$FIREBASE_PROJECT_ID" --only "$targets"
 
+      # Job photo thumbnails download with getBlob(), which needs the bucket's CORS setting.
+      - name: Apply Storage CORS
+        if: env.ENABLE_APPOINTMENTS == 'true'
+        run: node scripts/apply-storage-cors.mjs "$FIREBASE_PROJECT_ID"
+
       - name: Deploy Hosting
         run: firebase deploy --non-interactive --config "${FIREBASE_DEPLOY_CONFIG:-firebase.json}" --project "$FIREBASE_PROJECT_ID" --only hosting
 

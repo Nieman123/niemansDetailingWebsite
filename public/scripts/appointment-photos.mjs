@@ -103,13 +103,29 @@ export function jobPhotoBoard(appointmentId) {
         try { await deleteObject(photo); await load(); }
         catch { status.textContent = "Couldn't delete this photo."; }
       };
-      getBlob(photo, 8 * 1024 * 1024).then(blob => {
-        const url = URL.createObjectURL(blob);
-        urls.push(url);
-        img.src = url;
-        img.onclick = () => window.open(url, "_blank", "noopener");
-      }).catch(() => { label.textContent = stage + " · unavailable"; });
-      tile.append(img, label, remove);
+      // A tile without a loaded image shows a tap-to-retry message, never a broken image icon.
+      const retry = Object.assign(document.createElement("button"), { type: "button", className: "job-photo__retry", textContent: "Loading…" });
+      img.hidden = true;
+      const show = () => {
+        retry.disabled = true;
+        retry.textContent = "Loading…";
+        getBlob(photo, 8 * 1024 * 1024).then(blob => {
+          const url = URL.createObjectURL(blob);
+          urls.push(url);
+          img.onload = () => { img.hidden = false; retry.remove(); };
+          img.onerror = () => { retry.disabled = false; retry.textContent = "Can't show photo"; };
+          img.src = url;
+          img.onclick = () => window.open(url, "_blank", "noopener");
+        }).catch(error => {
+          console.warn("Job photo download failed", error);
+          retry.disabled = false;
+          retry.textContent = "Couldn't load · tap to retry";
+          status.textContent = "Photos are saved, but thumbnails couldn't load. Storage may need its CORS setting (see docs/production-setup.md).";
+        });
+      };
+      retry.onclick = show;
+      show();
+      tile.append(img, retry, label, remove);
       return tile;
     }));
     status.textContent = page.items.length ? "" : "No photos yet.";
