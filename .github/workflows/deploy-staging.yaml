@@ -115,6 +115,10 @@ jobs:
             --project "$STAGING_FIREBASE_PROJECT_ID" \
             --only functions:api,functions:appointmentMaintenance,firestore:rules,firestore:indexes,storage
 
+      # Job photo thumbnails download with getBlob(), which needs the bucket's CORS setting.
+      - name: Apply Storage CORS
+        run: node scripts/apply-storage-cors.mjs "$STAGING_FIREBASE_PROJECT_ID"
+
       - name: Build static blog from staging Firestore
         env:
           SITE_PUBLIC_DIR: public-staging

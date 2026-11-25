@@ -632,7 +632,16 @@ try {
   assert.equal(reserved.end - reserved.start, 120 * 60_000);
   assert.equal((await asOwner('update-services', { id: ownerMulti.result.id, items: [] })).error, 'invalid_items');
   const taxNow = (await asOwner('tax-settings')).result;
-  await asOwner('start-job', { id: ownerMulti.result.id });
+  assert.equal((await asOwner('set-start-time', { id: ownerMulti.result.id, startedAt: Date.now() - 600_000 })).error, 'status_changed');
+  const begun = await asOwner('start-job', { id: ownerMulti.result.id });
+  const arrived = begun.result.startedAt - 22 * 60_000;
+  assert.equal((await post('set-start-time', { id: ownerMulti.result.id, startedAt: arrived }, stranger.idToken)).status, 403);
+  assert.equal((await asOwner('set-start-time', { id: ownerMulti.result.id, startedAt: Date.now() + 3_600_000 })).error, 'invalid_start_time');
+  assert.equal((await asOwner('set-start-time', { id: ownerMulti.result.id, startedAt: Date.now() - 2 * 86_400_000 })).error, 'invalid_start_time');
+  assert.equal((await asOwner('set-start-time', { id: ownerMulti.result.id, startedAt: '9:00' })).error, 'invalid_start_time');
+  const moved = await asOwner('set-start-time', { id: ownerMulti.result.id, startedAt: arrived });
+  assert.equal(moved.result.startedAt, arrived, JSON.stringify(moved));
+  assert.equal(moved.result.status, 'in_progress');
   const multiDone = await asOwner('finish-job', { id: ownerMulti.result.id, finalCents: 54_000, taxRateBasisPoints: taxNow.enabled ? taxNow.rateBasisPoints : 0 });
   assert.deepEqual(multiDone.result.invoiceLines.map(line => line.cents), [30_000, 10_000, 14_000], JSON.stringify(multiDone));
   assert.equal(multiDone.result.invoiceLines[2].description, 'Monthly Mini (Second truck)');

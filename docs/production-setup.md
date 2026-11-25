@@ -134,6 +134,7 @@ Do every step below before setting the variable.
 - Give the deploy service account **Cloud Scheduler Admin** (`roles/cloudscheduler.admin`) and **Firebase Rules Admin** if it lacks it (Storage rules).
 - Give the Functions runtime account (`<PROJECT_NUMBER>-compute@developer.gserviceaccount.com`) **Secret Manager Secret Accessor** on each of the three secrets below.
 - For job photos and blog uploads, Storage rules read the Firestore admin list. Grant `roles/firebaserules.firestoreServiceAgent` to `service-<PROJECT_NUMBER>@gcp-sa-firebasestorage.iam.gserviceaccount.com`.
+- Job photo thumbnails download in the browser, so the bucket needs the CORS setting in `storage.cors.json`. The deploy applies it when the deploy service account can (it needs **Storage Admin** on the bucket); otherwise it warns, and you can run once: `gcloud storage buckets update gs://niemansdetailing.firebasestorage.app --cors-file=storage.cors.json`.
 - **Storage rules are replaced on deploy.** Open Firebase console → Storage → Rules first. If it has rules for paths other than `blog-images/` and `job-photos/`, add them to `storage.rules` before turning appointments on.
 
 ### 7b. Secrets in production Secret Manager

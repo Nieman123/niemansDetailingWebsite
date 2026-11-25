@@ -275,6 +275,52 @@ function bookedLines(record) {
   return lines;
 }
 
+// "Started 9:22 AM · Change": fix the job clock when Start job was tapped late. The phone's time
+// picker sets a time on the day the job started, in Eastern time like the rest of the schedule.
+const startClock = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" });
+function startTimeEditor(record, request, run, message, tick) {
+  const wrap = elm("div", "", "job-start-time");
+  const summary = elm("p", "", "job-start-time__summary");
+  const label = elm("span", "");
+  const change = Object.assign(elm("button", "Change", "job-start-time__change"), { type: "button" });
+  change.setAttribute("aria-label", "Change job start time");
+  summary.append(label, change);
+  const editor = elm("div", "", "job-start-time__editor");
+  editor.hidden = true;
+  const input = Object.assign(document.createElement("input"), { type: "time", step: 60, required: true });
+  input.setAttribute("aria-label", "Job start time");
+  const save = Object.assign(elm("button", "Save", "btn primary"), { type: "button" });
+  const cancel = Object.assign(elm("button", "Cancel", "btn secondary"), { type: "button" });
+  editor.append(input, save, cancel);
+  wrap.append(summary, editor);
+  const show = () => { label.textContent = `Started ${startClock.format(record.startedAt)}`; };
+  show();
+  const close = () => { editor.hidden = true; summary.hidden = false; change.focus(); };
+  change.onclick = () => {
+    input.value = easternInput(record.startedAt).slice(11);
+    summary.hidden = true;
+    editor.hidden = false;
+    input.focus();
+    input.showPicker?.();
+  };
+  cancel.onclick = close;
+  save.onclick = () => run(save, async () => {
+    if (!/^\d{2}:\d{2}$/.test(input.value)) throw new Error("Pick the time you started.");
+    // Same day as the recorded start; a time after midnight that's still ahead means the day before.
+    let startedAt = easternStart(`${easternInput(record.startedAt).slice(0, 10)}T${input.value}`);
+    if (startedAt > Date.now() + 60_000) startedAt = easternStart(`${easternInput(startedAt - 86_400_000).slice(0, 10)}T${input.value}`);
+    if (startedAt > Date.now() + 60_000) throw new Error("That time hasn't happened yet.");
+    const result = await request("set-start-time", { id: record.id, startedAt });
+    record.startedAt = result.startedAt;
+    show();
+    tick();
+    message.textContent = `Start time changed to ${startClock.format(record.startedAt)}.`;
+    close();
+  });
+  input.onkeydown = event => { if (event.key === "Enter") { event.preventDefault(); save.click(); } };
+  return wrap;
+}
+
 export function jobScreen(record, request, refresh, report) {
   const screen = elm("div", "", "job-screen");
   const started = record.status === "in_progress";
@@ -314,6 +360,8 @@ export function jobScreen(record, request, refresh, report) {
     catch (error) { message.textContent = error.code ? report(error) : error.message; }
     finally { busy = button.disabled = false; }
   };
+
+  if (started && record.startedAt) hero.insertBefore(startTimeEditor(record, request, run, message, tick), clock.nextSibling);
 
   // Notes autosave while you type, and survive moving between views.
   const pending = pendingNotes.get(record.id);

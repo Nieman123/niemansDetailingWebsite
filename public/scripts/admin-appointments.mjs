@@ -33,9 +33,12 @@ if ([...filter.options].some(option => option.value === params.get("filter"))) f
 function appointmentUrl(id) {
   const query = new URLSearchParams();
   if (id) query.set("appointment", id);
-  if (filter.value !== "all") query.set("filter", filter.value);
+  if (filter.value !== "open") query.set("filter", filter.value);
   return "/admin/appointments" + (query.size ? "?" + query : "");
 }
+// "open" is the default queue: the server's recent list, minus completed and canceled jobs.
+const serverView = view => view === "open" ? "all" : view;
+const isOpen = record => !["completed", "cancelled"].includes(record.status);
 const feedback = () => recordId ? detailStatus : listStatus;
 const refundBanner = Object.assign(document.createElement("p"), { className: "appointment-notice refund-banner", hidden: true });
 listStatus.before(refundBanner);
@@ -61,6 +64,7 @@ const messages = {
   checkout_active: "The customer just opened a payment page. Try again in a few minutes.",
   checkout_too_close: "Choose a time at least 36 minutes away to accept a deposit.",
   status_changed: "This appointment changed. Refresh the list and try again.",
+  invalid_start_time: "Pick a start time from the last 24 hours that isn't in the future.",
   scope_acceptance_required: "Record the agreed scope changes and confirm customer approval for the price increase.",
   invalid_payment: "Enter a payment amount within the remaining balance and select its method.",
   invalid_follow_up_settings: "Add an https Google review link to turn on review requests.",
@@ -676,19 +680,19 @@ async function refreshList() {
 
     const view = filter.value;
     const query = search.value.trim();
-    const { records, next, refunds } = await ownerRequest("list", { view, search: query });
+    const { records, next, refunds } = await ownerRequest("list", { view: serverView(view), search: query });
     if (session !== scope || recordId) return;
     refundBanner.hidden = !refunds.open;
     refundBanner.textContent = refunds.open
       ? `${refunds.open} deposit refund${refunds.open === 1 ? "" : "s"} in progress${refunds.failed ? `, ${refunds.failed} failed and need${refunds.failed === 1 ? "s" : ""} attention in Stripe` : ""}. Choose "Refunds" in the filter to see them.`
       : "";
-    // "Recent" hides cancellations; every other filter is already exact on the server.
-    const visible = view === "all" && !query ? records.filter(record => record.status !== "cancelled") : records;
+    // The default view hides finished and canceled jobs; every other filter is already exact on the server.
+    const visible = view === "open" && !query ? records.filter(isOpen) : records;
     list.replaceChildren(...visible.map(renderRow));
     olderCursor = next;
     loadOlder.hidden = !next;
     status.textContent = visible.length ? (query && records.length === 100 ? "Showing the first 100 matches. Add more of the name or number to narrow it." : "")
-      : query ? "No appointments match that search." : records.length ? "No appointments match this filter." : view === "all" ? "Your first appointment will appear here." : "No appointments match this filter.";
+      : query ? "No appointments match that search." : records.length ? (view === "open" ? "No open appointments in this batch. Choose \"All\" to see completed ones." : "No appointments match this filter.") : ["open", "all"].includes(view) ? "Your first appointment will appear here." : "No appointments match this filter.";
   } catch (error) {
     if (session === scope && recordId === id) {
       status.textContent = id && error.code === "record_not_found" ? "This appointment could not be found." : explain(error);
@@ -827,13 +831,13 @@ search.addEventListener("input", () => {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(refreshList, 350);
 });
-// "Recent" pages back through older bookings 50 at a time.
+// "Recent" and "All" page back through older bookings 50 at a time.
 loadOlder.addEventListener("click", async () => {
   if (!olderCursor) return;
   loadOlder.disabled = true;
   try {
     const { records, next } = await ownerRequest("list", { view: "all", before: olderCursor });
-    list.append(...records.filter(record => record.status !== "cancelled").map(renderRow));
+    list.append(...(filter.value === "open" ? records.filter(isOpen) : records).map(renderRow));
     olderCursor = next;
     loadOlder.hidden = !next;
   } catch (error) { listStatus.textContent = explain(error); }
