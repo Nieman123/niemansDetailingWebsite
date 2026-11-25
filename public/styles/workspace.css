@@ -233,6 +233,12 @@
 .job-screen { display: grid; gap: 14px; }
 .job-hero { padding: 18px; border: 1px solid var(--nd-gold-line); border-radius: 18px; background: linear-gradient(135deg, rgba(107,63,216,.3), var(--nd-bg) 70%); }
 .job-clock { margin: 0; color: var(--nd-gold); font-family: var(--nd-font-display); font-size: 22px; font-weight: 800; }
+.job-start-time__summary { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin: 4px 0 0; color: var(--nd-text-2); font-size: 15px; font-weight: 600; }
+.owner-app .job-start-time__change { min-height: 44px; padding: 0 14px; border: 1px solid var(--nd-gold-line); border-radius: 999px; background: var(--nd-gold-tint); color: var(--nd-gold); font: 700 14px var(--nd-font-sans); cursor: pointer; }
+.job-start-time__editor { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; margin-top: 10px; }
+.job-start-time__editor[hidden], .job-start-time__summary[hidden] { display: none; }
+.owner-app .job-start-time__editor input { min-height: 48px; font-size: 18px; }
+.owner-app .job-start-time__editor .btn { min-height: 48px; }
 .job-vehicle { margin: 6px 0 0; color: var(--nd-text); font-weight: 600; }
 .job-prep { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--nd-line); color: var(--nd-text-2); font-size: 15px; white-space: pre-wrap; }
 .owner-app .job-start { width: 100%; min-height: 64px; font-size: 19px; border-radius: 16px; }

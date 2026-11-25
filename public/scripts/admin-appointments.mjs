@@ -61,6 +61,7 @@ const messages = {
   checkout_active: "The customer just opened a payment page. Try again in a few minutes.",
   checkout_too_close: "Choose a time at least 36 minutes away to accept a deposit.",
   status_changed: "This appointment changed. Refresh the list and try again.",
+  invalid_start_time: "Pick a start time from the last 24 hours that isn't in the future.",
   scope_acceptance_required: "Record the agreed scope changes and confirm customer approval for the price increase.",
   invalid_payment: "Enter a payment amount within the remaining balance and select its method.",
   invalid_follow_up_settings: "Add an https Google review link to turn on review requests.",
